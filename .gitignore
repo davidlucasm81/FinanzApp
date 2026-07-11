@@ -1,0 +1,22 @@
+local.properties
+google-services.json
+*.jks
+*.keystore
+.gradle/
+/build/
+/captures/
+.idea/
+*.iml
+
+# Android Studio / IntelliJ
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+
+# Native build artifacts
+.externalNativeBuild
+.cxx
