@@ -3,14 +3,14 @@
 > Plan de implementación paso a paso. Cada fase debe dejar el proyecto compilando y, si aplica, ejecutándose en un emulador/dispositivo antes de pasar a la siguiente. Marca cada tarea con `[x]` al completarla. Consulta `AGENTS.md` para contexto de arquitectura y modelo de datos antes de cada fase.
 
 ## Fase 0 — Preparación del entorno
-- [ ] Crear el proyecto en Android Studio: plantilla "Empty Views Activity", lenguaje Java, `applicationId` = `com.finanzapp.app` (o el que se decida finalmente).
-- [ ] Configurar `minSdk` 26 y `targetSdk` al valor por defecto sugerido por Android Studio.
-- [ ] Inicializar git (`git init`) y crear `.gitignore` (ver sección 6 de `AGENTS.md`).
-- [ ] Primer commit: proyecto vacío compilando.
+- [x] Crear el proyecto en Android Studio: plantilla "Empty Views Activity", lenguaje Java, `applicationId` = `com.finanzapp.app` (o el que se decida finalmente).
+- [x] Configurar `minSdk` 26 y `targetSdk` al valor por defecto sugerido por Android Studio.
+- [x] Inicializar git (`git init`) y crear `.gitignore` (ver sección 6 de `AGENTS.md`).
+- [x] Primer commit: proyecto vacío compilando.
 - [ ] (Acción manual del humano) Crear proyecto en Firebase Console, registrar la app Android con el `applicationId` elegido y el SHA-1 de depuración.
 - [ ] (Acción manual del humano) Descargar `google-services.json` y colocarlo en `app/`; verificar que **no** aparece en `git status`.
-- [ ] Crear `google-services.json.example` con estructura ficticia y documentar en `README.md` cómo obtener el propio.
-- [ ] Añadir el plugin `com.google.gms.google-services` y el Firebase BoM más reciente al `build.gradle` (proyecto y módulo `app`).
+- [x] Crear `google-services.json.example` con estructura ficticia y documentar en `README.md` cómo obtener el propio.
+- [x] Añadir el plugin `com.google.gms.google-services` y el Firebase BoM más reciente al `build.gradle` (proyecto y módulo `app`).
 - [ ] (Acción manual del humano) En Firebase Console, habilitar Authentication → proveedor Google.
 - [ ] (Acción manual del humano) Crear la base de datos Cloud Firestore (modo producción, elegir región cercana).
 
