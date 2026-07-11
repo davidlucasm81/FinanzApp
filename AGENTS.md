@@ -42,6 +42,7 @@ com.finanzapp.app/
 ├── ui/
 │   ├── auth/                      // LoginActivity/Fragment
 │   ├── onboarding/                // WelcomeFragment, CreateFamilyFragment, JoinByCodeFragment, PendingApprovalFragment, AcceptInvitationFragment
+│   ├── settings/                  // SettingsFragment, ProfileFragment
 │   ├── family/                    // FamilySettingsFragment, ManageJoinRequestsFragment
 │   ├── accounts/                  // AccountListFragment, AddEditAccountFragment
 │   ├── transactions/              // AddEditTransactionFragment, TransactionListFragment, filtros
@@ -112,18 +113,81 @@ families/{familyId}/transactions/{transactionId}
   amount: number                  // siempre positivo; el signo lo da "type"
   type: "income" | "expense"
   categoryId: string
-  paymentMethod: "tarjeta" | "transferencia" | "efectivo" | "bizum"
+  paymentMethod: "tarjeta" | "transferencia" | "efectivo" | "bizum" | "tarjeta_restaurante" | "tarjeta_transporte" | "domiciliacion_bancaria"
   createdBy: uid
   createdAt: timestamp
 ```
 
 ### Aclaración sobre un requisito ambiguo del enunciado original
 
-El requisito 6 mencionaba un campo **"tipo de moneda (tarjeta, transferencia, efectivo, bizum)"**. Esos cuatro valores no son monedas (EUR/USD), son **métodos de pago**. Se ha interpretado que hay dos campos distintos:
+El requisito 6 mencionaba un campo **"tipo de moneda (tarjeta, transferencia, efectivo, bizum)"**. Esos valores no son monedas (EUR/USD), son **métodos de pago**. Se ha interpretado que hay dos campos distintos:
 - `amount` junto con la moneda de la familia (`currencyCode`, fijada a nivel de unidad familiar) → el valor económico del movimiento.
-- `paymentMethod` (tarjeta/transferencia/efectivo/bizum) → cómo se pagó.
+- `paymentMethod` → cómo se pagó (ver lista completa más abajo).
 
 Si esta interpretación no es correcta, corrígela antes de que el agente empiece a implementar transacciones (Fase 5 del plan).
+
+### Métodos de pago (`paymentMethod`)
+
+| Valor interno | Etiqueta visible |
+|---|---|
+| `tarjeta` | Tarjeta |
+| `efectivo` | Efectivo |
+| `transferencia` | Transferencia |
+| `bizum` | Bizum |
+| `tarjeta_restaurante` | Tarjeta restaurante |
+| `tarjeta_transporte` | Tarjeta transporte |
+| `domiciliacion_bancaria` | Domiciliación bancaria |
+
+`domiciliacion_bancaria` se ha añadido porque en España es muy habitual pagar así recibos recurrentes (Hipoteca, Seguros, Servicios) — sin él, esos movimientos no tendrían un método de pago natural. Quítalo si no lo quieres.
+
+### Categorías por defecto
+
+Basado en tu lista, organizada por tipo (nota: en tu tabla original "Hipoteca" aparecía junto a "Ingreso" y "Reformas" junto a "Gasto", pero eso era el cruce accidental de dos columnas independientes de la hoja de cálculo — Hipoteca es un gasto). Se han añadido algunas categorías de ingreso adicionales, ya que la lista original solo traía "Nómina", y unas pocas de gasto habituales en una economía familiar española que no estaban (Impuestos, Comunidad, Mascotas, Donaciones). Todas son editables/eliminables desde la app; esto es solo el set semilla.
+
+**Ingreso**
+
+| Categoría | `appliesTo` |
+|---|---|
+| Nómina | income |
+| Otros ingresos | income |
+| Ingresos extra / Freelance | income |
+| Alquileres (ingreso) | income |
+| Devoluciones / Reembolsos | income |
+
+**Gasto**
+
+| Categoría | `appliesTo` |
+|---|---|
+| Hipoteca | expense |
+| Reformas | expense |
+| Servicios | expense |
+| Internet | expense |
+| Seguros | expense |
+| Supermercado | expense |
+| Restaurantes | expense |
+| Alcohol | expense |
+| Transporte | expense |
+| Salud | expense |
+| Ropa | expense |
+| Educación | expense |
+| Ocio | expense |
+| Viajes | expense |
+| Ahorros | expense |
+| Informática | expense |
+| Libros | expense |
+| Streaming | expense |
+| Deporte | expense |
+| Bebidas | expense |
+| Peluquería | expense |
+| Regalos | expense |
+| Hogar | expense |
+| Misceláneo | expense |
+| Impuestos | expense |
+| Comunidad | expense |
+| Mascotas | expense |
+| Donaciones | expense |
+
+Ninguna categoría usa `appliesTo: "both"` en el set semilla; si el usuario necesita una categoría mixta (por ejemplo "Ajustes") puede crearla manualmente marcándola como tal.
 
 ### Aclaración sobre la aprobación de invitaciones
 
@@ -203,3 +267,7 @@ Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exi
 ## Decisiones tomadas durante el desarrollo
 
 *(el agente debe ir añadiendo aquí cualquier decisión relevante no cubierta arriba, con fecha)*
+
+- **2026-07-11**: Definido el set semilla de categorías (5 de ingreso, 28 de gasto) y de métodos de pago (7 valores, incluyendo `tarjeta_restaurante`, `tarjeta_transporte` y `domiciliacion_bancaria`) — ver sección 4.
+- **2026-07-11**: Se añade soporte para abandonar la familia. Si la familia se queda sin miembros, se debe realizar un borrado recursivo de todas sus subcolecciones para no dejar datos huérfanos en Firestore (limpieza de `accounts`, `transactions`, `categories`, etc.).
+- **2026-07-11**: Reestructuración de fases para priorizar la gestión de familia (Miembros e Invitaciones) a la Fase 3. Se confirma que cada movimiento (`Transaction`) debe guardar obligatoriamente el `createdBy` (UID del autor) para mostrarlo en la UI.

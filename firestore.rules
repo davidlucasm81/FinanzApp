@@ -1,0 +1,68 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper to check if user is an approved member (or becoming one in this batch)
+    function isMember(familyId) {
+      return request.auth != null && (
+        exists(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)) ||
+        existsAfter(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid))
+      );
+    }
+
+    // Helper to check if user is an admin (or becoming one in this batch)
+    function isAdmin(familyId) {
+      return request.auth != null && (
+        (exists(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)).data.role == 'admin') ||
+        (existsAfter(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)) &&
+         getAfter(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    // 1. User Rules
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // 2. Families and Subcollections
+    match /families/{familyId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow update, delete: if isAdmin(familyId);
+
+      // Members
+      match /members/{memberId} {
+        allow read: if isMember(familyId);
+        allow write: if isAdmin(familyId) || (request.auth != null && request.auth.uid == memberId);
+      }
+
+      // Invitations
+      match /invitations/{invitationId} {
+        allow read: if request.auth != null && (isMember(familyId) || request.auth.uid == resource.data.requestedByUid || request.auth.token.email == resource.data.targetEmail);
+        allow create: if request.auth != null;
+        allow update: if isAdmin(familyId) || (request.auth != null && request.auth.uid == resource.data.requestedByUid);
+      }
+
+      // Accounts, Categories and Transactions
+      match /accounts/{accountId} {
+        allow read, write: if isMember(familyId);
+      }
+
+      match /categories/{categoryId} {
+        allow read: if isMember(familyId);
+        allow write: if isMember(familyId);
+      }
+
+      match /transactions/{transactionId} {
+        allow read, write: if isMember(familyId);
+      }
+    }
+
+    // 3. Collection Group rules
+    match /{path=**}/invitations/{invitationId} {
+      allow read: if request.auth != null && request.auth.token.email == resource.data.targetEmail;
+    }
+  }
+}

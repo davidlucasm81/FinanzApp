@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_main"
+    app:startDestination="@id/dashboardFragment">
+
+    <fragment
+        android:id="@+id/dashboardFragment"
+        android:name="com.finanzapp.app.ui.dashboard.DashboardFragment"
+        android:label="Dashboard"
+        tools:layout="@layout/fragment_dashboard" />
+
+    <fragment
+        android:id="@+id/manageJoinRequestsFragment"
+        android:name="com.finanzapp.app.ui.family.ManageJoinRequestsFragment"
+        android:label="Solicitudes"
+        tools:layout="@layout/fragment_manage_join_requests" />
+
+    <fragment
+        android:id="@+id/inviteMemberFragment"
+        android:name="com.finanzapp.app.ui.family.InviteMemberFragment"
+        android:label="Invitar"
+        tools:layout="@layout/fragment_invite_member" />
+
+    <fragment
+        android:id="@+id/memberListFragment"
+        android:name="com.finanzapp.app.ui.family.MemberListFragment"
+        android:label="Miembros"
+        tools:layout="@layout/fragment_member_list" />
+
+    <fragment
+        android:id="@+id/familySettingsFragment"
+        android:name="com.finanzapp.app.ui.family.FamilySettingsFragment"
+        android:label="Ajustes Familia"
+        tools:layout="@layout/fragment_family_settings" />
+
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.finanzapp.app.ui.settings.SettingsFragment"
+        android:label="Ajustes"
+        tools:layout="@layout/fragment_settings" />
+</navigation>

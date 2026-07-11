@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_onboarding"
+    app:startDestination="@id/welcomeFragment">
+
+    <fragment
+        android:id="@+id/welcomeFragment"
+        android:name="com.finanzapp.app.ui.onboarding.WelcomeFragment"
+        android:label="Welcome"
+        tools:layout="@layout/fragment_welcome">
+        <action
+            android:id="@+id/action_welcomeFragment_to_createFamilyFragment"
+            app:destination="@id/createFamilyFragment" />
+        <action
+            android:id="@+id/action_welcomeFragment_to_joinByCodeFragment"
+            app:destination="@id/joinByCodeFragment" />
+        <action
+            android:id="@+id/action_welcomeFragment_to_acceptInvitationFragment"
+            app:destination="@id/acceptInvitationFragment" />
+        <action
+            android:id="@+id/action_welcomeFragment_to_waitingApprovalFragment"
+            app:destination="@id/waitingApprovalFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/acceptInvitationFragment"
+        android:name="com.finanzapp.app.ui.onboarding.AcceptInvitationFragment"
+        android:label="Accept Invitation"
+        tools:layout="@layout/fragment_accept_invitation" />
+
+    <fragment
+        android:id="@+id/createFamilyFragment"
+        android:name="com.finanzapp.app.ui.onboarding.CreateFamilyFragment"
+        android:label="Create Family"
+        tools:layout="@layout/fragment_create_family" />
+
+    <fragment
+        android:id="@+id/joinByCodeFragment"
+        android:name="com.finanzapp.app.ui.onboarding.JoinByCodeFragment"
+        android:label="Join by Code"
+        tools:layout="@layout/fragment_join_by_code">
+        <action
+            android:id="@+id/action_joinByCodeFragment_to_waitingApprovalFragment"
+            app:destination="@id/waitingApprovalFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/waitingApprovalFragment"
+        android:name="com.finanzapp.app.ui.onboarding.WaitingApprovalFragment"
+        android:label="Waiting Approval"
+        tools:layout="@layout/fragment_waiting_approval" />
+
+</navigation>

@@ -1,10 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
+    <!-- Primary - Deep Navy Blue (Serious, Trustworthy) -->
+    <color name="primary">#1A237E</color>
+    <color name="primary_light">#9FA8DA</color>
+    <color name="primary_dark">#000051</color>
+    <color name="on_primary">#FFFFFF</color>
+
+    <!-- Secondary - Deep Emerald Green (Success, Growth) -->
+    <color name="secondary">#1B5E20</color>
+    <color name="secondary_light">#A5D6A7</color>
+    <color name="secondary_dark">#003308</color>
+    <color name="on_secondary">#FFFFFF</color>
+
+    <!-- Semantic Colors -->
+    <color name="error">#B00020</color>
+    <color name="on_error">#FFFFFF</color>
+    <color name="success">#2E7D32</color>
+    <color name="warning">#F57C00</color>
+
+    <!-- Background and Surface Colors (Light Mode) -->
+    <color name="background_light">#F8F9FA</color>
+    <color name="surface_light">#FFFFFF</color>
+    <color name="on_surface">#212121</color>
+    <color name="on_background">#212121</color>
+
+    <!-- Neutral / Grays -->
+    <color name="gray_100">#F5F5F5</color>
+    <color name="gray_200">#EEEEEE</color>
+    <color name="gray_300">#E0E0E0</color>
+    <color name="gray_600">#757575</color>
+    <color name="gray_800">#424242</color>
+    <color name="gray_900">#212121</color>
+
+    <!-- Background and Surface Colors (Dark Mode) -->
+    <color name="background_dark">#121212</color>
+    <color name="surface_dark">#1E1E1E</color>
+    <color name="on_surface_dark">#E1E1E1</color>
+    <color name="on_background_dark">#E1E1E1</color>
+
+    <!-- Basic -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>
