@@ -41,9 +41,9 @@ com.finanzapp.app/
 │   └── firebase/                 // Constantes de rutas Firestore, mappers documento<->POJO
 ├── ui/
 │   ├── auth/                      // LoginActivity/Fragment
-│   ├── onboarding/                // WelcomeFragment, CreateFamilyFragment, JoinByCodeFragment, PendingApprovalFragment, AcceptInvitationFragment
+│   ├── onboarding/                // WelcomeFragment, CreateFamilyFragment, InitialAccountsFragment (alta de cuentas + posición neta inicial), JoinByCodeFragment, PendingApprovalFragment, AcceptInvitationFragment
 │   ├── settings/                  // SettingsFragment, ProfileFragment
-│   ├── family/                    // FamilySettingsFragment, ManageJoinRequestsFragment
+│   ├── family/                    // FamilySettingsFragment, MemberListFragment, InviteMemberFragment
 │   ├── accounts/                  // AccountListFragment, AddEditAccountFragment
 │   ├── transactions/              // AddEditTransactionFragment, TransactionListFragment, filtros
 │   ├── categories/                // ManageCategoriesFragment
@@ -91,12 +91,17 @@ families/{familyId}/invitations/{invitationId}
 
 families/{familyId}/accounts/{accountId}
   name: string
-  type: "efectivo" | "cuenta_bancaria" | "tarjeta" | "ahorro" | "otro"
   initialBalance: number
   currentBalance: number          // desnormalizado, se recalcula con cada movimiento (Firestore transaction)
   active: boolean
   createdBy: uid
   createdAt: timestamp
+
+  // `initialBalance` NO es inmutable: puede editarse en cualquier momento tras crear la cuenta
+  // (por ejemplo para corregir la posición neta inicial). Cada edición debe recalcular
+  // `currentBalance` mediante un delta dentro de la misma Firestore transaction:
+  //   currentBalance_nuevo = currentBalance_actual + (initialBalance_nuevo − initialBalance_anterior)
+  // para no perder el efecto de los movimientos ya registrados. Ver Fase 4 del plan.
 
 families/{familyId}/categories/{categoryId}
   name: string
@@ -200,8 +205,9 @@ El enunciado pide que el creador de la familia apruebe la incorporación. Para q
 Implementar (y testear con el Firebase Emulator Suite) algo equivalente a:
 - Un usuario solo puede leer/escribir su propio documento en `users/{uid}`.
 - Solo se puede leer/escribir en `families/{familyId}/**` si `request.auth.uid` existe como documento en `families/{familyId}/members`, o si el usuario está en proceso de crear la familia o resolver su propia invitación.
-- Solo un `member` con `role == "admin"` puede: aprobar/rechazar `code_request`, cambiar `currencyCode`, eliminar cuentas, gestionar categorías del sistema.
-- Nadie escribe directamente `currentBalance` de una cuenta salvo a través de la misma transacción de Firestore que crea/edita/borra el movimiento correspondiente (para que nunca se descuadre).
+- Solo un `member` con `role == "admin"` puede: aprobar/rechazar `code_request`, cambiar `currencyCode`, editar el `initialBalance` de una cuenta (es decir, corregir la posición neta inicial), archivar o eliminar cuentas, gestionar categorías del sistema. Cualquier miembro aprobado puede leer y crear cuentas nuevas.
+- Nadie escribe directamente `currentBalance` de una cuenta salvo a través de la misma transacción de Firestore que crea/edita/borra el movimiento correspondiente, o que edita el `initialBalance` de la cuenta (para que nunca se descuadre).
+- Una cuenta solo puede eliminarse físicamente si no tiene ningún movimiento asociado; si ya tiene movimientos, solo puede archivarse/desactivarse (`active: false`), nunca borrarse, para no perder el histórico.
 
 Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exista el modelo de datos (Fase 2 del plan).
 
@@ -230,8 +236,8 @@ Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exi
 1. **Login**: Firebase Auth + Google vía Credential Manager. Persistencia de sesión automática.
 2. **Almacenamiento**: Cloud Firestore como única fuente de verdad; habilitar persistencia offline del SDK.
 3. **Secretos**: ver sección 6.
-4. **Alta/unión a familia**: crear familia (nombre + moneda) o unirse (código o invitación por email), con aprobación de admin para el caso de código. Ver sección 4.
-5. **Cuentas bancarias**: N cuentas por familia, tipos configurables, saldo inicial y saldo actual mantenido de forma atómica.
+4. **Alta/unión a familia**: crear familia (nombre + moneda) o unirse (código o invitación por email), con aprobación de admin para el caso de código. Al crear una familia, el propio asistente permite además dar de alta las cuentas iniciales y así fijar la posición neta inicial (puede omitirse y hacerse después). Ver sección 4.
+5. **Cuentas bancarias**: N cuentas por familia, cada una con nombre, saldo inicial y saldo actual mantenido de forma atómica. El saldo inicial de cualquier cuenta puede editarse en cualquier momento (recalculando el saldo actual de forma atómica) y pueden crearse nuevas cuentas o eliminarse las existentes en cualquier momento (el borrado físico solo si la cuenta no tiene movimientos; en caso contrario, se archiva).
 6. **Movimientos**: fecha, descripción, importe, tipo (gasto/ingreso), categoría, método de pago, cuenta asociada.
 7. **Posición neta**: pantalla resumen con saldo total, desglose por cuenta, por ingresos/gastos del periodo, y por categoría.
 8. **Estadísticas avanzadas**: evolución temporal, comparativas por categoría/cuenta/miembro, gráficos (MPAndroidChart).
@@ -251,6 +257,7 @@ Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exi
 - Antes de cada fase, releer la sección relevante de este archivo.
 - Si una fase requiere una acción manual que el agente no puede hacer (crear el proyecto de Firebase, habilitar el proveedor Google en la consola, generar el SHA-1, etc.), detenerse y pedir al humano que la realice, dejando claro qué hace falta recibir de vuelta (por ejemplo, el `google-services.json` actualizado).
 - Marcar cada tarea del plan como completada (`- [x]`) al terminarla, para que el progreso quede registrado en el propio repositorio.
+- **Mantenimiento del Plan**: Si durante el desarrollo se implementan funcionalidades, mejoras de UX o correcciones que no estaban contempladas originalmente en `PLAN_DESARROLLO.md`, el agente **debe** añadirlas al plan (preferiblemente en una sección de "Mejoras" o dentro de la fase correspondiente) para mantener la trazabilidad del proyecto.
 - Ante cualquier ambigüedad de negocio (no técnica) que no esté resuelta en este documento, no inventar: preguntar o documentar la asunción tomada en la sección "Decisiones tomadas durante el desarrollo" de este mismo archivo.
 
 ## 10. Fuera de alcance en la v1 (posible trabajo futuro)
@@ -271,3 +278,10 @@ Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exi
 - **2026-07-11**: Definido el set semilla de categorías (5 de ingreso, 28 de gasto) y de métodos de pago (7 valores, incluyendo `tarjeta_restaurante`, `tarjeta_transporte` y `domiciliacion_bancaria`) — ver sección 4.
 - **2026-07-11**: Se añade soporte para abandonar la familia. Si la familia se queda sin miembros, se debe realizar un borrado recursivo de todas sus subcolecciones para no dejar datos huérfanos en Firestore (limpieza de `accounts`, `transactions`, `categories`, etc.).
 - **2026-07-11**: Reestructuración de fases para priorizar la gestión de familia (Miembros e Invitaciones) a la Fase 3. Se confirma que cada movimiento (`Transaction`) debe guardar obligatoriamente el `createdBy` (UID del autor) para mostrarlo en la UI.
+- **2026-07-13**: Nuevo requisito: el asistente de creación de familia (Fase 2) incorpora un paso adicional para dar de alta las cuentas iniciales y fijar así la posición neta inicial de la familia; el usuario puede omitirlo y añadir cuentas más tarde desde Ajustes. Como consecuencia, se adelanta desde la Fase 4 una versión mínima del modelo `Account`, `AccountRepository` y el formulario de alta de cuenta, para que estén disponibles durante el onboarding (el resto de la Fase 4 —listado, archivado— se completa después). Asunciones tomadas al no estar especificado en el enunciado original:
+  - El saldo inicial (`initialBalance`) de una cuenta deja de ser fijo tras la creación: puede editarse en cualquier momento posterior, recalculando `currentBalance` mediante un delta dentro de la misma Firestore transaction, para no perder el efecto de los movimientos ya registrados.
+  - Igual que sucede con cambiar `currencyCode`, tanto la edición del saldo inicial como el archivado/borrado de una cuenta quedan restringidos a miembros con `role: admin`; la creación de cuentas sigue abierta a cualquier miembro aprobado, como ya estaba definido.
+  - Una cuenta solo se borra físicamente si no tiene ningún movimiento asociado; si ya tiene movimientos, la app no permite el borrado y ofrece únicamente archivar/desactivar, para no perder histórico.
+- **2026-07-13**: Reorganización de la arquitectura de ajustes: el perfil de usuario se desplaza a la foto del Dashboard y la configuración de familia a la barra de navegación inferior. Se añade soporte para carga de imágenes con Glide y una capa de seguridad extra (verificación por texto) para el borrado de cuentas.
+- **2026-07-13**: Implementado sistema de "Deep Delete" para familias (borrado recursivo de subcolecciones) y detección automática de invitaciones por email en la pantalla de bienvenida.
+- **2026-07-13**: Se elimina el campo `type` del modelo `Account`. No existen tipos de cuenta: una cuenta se define únicamente por `name` e `initialBalance` (además de `currentBalance`, `active`, `createdBy`, `createdAt`). Afecta al modelo `Account`, al formulario de alta/edición de cuenta (onboarding y Fase 4) y a cualquier UI que mostrara el tipo.

@@ -7,12 +7,12 @@
 - [x] Configurar `minSdk` 26 y `targetSdk` al valor por defecto sugerido por Android Studio.
 - [x] Inicializar git (`git init`) y crear `.gitignore` (ver sección 6 de `AGENTS.md`).
 - [x] Primer commit: proyecto vacío compilando.
-- [ ] (Acción manual del humano) Crear proyecto en Firebase Console, registrar la app Android con el `applicationId` elegido y el SHA-1 de depuración.
-- [ ] (Acción manual del humano) Descargar `google-services.json` y colocarlo en `app/`; verificar que **no** aparece en `git status`.
+- [x] (Acción manual del humano) Crear proyecto en Firebase Console, registrar la app Android con el `applicationId` elegido y el SHA-1 de depuración.
+- [x] (Acción manual del humano) Descargar `google-services.json` y colocarlo en `app/`; verificar que **no** aparece en `git status`.
 - [x] Crear `google-services.json.example` con estructura ficticia y documentar en `README.md` cómo obtener el propio.
 - [x] Añadir el plugin `com.google.gms.google-services` y el Firebase BoM más reciente al `build.gradle` (proyecto y módulo `app`).
-- [ ] (Acción manual del humano) En Firebase Console, habilitar Authentication → proveedor Google.
-- [ ] (Acción manual del humano) Crear la base de datos Cloud Firestore (modo producción, elegir región cercana).
+- [x] (Acción manual del humano) En Firebase Console, habilitar Authentication → proveedor Google.
+- [x] (Acción manual del humano) Crear la base de datos Cloud Firestore (modo producción, elegir región cercana).
 
 ## Fase 1 — Autenticación (Firebase Auth + Google vía Credential Manager)
 - [x] Añadir dependencias: `firebase-auth`, `androidx.credentials:credentials`, `androidx.credentials:credentials-play-services-auth`, `com.google.android.libraries.identity.googleid:googleid`.
@@ -28,6 +28,11 @@
 - [x] Pantalla de bienvenida: "Crear una familia" / "Unirme a una familia".
 - [x] **Crear familia**: formulario con nombre + selector de moneda (lista corta de ISO 4217 comunes: EUR, USD, GBP, etc.). Al confirmar: crear `families/{familyId}` con `inviteCode` generado y único, crear `families/{familyId}/members/{uid}` con `role: admin`, actualizar `users/{uid}.familyId`.
 - [x] Al crear la familia, sembrar las categorías por defecto (Fase 5) en `families/{familyId}/categories`.
+- [x] **Cuentas iniciales (posición neta inicial)**: tras el formulario de nombre + moneda, añadir un paso más al asistente de creación de familia — "Añade tus cuentas" — que permita dar de alta N cuentas (nombre, saldo inicial) reutilizando el mismo formulario de la Fase 4 (`AddEditAccountFragment`/`AccountViewModel`), o pulsar "Continuar sin cuentas" para añadirlas más tarde desde Ajustes. La suma de los `initialBalance` de las cuentas dadas de alta aquí es la posición neta inicial de la familia.
+  - ⚠️ Dependencia con la Fase 4: para implementar esta tarea hace falta adelantar el modelo `Account` + `AccountRepository` y una versión mínima del formulario de alta de cuenta (nombre, saldo inicial). Constrúyelos aquí aunque el resto de la Fase 4 (listado completo, archivado, etc.) se termine después.
+  - **2026-07-13**: se elimina el campo "tipo de cuenta" del modelo y del formulario — una cuenta se define únicamente por su nombre y su saldo inicial. Verificado el flujo completo: `CreateFamilyFragment` crea familia+member admin, navega con `familyId` a `AddInitialAccountsFragment`, que usa `AccountViewModel`/`AccountRepository` para dar de alta cuentas ya como miembro existente de la familia.
+  - **2026-07-13**: se elimina el campo "tipo de cuenta" del modelo y del formulario — una cuenta se define únicamente por su nombre y su saldo inicial.
+- [x] Ampliar las reglas de seguridad de Firestore para que el creador de la familia pueda, durante el propio alta, escribir también en `families/{familyId}/accounts`; volver a probar con el Firebase Emulator Suite.
 - [x] **Unirse por código**: input del código → buscar la familia por `inviteCode` → crear entrada en `invitations` (`type: code_request`, `status: pending`) → navegar a "Esperando aprobación".
 - [x] **Unirse por invitación de correo**: tras el login, comprobar si existe alguna `invitation` con `type: email_invite`, `targetEmail == email del usuario`, `status: pending`. Si existe, mostrar "Te han invitado a la familia X" con aceptar/rechazar. Al aceptar: crear `member` con `status: approved` directamente, marcar `invitation.status = accepted`, actualizar `users/{uid}.familyId`.
 - [x] Escribir las reglas de seguridad de Firestore de esta fase (creación de familia, members, invitations) y probarlas con el Firebase Emulator Suite antes de continuar.
@@ -37,22 +42,33 @@
  - [x] **Gestión de miembros**:
     - [x] Listado de miembros de la unidad familiar (nombre, email, rol).
     - [x] Botón "Invitar miembro" (abre diálogo para introducir email) — `InviteMemberFragment` implementado.
-    - [x] Listado de solicitudes de unión por código (`code_request`) pendientes (solo para admins) — `ManageJoinRequestsFragment`.
-    - [x] Pantalla de administración (solo admins): aprobar/rechazar invitaciones tipo `code_request`.
+    - [x] Listado de solicitudes de unión por código (`code_request`) pendientes (solo para admins) — Integrado en `MemberListFragment`.
+    - [x] Pantalla de administración (solo admins): aprobar/rechazar invitaciones tipo `code_request` desde la lista de miembros.
  - [x] Configuración de la familia (solo admins): editar nombre de la familia, cambiar moneda (con aviso de que no recalcula históricos) — `FamilySettingsFragment`.
  - [x] **Abandonar familia**:
     - [x] Acción de "Salirse de la familia".
     - [x] Lógica: si es el único miembro, borrar la familia y todas sus subcolecciones (limpieza total) — repository realiza borrado básico; se recomienda borrado recursivo adicional en el futuro.
     - [x] Lógica: si hay más miembros y es el único admin, pedir promover a otro antes de salir o promover automáticamente (implementación automática de promoción en `FamilyRepository`).
     - [x] Actualizar `users/{uid}.familyId = null` y navegar a Onboarding (la navegación al salir queda hecha hacia el inicio; el flujo de onboarding depende del guard routing en la app).
- - [ ] Borrado de cuenta (opcional): eliminar `users/{uid}` y forzar salida de la familia.
+ - [x] Borrado de cuenta (opcional): eliminar `users/{uid}` y forzar salida de la familia.
+ - [x] **Mejoras de UX y Estabilidad (Fase 3 bis)**:
+    - [x] Rediseño del Dashboard: prioridad al nombre de la familia y foto de perfil (Glide).
+    - [x] Navegación de Ajustes: acceso a perfil vía foto y a familia vía barra inferior.
+    - [x] Seguridad en Borrado: verificación mediante frase escrita ("BORRAR CUENTA").
+    - [x] Gestión de Invitaciones: visualización y cancelación de invitaciones pendientes en la lista de miembros.
+    - [x] Onboarding Inteligente: detección automática de invitaciones pendientes en la pantalla de Bienvenida para acceso directo.
+    - [x] Código de Familia: visualización y opción de copiar el código de invitación desde los ajustes de familia.
+    - [x] Limpieza de Recursos: eliminación de escuchas (listeners) de Firestore al cerrar sesión para evitar errores de permisos.
 
 ## Fase 4 — Cuentas bancarias
-- [ ] Modelo `Account` + `AccountRepository` (listener en tiempo real sobre `families/{familyId}/accounts`).
-- [ ] Pantalla listado de cuentas de la familia (nombre, tipo, saldo actual).
-- [ ] Formulario añadir/editar cuenta (nombre, tipo, saldo inicial).
+> Nota: la parte mínima de esta fase (modelo `Account` + formulario de alta con nombre/saldo inicial) puede haberse adelantado ya en la Fase 2, porque el asistente de creación de familia permite dar de alta cuentas y fijar la posición neta inicial en el propio onboarding. Aquí se completa/consolida el resto: listado, edición posterior del saldo inicial, archivado, borrado y reglas de seguridad definitivas.
+- [ ] Modelo `Account` + `AccountRepository` (listener en tiempo real sobre `families/{familyId}/accounts`) — si ya existe desde la Fase 2, revisar que cubra también listado y archivado/borrado.
+- [ ] Pantalla listado de cuentas de la familia (nombre, saldo actual).
+- [ ] Formulario añadir/editar cuenta (nombre, saldo inicial) — reutilizable tanto desde el asistente de onboarding como desde esta pantalla de gestión de cuentas.
+- [ ] **Editar la posición neta inicial de una cuenta ya existente**: permitir modificar `initialBalance` en cualquier momento después de la creación de la familia (no solo durante el alta). Al guardar, recalcular `currentBalance` dentro de una única Firestore transaction: `currentBalance_nuevo = currentBalance_actual + (initialBalance_nuevo − initialBalance_anterior)`, para conservar el efecto de los movimientos ya registrados.
+- [ ] **Eliminar cuenta**: si la cuenta no tiene ningún movimiento (`transaction`) asociado, permitir el borrado físico del documento. Si ya tiene movimientos, no permitir el borrado (para no perder histórico): deshabilitar la opción "Eliminar" y ofrecer en su lugar "Archivar/Desactivar", con un mensaje explicativo al usuario.
 - [ ] Acción de desactivar/archivar cuenta (no borrar físicamente si ya tiene movimientos, para no perder histórico).
-- [ ] Reglas de seguridad para `accounts` (solo miembros aprobados leen/escriben; ver nota sobre `currentBalance` en la Fase 6).
+- [ ] Reglas de seguridad para `accounts`: cualquier miembro aprobado puede leer y crear cuentas; solo un miembro con `role: admin` puede editar `initialBalance`, archivar o eliminar una cuenta (igual que cambiar `currencyCode`, ver AGENTS.md sección 5). Probar la creación, la edición del saldo inicial y el borrado/archivado con el Firebase Emulator Suite (ver también la nota sobre `currentBalance` en la Fase 6).
 
 ## Fase 5 — Categorías
 - [ ] Modelo `Category` + `CategoryRepository`.

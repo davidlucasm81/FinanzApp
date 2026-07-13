@@ -34,7 +34,17 @@
         android:id="@+id/createFamilyFragment"
         android:name="com.finanzapp.app.ui.onboarding.CreateFamilyFragment"
         android:label="Create Family"
-        tools:layout="@layout/fragment_create_family" />
+        tools:layout="@layout/fragment_create_family">
+        <action
+            android:id="@+id/action_createFamilyFragment_to_addInitialAccountsFragment"
+            app:destination="@id/addInitialAccountsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/addInitialAccountsFragment"
+        android:name="com.finanzapp.app.ui.onboarding.AddInitialAccountsFragment"
+        android:label="Cuentas iniciales"
+        tools:layout="@layout/fragment_add_initial_accounts" />
 
     <fragment
         android:id="@+id/joinByCodeFragment"
@@ -51,5 +61,11 @@
         android:name="com.finanzapp.app.ui.onboarding.WaitingApprovalFragment"
         android:label="Waiting Approval"
         tools:layout="@layout/fragment_waiting_approval" />
+
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.finanzapp.app.ui.settings.SettingsFragment"
+        android:label="Ajustes"
+        tools:layout="@layout/fragment_settings" />
 
 </navigation>

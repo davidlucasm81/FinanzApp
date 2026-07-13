@@ -16,8 +16,10 @@ public class FamilyViewModel extends ViewModel {
     private final MutableLiveData<Result<List<Invitation>>> joinRequests = new MutableLiveData<>();
     private final MutableLiveData<Result<Boolean>> approvalResult = new MutableLiveData<>();
     private final MutableLiveData<Result<List<Member>>> members = new MutableLiveData<>();
+    private final MutableLiveData<Result<List<Invitation>>> pendingInvitations = new MutableLiveData<>();
     private final MutableLiveData<Result<Boolean>> leaveResult = new MutableLiveData<>();
     private final MutableLiveData<Result<Boolean>> updateResult = new MutableLiveData<>();
+    private final MutableLiveData<Result<com.finanzapp.app.data.model.Family>> familyData = new MutableLiveData<>();
 
     public FamilyViewModel(FamilyRepository familyRepository) {
         this.familyRepository = familyRepository;
@@ -35,12 +37,20 @@ public class FamilyViewModel extends ViewModel {
         return members;
     }
 
+    public LiveData<Result<List<Invitation>>> getPendingInvitations() {
+        return pendingInvitations;
+    }
+
     public LiveData<Result<Boolean>> getLeaveResult() {
         return leaveResult;
     }
 
     public LiveData<Result<Boolean>> getUpdateResult() {
         return updateResult;
+    }
+
+    public LiveData<Result<com.finanzapp.app.data.model.Family>> getFamilyData() {
+        return familyData;
     }
 
     public void fetchJoinRequests(String familyId) {
@@ -68,9 +78,26 @@ public class FamilyViewModel extends ViewModel {
         familyRepository.getMembers(familyId, members::postValue);
     }
 
+    public void fetchPendingInvitations(String familyId) {
+        pendingInvitations.setValue(new Result.Loading<>());
+        familyRepository.getPendingEmailInvitations(familyId, pendingInvitations::postValue);
+    }
+
+    public void cancelInvitation(String familyId, String invitationId) {
+        familyRepository.deleteInvitation(familyId, invitationId, result -> {
+            // We don't necessarily need to post to a specific result LiveData if the listener 
+            // on getPendingEmailInvitations will trigger an update automatically
+        });
+    }
+
     public void updateFamily(String familyId, String name, String currencyCode) {
         updateResult.setValue(new Result.Loading<>());
         familyRepository.updateFamily(familyId, name, currencyCode, updateResult::postValue);
+    }
+
+    public void fetchFamily(String familyId) {
+        familyData.setValue(new Result.Loading<>());
+        familyRepository.getFamily(familyId, familyData::postValue);
     }
 
     public void leaveFamily(String familyId) {

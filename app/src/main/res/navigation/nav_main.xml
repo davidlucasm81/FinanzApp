@@ -11,11 +11,6 @@
         android:label="Dashboard"
         tools:layout="@layout/fragment_dashboard" />
 
-    <fragment
-        android:id="@+id/manageJoinRequestsFragment"
-        android:name="com.finanzapp.app.ui.family.ManageJoinRequestsFragment"
-        android:label="Solicitudes"
-        tools:layout="@layout/fragment_manage_join_requests" />
 
     <fragment
         android:id="@+id/inviteMemberFragment"

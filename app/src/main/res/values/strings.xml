@@ -5,5 +5,26 @@
     <string name="nav_dashboard">Inicio</string>
     <string name="nav_members">Miembros</string>
     <string name="nav_requests">Solicitudes</string>
-    <string name="nav_settings">Ajustes</string>
+    <string name="nav_settings">Familia</string>
+    <string name="welcome_greeting">¡Hola!</string>
+    <string name="net_position">Posición Neta</string>
+    <string name="dashboard_placeholder">Tus cuentas y movimientos aparecerán aquí (Fase 4 y 5)</string>
+    <string name="desc_settings">Ajustes</string>
+    <string name="family_label">Familia</string>
+    <string name="invite_code_label">Código de invitación</string>
+    <string name="copy_hint">Toca para copiar</string>
+    <string name="code_copied">Código copiado al portapapeles</string>
+    <string name="desc_user_photo">Foto de perfil</string>
+    <string name="delete_account_title">Borrar cuenta</string>
+    <string name="delete_account_message">¿Estás seguro de que quieres borrar tu cuenta? Esta acción no se puede deshacer y perderás el acceso a tu familia.</string>
+    <string name="delete_account_verification_instruction">Escribe <b>BORRAR CUENTA</b> para confirmar:</string>
+    <string name="delete_account_confirmation_phrase">BORRAR CUENTA</string>
+    <string name="delete_button">Borrar</string>
+    <string name="cancel_button">Cancelar</string>
+    <string name="invitation_received_title">¡Buenas noticias!</string>
+    <string name="invitation_alert_text">Te han invitado a formar parte de la unidad familiar <b>%1$s</b>.</string>
+    <string name="accept_button">Unirme ahora</string>
+    <string name="reject_button">No, gracias</string>
+    <string name="pending_invitation_label">Invitación pendiente</string>
+    <string name="pending_tag">PENDIENTE</string>
 </resources>

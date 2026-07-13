@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Semantic Colors (Dark Mode Optimized) -->
+    <color name="error">#CF6679</color> <!-- Lighter Material Red for Dark Mode -->
+</resources>

@@ -17,6 +17,10 @@ import com.finanzapp.app.databinding.FragmentInviteMemberBinding;
 import com.finanzapp.app.util.Result;
 import com.finanzapp.app.viewmodel.FamilyViewModel;
 import com.finanzapp.app.viewmodel.ViewModelFactory;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.finanzapp.app.data.firebase.FirestorePaths;
+import com.finanzapp.app.data.model.User;
 
 public class InviteMemberFragment extends Fragment {
     private FragmentInviteMemberBinding binding;
@@ -67,6 +71,23 @@ public class InviteMemberFragment extends Fragment {
                 viewModel.inviteByEmail(familyId, email);
             }
         });
+
+        resolveFamilyId();
+    }
+
+    private void resolveFamilyId() {
+        if (familyId != null) return;
+
+        String uid = FirebaseAuth.getInstance().getUid();
+        if (uid != null) {
+            FirebaseFirestore.getInstance().collection(FirestorePaths.USERS).document(uid).get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        User user = documentSnapshot.toObject(User.class);
+                        if (user != null && user.getFamilyId() != null) {
+                            familyId = user.getFamilyId();
+                        }
+                    });
+        }
     }
 
     private void setupObservers() {

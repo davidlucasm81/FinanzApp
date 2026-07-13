@@ -93,6 +93,10 @@ public class FamilyRepository {
                         QueryDocumentSnapshot familyDoc = (QueryDocumentSnapshot) task.getResult().getDocuments().get(0);
                         String familyId = familyDoc.getId();
                         
+                        FirebaseUser currentUser = auth.getCurrentUser();
+                        String displayName = currentUser != null && currentUser.getDisplayName() != null ? currentUser.getDisplayName() : "Usuario";
+                        String email = currentUser != null ? currentUser.getEmail() : "";
+
                         // Create code_request invitation
                         DocumentReference inviteRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.INVITATIONS).document();
                         com.finanzapp.app.data.model.Invitation invitation = new com.finanzapp.app.data.model.Invitation(
@@ -104,12 +108,62 @@ public class FamilyRepository {
                                 "pending",
                                 Timestamp.now()
                         );
+                        invitation.setRequesterName(displayName);
+                        invitation.setRequesterEmail(email);
                         
                         inviteRef.set(invitation)
                                 .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(true)))
                                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
                     } else {
                         callback.onResult(new Result.Error<>(new Exception("Invalid invite code")));
+                    }
+                });
+    }
+
+    public void joinByCodeWithInvitation(String code, JoinWithInvitationCallback callback) {
+        String uid = auth.getUid();
+        if (uid == null) {
+            callback.onResult(new Result.Error<>(new Exception("User not authenticated")), null, null);
+            return;
+        }
+
+        db.collection(FirestorePaths.FAMILIES)
+                .whereEqualTo("inviteCode", code)
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && !task.getResult().isEmpty()) {
+                        QueryDocumentSnapshot familyDoc = (QueryDocumentSnapshot) task.getResult().getDocuments().get(0);
+                        String familyId = familyDoc.getId();
+                        
+                        FirebaseUser currentUser = auth.getCurrentUser();
+                        String displayName = currentUser != null && currentUser.getDisplayName() != null ? currentUser.getDisplayName() : "Usuario";
+                        String email = currentUser != null ? currentUser.getEmail() : "";
+
+                        // Create code_request invitation
+                        DocumentReference inviteRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.INVITATIONS).document();
+                        com.finanzapp.app.data.model.Invitation invitation = new com.finanzapp.app.data.model.Invitation(
+                                inviteRef.getId(),
+                                "code_request",
+                                null,
+                                uid,
+                                null,
+                                "pending",
+                                Timestamp.now()
+                        );
+                        invitation.setRequesterName(displayName);
+                        invitation.setRequesterEmail(email);
+                        
+                        inviteRef.set(invitation)
+                                .addOnSuccessListener(aVoid -> {
+                                    android.util.Log.d("FamilyRepository", "Code request invitation created successfully. InvId: " + invitation.getId() + ", FamilyId: " + familyId);
+                                    callback.onResult(new Result.Success<>(true), invitation, familyId);
+                                })
+                                .addOnFailureListener(e -> {
+                                    android.util.Log.e("FamilyRepository", "Error creating code request invitation", e);
+                                    callback.onResult(new Result.Error<>(e), null, null);
+                                });
+                    } else {
+                        callback.onResult(new Result.Error<>(new Exception("Invalid invite code")), null, null);
                     }
                 });
     }
@@ -168,48 +222,75 @@ public class FamilyRepository {
                 });
     }
 
+    public void getPendingEmailInvitations(String familyId, RequestsCallback callback) {
+        db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.INVITATIONS)
+                .whereEqualTo("type", "email_invite")
+                .whereEqualTo("status", "pending")
+                .addSnapshotListener((value, error) -> {
+                    if (error != null || value == null) {
+                        callback.onResult(new Result.Error<>(error != null ? error : new Exception("Empty result")));
+                        return;
+                    }
+                    List<Invitation> requests = new ArrayList<>();
+                    for (QueryDocumentSnapshot doc : value) {
+                        requests.add(doc.toObject(Invitation.class));
+                    }
+                    callback.onResult(new Result.Success<>(requests));
+                });
+    }
+
     public void approveJoinRequest(String familyId, Invitation invitation, ApproveCallback callback) {
         String adminUid = auth.getUid();
         if (adminUid == null) return;
 
-        // We need to fetch the user data first to create the member doc
-        db.collection(FirestorePaths.USERS).document(invitation.getRequestedByUid()).get()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful() && task.getResult().exists()) {
-                        User user = task.getResult().toObject(User.class);
-                        if (user == null) return;
+        // NOTE: Security rules in this project restrict direct read/write of other users' documents
+        // (each user may only read/write their own user doc). To avoid permission errors when an admin
+        // approves a code request, we avoid reading/updating /users/{uid} here. Instead we use the
+        // information stored on the Invitation (requesterName/requesterEmail) to create the Member
+        // document under the family. The client-side user should update their own /users/{uid}.familyId
+        // when they observe they have been added to the family (or the backend/cloud function can do it
+        // with elevated privileges).
 
-                        WriteBatch batch = db.batch();
+        WriteBatch batch = db.batch();
 
-                        // 1. Update invitation
-                        batch.update(db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.INVITATIONS).document(invitation.getId()),
-                                "status", "approved",
-                                "resolvedAt", Timestamp.now(),
-                                "resolvedByUid", adminUid);
+        // 1. Update invitation status
+        batch.update(db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.INVITATIONS).document(invitation.getId()),
+                "status", "approved",
+                "resolvedAt", Timestamp.now(),
+                "resolvedByUid", adminUid);
 
-                        // 2. Create member
-                        Member member = new Member(
-                                user.getUid(),
-                                user.getDisplayName(),
-                                user.getEmail(),
-                                "member",
-                                "approved",
-                                Timestamp.now()
-                        );
-                        batch.set(db.collection(FirestorePaths.getMembersPath(familyId)).document(user.getUid()), member);
+        // 2. Create member using data available on the invitation
+        String userUid = invitation.getRequestedByUid();
+        String displayName = invitation.getRequesterName() != null && !invitation.getRequesterName().isEmpty() ? invitation.getRequesterName() : "Usuario";
+        String email = invitation.getRequesterEmail() != null ? invitation.getRequesterEmail() : "";
 
-                        // 3. Update user
-                        batch.update(db.collection(FirestorePaths.USERS).document(user.getUid()), "familyId", familyId);
+        Member member = new Member(
+                userUid,
+                displayName,
+                email,
+                "member",
+                "approved",
+                Timestamp.now()
+        );
+        batch.set(db.collection(FirestorePaths.getMembersPath(familyId)).document(userUid), member);
 
-                        batch.commit().addOnCompleteListener(task2 -> {
-                            if (task2.isSuccessful()) {
-                                callback.onResult(new Result.Success<>(true));
-                            } else {
-                                callback.onResult(new Result.Error<>(task2.getException()));
-                            }
-                        });
-                    }
-                });
+        // Also update the user's document to set familyId. The security rules were updated to
+        // allow an admin to update only the `familyId` field on a user's document, so this
+        // targeted update is permitted and keeps client `users/{uid}.familyId` in sync.
+        try {
+            batch.update(db.collection(FirestorePaths.USERS).document(userUid), "familyId", familyId);
+        } catch (Exception e) {
+            // If update fails (for example user doc does not exist), we continue and let the
+            // commit report the error back via the callback.
+        }
+
+        batch.commit().addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                callback.onResult(new Result.Success<>(true));
+            } else {
+                callback.onResult(new Result.Error<>(task.getException()));
+            }
+        });
     }
 
     public void rejectJoinRequest(String familyId, String invitationId, ApproveCallback callback) {
@@ -233,11 +314,12 @@ public class FamilyRepository {
         String adminUid = auth.getUid();
         if (adminUid == null) return;
 
+        String normalizedEmail = email.toLowerCase().trim();
         DocumentReference inviteRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.INVITATIONS).document();
         Invitation invitation = new Invitation(
                 inviteRef.getId(),
                 "email_invite",
-                email,
+                normalizedEmail,
                 null,
                 adminUid,
                 "pending",
@@ -252,6 +334,132 @@ public class FamilyRepository {
                         callback.onResult(new Result.Error<>(task.getException()));
                     }
                 });
+    }
+
+    public void acceptInvitation(Invitation invitation, String familyId, ApproveCallback callback) {
+        String uid = auth.getUid();
+        if (uid == null) {
+            callback.onResult(new Result.Error<>(new Exception("User not authenticated")));
+            return;
+        }
+
+        // Fetch current user doc for member info
+        db.collection(FirestorePaths.USERS).document(uid).get().addOnCompleteListener(task -> {
+            if (task.isSuccessful() && task.getResult().exists()) {
+                User user = task.getResult().toObject(User.class);
+                if (user == null) return;
+
+                WriteBatch batch = db.batch();
+
+                // 1. Update invitation status
+                batch.update(db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.INVITATIONS).document(invitation.getId()),
+                        "status", "accepted",
+                        "resolvedAt", Timestamp.now(),
+                        "resolvedByUid", uid);
+
+                // 2. Create member
+                Member member = new Member(
+                        uid,
+                        user.getDisplayName(),
+                        user.getEmail(),
+                        "member",
+                        "approved",
+                        Timestamp.now()
+                );
+                batch.set(db.collection(FirestorePaths.getMembersPath(familyId)).document(uid), member);
+
+                // 3. Update user familyId
+                batch.update(db.collection(FirestorePaths.USERS).document(uid), "familyId", familyId);
+
+                batch.commit().addOnCompleteListener(batchTask -> {
+                    if (batchTask.isSuccessful()) {
+                        callback.onResult(new Result.Success<>(true));
+                    } else {
+                        callback.onResult(new Result.Error<>(batchTask.getException()));
+                    }
+                });
+            } else {
+                callback.onResult(new Result.Error<>(task.getException() != null ? task.getException() : new Exception("User doc not found")));
+            }
+        });
+    }
+
+    public void deleteInvitation(String familyId, String invitationId, ApproveCallback callback) {
+        android.util.Log.d("FamilyRepository", "Attempting to delete invitation: " + invitationId + " from family: " + familyId);
+        db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.INVITATIONS).document(invitationId)
+                .delete()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        android.util.Log.d("FamilyRepository", "Invitation deleted successfully: " + invitationId);
+                        callback.onResult(new Result.Success<>(true));
+                    } else {
+                        android.util.Log.e("FamilyRepository", "Error deleting invitation: " + invitationId, task.getException());
+                        callback.onResult(new Result.Error<>(task.getException()));
+                    }
+                });
+    }
+
+    public void findInvitationByEmail(String email, InvitationByEmailCallback callback) {
+        String normalizedEmail = email.toLowerCase().trim();
+        android.util.Log.d("FamilyRepository", "Searching for invitation for: " + normalizedEmail);
+        
+        db.collectionGroup(FirestorePaths.INVITATIONS)
+                .whereEqualTo("type", "email_invite")
+                .whereEqualTo("targetEmail", normalizedEmail)
+                .whereEqualTo("status", "pending")
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        if (!task.getResult().isEmpty()) {
+                            QueryDocumentSnapshot doc = (QueryDocumentSnapshot) task.getResult().getDocuments().get(0);
+                            Invitation invitation = doc.toObject(Invitation.class);
+                            String familyId = doc.getReference().getParent().getParent().getId();
+                            android.util.Log.d("FamilyRepository", "Invitation found! FamilyId: " + familyId);
+                            callback.onResult(new Result.Success<>(invitation), familyId);
+                        } else {
+                            android.util.Log.d("FamilyRepository", "No invitation found for email: " + normalizedEmail);
+                            callback.onResult(new Result.Error<>(new Exception("No invitation found")), null);
+                        }
+                    } else {
+                        android.util.Log.e("FamilyRepository", "Error searching for invitation", task.getException());
+                        callback.onResult(new Result.Error<>(task.getException() != null ? task.getException() : new Exception("Search failed")), null);
+                    }
+                });
+    }
+
+    public void findPendingCodeRequest(String uid, CodeRequestCallback callback) {
+        android.util.Log.d("FamilyRepository", "Searching for pending code request for uid: " + uid);
+
+        db.collectionGroup(FirestorePaths.INVITATIONS)
+                .whereEqualTo("type", "code_request")
+                .whereEqualTo("requestedByUid", uid)
+                .whereEqualTo("status", "pending")
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        if (!task.getResult().isEmpty()) {
+                            QueryDocumentSnapshot doc = (QueryDocumentSnapshot) task.getResult().getDocuments().get(0);
+                            Invitation invitation = doc.toObject(Invitation.class);
+                            String familyId = doc.getReference().getParent().getParent().getId();
+                            android.util.Log.d("FamilyRepository", "Pending code request found! FamilyId: " + familyId);
+                            callback.onResult(new Result.Success<>(invitation), familyId);
+                        } else {
+                            android.util.Log.d("FamilyRepository", "No pending code request found for uid: " + uid);
+                            callback.onResult(new Result.Error<>(new Exception("No pending code request found")), null);
+                        }
+                    } else {
+                        android.util.Log.e("FamilyRepository", "Error searching for code request", task.getException());
+                        callback.onResult(new Result.Error<>(task.getException() != null ? task.getException() : new Exception("Search failed")), null);
+                    }
+                });
+    }
+
+    public interface InvitationByEmailCallback {
+        void onResult(Result<Invitation> result, String familyId);
+    }
+
+    public interface CodeRequestCallback {
+        void onResult(Result<Invitation> result, String familyId);
     }
 
     public void getMembers(String familyId, MembersCallback callback) {
@@ -277,6 +485,19 @@ public class FamilyRepository {
                         callback.onResult(new Result.Success<>(true));
                     } else {
                         callback.onResult(new Result.Error<>(task.getException()));
+                    }
+                });
+    }
+
+    public void getFamily(String familyId, FamilyCallback callback) {
+        db.collection(FirestorePaths.FAMILIES).document(familyId)
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult().exists()) {
+                        Family family = task.getResult().toObject(Family.class);
+                        callback.onResult(new Result.Success<>(family));
+                    } else {
+                        callback.onResult(new Result.Error<>(task.getException() != null ? task.getException() : new Exception("Family not found")));
                     }
                 });
     }
@@ -346,24 +567,55 @@ public class FamilyRepository {
     }
 
     private void deleteFamily(String familyId, ApproveCallback callback) {
-        // Simple delete for now (only members and family doc)
-        // In a real app, we should delete all subcollections (accounts, transactions, etc.)
         String uid = auth.getUid();
         if (uid == null) {
             callback.onResult(new Result.Error<>(new Exception("User not authenticated")));
             return;
         }
-        WriteBatch batch = db.batch();
-        batch.delete(db.collection(FirestorePaths.getMembersPath(familyId)).document(uid));
-        batch.delete(db.collection(FirestorePaths.FAMILIES).document(familyId));
-        batch.update(db.collection(FirestorePaths.USERS).document(uid), "familyId", null);
 
-        batch.commit().addOnCompleteListener(task -> {
-            if (task.isSuccessful()) {
-                callback.onResult(new Result.Success<>(true));
-            } else {
-                callback.onResult(new Result.Error<>(task.getException()));
+        // To delete a family, we must delete all its subcollections.
+        // Firestore doesn't support recursive delete from client, so we fetch and delete.
+        String familyPath = FirestorePaths.getFamilyPath(familyId);
+        
+        List<String> subcollections = List.of(
+                FirestorePaths.MEMBERS,
+                FirestorePaths.INVITATIONS,
+                FirestorePaths.CATEGORIES,
+                FirestorePaths.ACCOUNTS,
+                FirestorePaths.TRANSACTIONS
+        );
+
+        // Fetch all documents in all subcollections
+        List<com.google.android.gms.tasks.Task<com.google.firebase.firestore.QuerySnapshot>> tasks = new ArrayList<>();
+        for (String sub : subcollections) {
+            tasks.add(db.collection(familyPath + "/" + sub).get());
+        }
+
+        com.google.android.gms.tasks.Tasks.whenAllComplete(tasks).addOnCompleteListener(allTasks -> {
+            WriteBatch batch = db.batch();
+
+            for (com.google.android.gms.tasks.Task<?> t : tasks) {
+                if (t.isSuccessful()) {
+                    com.google.firebase.firestore.QuerySnapshot snapshot = (com.google.firebase.firestore.QuerySnapshot) t.getResult();
+                    for (DocumentSnapshot doc : snapshot.getDocuments()) {
+                        batch.delete(doc.getReference());
+                    }
+                }
             }
+
+            // Delete family doc
+            batch.delete(db.collection(FirestorePaths.FAMILIES).document(familyId));
+            
+            // Update user
+            batch.update(db.collection(FirestorePaths.USERS).document(uid), "familyId", null);
+
+            batch.commit().addOnCompleteListener(commitTask -> {
+                if (commitTask.isSuccessful()) {
+                    callback.onResult(new Result.Success<>(true));
+                } else {
+                    callback.onResult(new Result.Error<>(commitTask.getException()));
+                }
+            });
         });
     }
 
@@ -373,6 +625,10 @@ public class FamilyRepository {
 
     public interface JoinCallback {
         void onResult(Result<Boolean> result);
+    }
+
+    public interface JoinWithInvitationCallback {
+        void onResult(Result<Boolean> result, Invitation invitation, String familyId);
     }
 
     public interface RequestsCallback {

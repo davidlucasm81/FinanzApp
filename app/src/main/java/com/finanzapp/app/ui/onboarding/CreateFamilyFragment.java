@@ -12,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.Navigation;
 
 import com.finanzapp.app.FinanzAppApplication;
 import com.finanzapp.app.MainActivity;
@@ -41,17 +42,17 @@ public class CreateFamilyFragment extends Fragment {
 
         setupCurrencyDropdown();
         setupObservers();
-        
+
         binding.btnConfirm.setOnClickListener(v -> {
             if (binding.tilFamilyName.getEditText() == null) return;
             String name = binding.tilFamilyName.getEditText().getText().toString().trim();
             String currency = binding.actCurrency.getText().toString();
-            
+
             if (name.isEmpty()) {
                 binding.tilFamilyName.setError("El nombre es obligatorio");
                 return;
             }
-            
+
             viewModel.createFamily(name, currency);
         });
     }
@@ -69,6 +70,16 @@ public class CreateFamilyFragment extends Fragment {
                 binding.btnConfirm.setEnabled(false);
             } else if (result instanceof Result.Success) {
                 Toast.makeText(requireContext(), "Familia creada con éxito", Toast.LENGTH_SHORT).show();
+                // Navigate to onboarding step to add initial accounts, passing the new familyId
+                com.finanzapp.app.data.model.Family family = ((Result.Success<com.finanzapp.app.data.model.Family>) result).getData();
+                if (family != null) {
+                    Bundle args = new Bundle();
+                    args.putString("familyId", family.getId());
+                    args.putString("currencyCode", family.getCurrencyCode());
+                    Navigation.findNavController(requireView()).navigate(
+                            com.finanzapp.app.R.id.action_createFamilyFragment_to_addInitialAccountsFragment, args);
+                    return;
+                }
                 navigateToMain();
             } else if (result instanceof Result.Error) {
                 binding.btnConfirm.setEnabled(true);

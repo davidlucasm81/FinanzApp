@@ -24,4 +24,9 @@ public class FirestorePaths {
     public static String getMemberPath(String familyId, String uid) {
         return getMembersPath(familyId) + "/" + uid;
     }
+
+    public static String getAccountsPath(String familyId) {
+        return getFamilyPath(familyId) + "/" + ACCOUNTS;
+    }
+
 }

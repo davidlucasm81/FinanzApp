@@ -1,0 +1,9 @@
+- [x] Refactor Join Requests into Members Tab
+	- [x] Update `Invitation` model with requester info
+	- [x] Update `FamilyRepository` to populate requester info
+	- [x] Update `item_member.xml` with action buttons
+	- [x] Update `MemberAdapter` and `MemberListItem` logic
+	- [x] Update `MemberListFragment` to show all requests
+	- [x] Delete obsolete fragments, layouts and adapters
+	- [x] Update navigation and menus
+	- [x] Update documentation (`AGENTS.md`, `PLAN_DESARROLLO.md`)

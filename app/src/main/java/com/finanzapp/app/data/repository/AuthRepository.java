@@ -84,6 +84,57 @@ public class AuthRepository {
         auth.signOut();
     }
 
+    public void deleteAccount(FamilyRepository familyRepository, AuthCallback callback) {
+        FirebaseUser firebaseUser = auth.getCurrentUser();
+        if (firebaseUser == null) {
+            callback.onResult(new Result.Error<>(new Exception("User not authenticated")));
+            return;
+        }
+
+        String uid = firebaseUser.getUid();
+
+        // 1. Fetch user data to check for familyId
+        db.collection(FirestorePaths.USERS).document(uid).get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult().exists()) {
+                        User user = task.getResult().toObject(User.class);
+                        if (user != null && user.getFamilyId() != null) {
+                            // 2. Leave family first
+                            familyRepository.leaveFamily(user.getFamilyId(), result -> {
+                                if (result instanceof Result.Success) {
+                                    proceedWithDeletion(firebaseUser, callback);
+                                } else {
+                                    callback.onResult(new Result.Error<>(((Result.Error<?>) result).getException()));
+                                }
+                            });
+                        } else {
+                            proceedWithDeletion(firebaseUser, callback);
+                        }
+                    } else {
+                        // User doc might not exist but we should still try to delete the auth user
+                        proceedWithDeletion(firebaseUser, callback);
+                    }
+                });
+    }
+
+    private void proceedWithDeletion(FirebaseUser firebaseUser, AuthCallback callback) {
+        String uid = firebaseUser.getUid();
+        
+        // 3. Delete from Firestore
+        db.collection(FirestorePaths.USERS).document(uid).delete()
+                .addOnCompleteListener(task -> {
+                    // 4. Delete from Auth
+                    firebaseUser.delete()
+                            .addOnCompleteListener(authTask -> {
+                                if (authTask.isSuccessful()) {
+                                    callback.onResult(new Result.Success<>(null));
+                                } else {
+                                    callback.onResult(new Result.Error<>(authTask.getException()));
+                                }
+                            });
+                });
+    }
+
     public interface AuthCallback {
         void onResult(Result<User> result);
     }

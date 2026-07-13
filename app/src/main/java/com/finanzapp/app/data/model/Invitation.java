@@ -9,6 +9,8 @@ public class Invitation {
     private String type; // "email_invite" | "code_request"
     private String targetEmail;
     private String requestedByUid;
+    private String requesterName;
+    private String requesterEmail;
     private String invitedByUid;
     private String status; // "pending" | "accepted" | "approved" | "rejected"
     private Timestamp createdAt;
@@ -41,6 +43,12 @@ public class Invitation {
 
     public String getRequestedByUid() { return requestedByUid; }
     public void setRequestedByUid(String requestedByUid) { this.requestedByUid = requestedByUid; }
+
+    public String getRequesterName() { return requesterName; }
+    public void setRequesterName(String requesterName) { this.requesterName = requesterName; }
+
+    public String getRequesterEmail() { return requesterEmail; }
+    public void setRequesterEmail(String requesterEmail) { this.requesterEmail = requesterEmail; }
 
     public String getInvitedByUid() { return invitedByUid; }
     public void setInvitedByUid(String invitedByUid) { this.invitedByUid = invitedByUid; }
