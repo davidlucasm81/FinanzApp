@@ -27,3 +27,4 @@ firestore.rules
 /.artifacts/
 .artifacts/*
 *.artifacts*
+.artifacts/
