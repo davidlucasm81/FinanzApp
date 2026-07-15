@@ -22,3 +22,8 @@ google-services.json
 .cxx
 
 firestore.rules
+
+.artifacts/
+/.artifacts/
+.artifacts/*
+*.artifacts*

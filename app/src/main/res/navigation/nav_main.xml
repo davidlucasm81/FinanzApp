@@ -9,7 +9,27 @@
         android:id="@+id/dashboardFragment"
         android:name="com.finanzapp.app.ui.dashboard.DashboardFragment"
         android:label="Dashboard"
-        tools:layout="@layout/fragment_dashboard" />
+        tools:layout="@layout/fragment_dashboard">
+        <action
+            android:id="@+id/action_dashboardFragment_to_transactionListFragment"
+            app:destination="@id/transactionListFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/transactionListFragment"
+        android:name="com.finanzapp.app.ui.transactions.TransactionListFragment"
+        android:label="Movimientos"
+        tools:layout="@layout/fragment_transaction_list">
+        <action
+            android:id="@+id/action_transactionListFragment_to_addEditTransactionFragment"
+            app:destination="@id/addEditTransactionFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/addEditTransactionFragment"
+        android:name="com.finanzapp.app.ui.transactions.AddEditTransactionFragment"
+        android:label="Añadir Movimiento"
+        tools:layout="@layout/fragment_add_edit_transaction" />
 
     <fragment
         android:id="@+id/accountListFragment"
@@ -34,11 +54,21 @@
         android:id="@+id/familySettingsFragment"
         android:name="com.finanzapp.app.ui.family.FamilySettingsFragment"
         android:label="Ajustes Familia"
-        tools:layout="@layout/fragment_family_settings" />
+        tools:layout="@layout/fragment_family_settings">
+        <action
+            android:id="@+id/action_familySettingsFragment_to_manageCategoriesFragment"
+            app:destination="@id/manageCategoriesFragment" />
+    </fragment>
 
     <fragment
         android:id="@+id/settingsFragment"
         android:name="com.finanzapp.app.ui.settings.SettingsFragment"
         android:label="Ajustes"
         tools:layout="@layout/fragment_settings" />
+
+    <fragment
+        android:id="@+id/manageCategoriesFragment"
+        android:name="com.finanzapp.app.ui.categories.ManageCategoriesFragment"
+        android:label="Gestionar Categorías"
+        tools:layout="@layout/fragment_manage_categories" />
 </navigation>

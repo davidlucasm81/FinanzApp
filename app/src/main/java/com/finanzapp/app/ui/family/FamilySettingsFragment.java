@@ -27,6 +27,7 @@ import com.finanzapp.app.ui.onboarding.OnboardingActivity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.finanzapp.app.data.firebase.FirestorePaths;
+import com.finanzapp.app.data.model.Member;
 import com.finanzapp.app.data.model.User;
 import com.finanzapp.app.util.Result;
 import com.finanzapp.app.viewmodel.FamilyViewModel;
@@ -38,6 +39,7 @@ public class FamilySettingsFragment extends Fragment {
     private Spinner spinnerCurrency;
     private Button btnSave;
     private Button btnLeave;
+    private Button btnManageCategories;
     private TextView tvInviteCode;
     private ImageButton btnCopyCode;
     private com.google.android.material.textfield.TextInputLayout tilName;
@@ -57,13 +59,16 @@ public class FamilySettingsFragment extends Fragment {
     }
 
     private void resolveFamilyId() {
+        String uid = FirebaseAuth.getInstance().getUid();
         if (familyId != null) {
             viewModel.fetchFamily(familyId);
+            if (uid != null) {
+                viewModel.fetchCurrentMember(familyId, uid);
+            }
             return;
         }
 
         // Try to get familyId from current user if not provided in args
-        String uid = FirebaseAuth.getInstance().getUid();
         if (uid != null) {
             FirebaseFirestore.getInstance().collection(FirestorePaths.USERS).document(uid).get()
                     .addOnSuccessListener(documentSnapshot -> {
@@ -71,6 +76,7 @@ public class FamilySettingsFragment extends Fragment {
                         if (user != null && user.getFamilyId() != null) {
                             familyId = user.getFamilyId();
                             viewModel.fetchFamily(familyId);
+                            viewModel.fetchCurrentMember(familyId, uid);
                         }
                     });
         }
@@ -87,6 +93,7 @@ public class FamilySettingsFragment extends Fragment {
         spinnerCurrency = requireView().findViewById(com.finanzapp.app.R.id.spinner_currency);
         btnSave = requireView().findViewById(com.finanzapp.app.R.id.btn_save);
         btnLeave = requireView().findViewById(com.finanzapp.app.R.id.btn_leave);
+        btnManageCategories = requireView().findViewById(com.finanzapp.app.R.id.btn_manage_categories);
         tilName = requireView().findViewById(com.finanzapp.app.R.id.til_name);
         tvInviteCode = requireView().findViewById(com.finanzapp.app.R.id.tv_invite_code);
         btnCopyCode = requireView().findViewById(com.finanzapp.app.R.id.btn_copy_code);
@@ -111,6 +118,10 @@ public class FamilySettingsFragment extends Fragment {
         btnLeave.setOnClickListener(v -> {
             if (familyId == null) return;
             showLeaveConfirmation();
+        });
+
+        btnManageCategories.setOnClickListener(v -> {
+            Navigation.findNavController(v).navigate(com.finanzapp.app.R.id.action_familySettingsFragment_to_manageCategoriesFragment);
         });
 
         btnCopyCode.setOnClickListener(v -> copyCodeToClipboard());
@@ -170,6 +181,15 @@ public class FamilySettingsFragment extends Fragment {
                 navigateToOnboarding();
             } else if (result instanceof Result.Error) {
                 Toast.makeText(requireContext(), "Error al salir de la familia", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        viewModel.getCurrentMemberData().observe(getViewLifecycleOwner(), result -> {
+            if (result instanceof Result.Success) {
+                Member member = ((Result.Success<Member>) result).getData();
+                String role = member.getRole();
+                boolean isAdminOrOwner = "admin".equals(role) || "owner".equals(role);
+                btnManageCategories.setVisibility(isAdminOrOwner ? View.VISIBLE : View.GONE);
             }
         });
     }

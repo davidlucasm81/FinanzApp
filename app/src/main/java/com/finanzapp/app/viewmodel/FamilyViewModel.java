@@ -20,6 +20,7 @@ public class FamilyViewModel extends ViewModel {
     private final MutableLiveData<Result<Boolean>> leaveResult = new MutableLiveData<>();
     private final MutableLiveData<Result<Boolean>> updateResult = new MutableLiveData<>();
     private final MutableLiveData<Result<com.finanzapp.app.data.model.Family>> familyData = new MutableLiveData<>();
+    private final MutableLiveData<Result<Member>> currentMemberData = new MutableLiveData<>();
 
     public FamilyViewModel(FamilyRepository familyRepository) {
         this.familyRepository = familyRepository;
@@ -51,6 +52,10 @@ public class FamilyViewModel extends ViewModel {
 
     public LiveData<Result<com.finanzapp.app.data.model.Family>> getFamilyData() {
         return familyData;
+    }
+
+    public LiveData<Result<Member>> getCurrentMemberData() {
+        return currentMemberData;
     }
 
     public void fetchJoinRequests(String familyId) {
@@ -98,6 +103,24 @@ public class FamilyViewModel extends ViewModel {
     public void fetchFamily(String familyId) {
         familyData.setValue(new Result.Loading<>());
         familyRepository.getFamily(familyId, familyData::postValue);
+    }
+
+    public void fetchCurrentMember(String familyId, String uid) {
+        currentMemberData.setValue(new Result.Loading<>());
+        familyRepository.getMembers(familyId, result -> {
+            if (result instanceof Result.Success) {
+                List<Member> memberList = ((Result.Success<List<Member>>) result).getData();
+                for (Member m : memberList) {
+                    if (m.getUid().equals(uid)) {
+                        currentMemberData.postValue(new Result.Success<>(m));
+                        return;
+                    }
+                }
+                currentMemberData.postValue(new Result.Error<>(new Exception("Member not found")));
+            } else if (result instanceof Result.Error) {
+                currentMemberData.postValue(new Result.Error<>(((Result.Error<?>) result).getException()));
+            }
+        });
     }
 
     public void leaveFamily(String familyId) {

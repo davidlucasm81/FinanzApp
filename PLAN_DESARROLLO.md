@@ -45,8 +45,8 @@
     - [x] Listado de solicitudes de unión por código (`code_request`) pendientes (solo para admins) — Integrado en `MemberListFragment`.
     - [x] Pantalla de administración (solo admins): aprobar/rechazar invitaciones tipo `code_request` desde la lista de miembros.
     - [x] **Modificar rol de miembros**: permitir a un admin cambiar el rol de otro miembro (de "member" a "admin" y viceversa).
-    - [ ] **Rol de Dueño (Owner)**: implementar el rol `owner`. El creador de la familia es el `owner`. Solo el `owner` puede cambiar roles de otros `admin`. El `owner` no puede ser degradado por un `admin`.
-    - [ ] **Traspaso de Propiedad**: al abandonar la familia, si el que sale es el `owner`, la propiedad se traspasa al admin más antiguo (o miembro si no hay admins). Si es el único miembro, la familia se borra.
+    - [x] **Rol de Dueño (Owner)**: implementar el rol `owner`. El creador de la familia es el `owner`. Solo el `owner` puede cambiar roles de otros `admin`. El `owner` no puede ser degradado por un `admin`.
+    - [x] **Traspaso de Propiedad**: al abandonar la familia, si el que sale es el `owner`, la propiedad se traspasa al admin más antiguo (o miembro si no hay admins). Si es el único miembro, la familia se borra.
  - [x] Configuración de la familia (solo admins): editar nombre de la familia, cambiar moneda (con aviso de que no recalcula históricos) — `FamilySettingsFragment`.
  - [x] **Abandonar familia**:
     - [x] Acción de "Salirse de la familia".
@@ -74,19 +74,24 @@
 - [x] Reglas de seguridad para `accounts`: cualquier miembro aprobado puede leer y crear cuentas; solo un miembro con `role: admin` puede editar `initialBalance`, archivar o eliminar una cuenta (igual que cambiar `currencyCode`, ver AGENTS.md sección 5). Probar la creación, la edición del saldo inicial y el borrado/archivado con el Firebase Emulator Suite (ver también la nota sobre `currentBalance` en la Fase 6).
 
 ## Fase 5 — Categorías
-- [ ] Modelo `Category` + `CategoryRepository`.
-- [ ] Categorías por defecto a sembrar al crear la familia (ejemplo: Nómina, Otros ingresos, Alimentación, Vivienda, Transporte, Ocio, Salud, Educación, Otros gastos).
-- [ ] Pantalla de gestión de categorías: listar, añadir personalizada (nombre, tipo, icono/color), editar, eliminar (solo si no está en uso, o marcarla inactiva).
+- [x] Modelo `Category` + `CategoryRepository`.
+- [x] Categorías por defecto a sembrar al crear la familia (ejemplo: Nómina, Otros ingresos, Alimentación, Vivienda, Transporte, Ocio, Salud, Educación, Otros gastos).
+- [x] Pantalla de gestión de categorías: listar, añadir personalizada (nombre, tipo, icono/color), editar, eliminar (solo si no está en uso, o marcarla inactiva).
+  - [x] Listado y borrado de categorías.
+  - [x] **Edición y colores**: Permitir editar categorías existentes y asociarles un color personalizado de una paleta (RGB wheel).
+  - [x] **Borrado de categorías predeterminadas**: Permitir borrar categorías por defecto.
+  - [x] **Control de integridad**: Impedir borrar categorías que ya hayan sido utilizadas en movimientos. El usuario debe borrar primero el movimiento.
+  - [x] **Acceso restringido**: El botón de gestionar categorías solo debe ser visible para usuarios con rol `admin` o `owner`.
 
 ## Fase 6 — Registro de movimientos (gasto/ingreso)
-- [ ] Modelo `Transaction` + `TransactionRepository`.
-- [ ] Formulario "Añadir movimiento": selector de fecha, descripción, importe (formateado según `currencyCode` de la familia), tipo (gasto/ingreso), categoría (filtrada por tipo), método de pago (tarjeta/transferencia/efectivo/bizum), cuenta asociada.
-- [ ] Guardar el movimiento: **obligatorio** guardar el ID del usuario que lo creó (`createdBy`).
-- [ ] Actualizar `currentBalance` de la cuenta en una única Firestore transaction (atómico).
-- [ ] Igual para edición y borrado: recalcular el saldo de la cuenta afectada dentro de la misma transacción atómica.
-- [ ] Listado de movimientos con filtros: por cuenta, por categoría, por rango de fechas, por tipo.
-- [ ] Mostrar en el detalle del movimiento quién lo registró.
-- [ ] Reglas de seguridad para `transactions`.
+- [x] Modelo `Transaction` + `TransactionRepository`.
+- [x] Formulario "Añadir movimiento": selector de fecha, descripción, importe (formateado según `currencyCode` de la familia), tipo (gasto/ingreso), categoría (filtrada por tipo), método de pago (tarjeta/transferencia/efectivo/bizum), cuenta asociada.
+- [x] Guardar el movimiento: **obligatorio** guardar el ID del usuario que lo creó (`createdBy`).
+- [x] Actualizar `currentBalance` de la cuenta en una única Firestore transaction (atómico).
+- [x] Igual para edición y borrado: recalcular el saldo de la cuenta afectada dentro de la misma transacción atómica.
+- [x] Listado de movimientos con filtros: por cuenta, por categoría, por rango de fechas, por tipo.
+- [x] Mostrar en el detalle del movimiento quién lo registró.
+- [x] Reglas de seguridad para `transactions`.
 
 ## Fase 7 — Posición neta / Dashboard
 - [ ] Pantalla principal (home tras login): saldo total de la familia (suma de `currentBalance` de cuentas activas).

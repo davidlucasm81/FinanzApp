@@ -29,4 +29,12 @@ public class FirestorePaths {
         return getFamilyPath(familyId) + "/" + ACCOUNTS;
     }
 
+    public static String getCategoriesPath(String familyId) {
+        return getFamilyPath(familyId) + "/" + CATEGORIES;
+    }
+
+    public static String getCategoryPath(String familyId, String categoryId) {
+        return getCategoriesPath(familyId) + "/" + categoryId;
+    }
+
 }

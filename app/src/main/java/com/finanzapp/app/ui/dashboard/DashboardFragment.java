@@ -50,6 +50,10 @@ public class DashboardFragment extends Fragment {
             NavHostFragment.findNavController(this).navigate(com.finanzapp.app.R.id.settingsFragment);
         });
 
+        binding.btnTransactions.setOnClickListener(v -> {
+            NavHostFragment.findNavController(this).navigate(com.finanzapp.app.R.id.action_dashboardFragment_to_transactionListFragment);
+        });
+
         setupObservers();
         viewModel.fetchDashboardData();
     }
