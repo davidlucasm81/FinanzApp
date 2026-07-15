@@ -14,6 +14,7 @@ public class AccountViewModel extends ViewModel {
     private final AccountRepository accountRepository;
     private final MutableLiveData<Result<Account>> createResult = new MutableLiveData<>();
     private final MutableLiveData<Result<Account>> updateResult = new MutableLiveData<>();
+    private final MutableLiveData<Result<String>> archiveResult = new MutableLiveData<>();
     private final MutableLiveData<Result<String>> deleteResult = new MutableLiveData<>();
 
     public AccountViewModel(AccountRepository accountRepository) {
@@ -22,6 +23,7 @@ public class AccountViewModel extends ViewModel {
 
     public LiveData<Result<Account>> getCreateResult() { return createResult; }
     public LiveData<Result<Account>> getUpdateResult() { return updateResult; }
+    public LiveData<Result<String>> getArchiveResult() { return archiveResult; }
     public LiveData<Result<String>> getDeleteResult() { return deleteResult; }
 
     public void createAccount(String familyId, Account account) {
@@ -32,6 +34,11 @@ public class AccountViewModel extends ViewModel {
     public void updateAccount(String familyId, Account account) {
         updateResult.setValue(new Result.Loading<>());
         accountRepository.updateAccount(familyId, account, result -> updateResult.postValue(result));
+    }
+
+    public void archiveAccount(String familyId, String accountId, boolean active) {
+        archiveResult.setValue(new Result.Loading<>());
+        accountRepository.archiveAccount(familyId, accountId, active, result -> archiveResult.postValue(result));
     }
 
     public void deleteAccount(String familyId, String accountId) {

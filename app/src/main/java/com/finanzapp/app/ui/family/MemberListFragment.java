@@ -97,6 +97,13 @@ public class MemberListFragment extends Fragment {
                     viewModel.rejectRequest(familyId, invitation.getId());
                 }
             }
+
+            @Override
+            public void onToggleRole(Member member, View anchor) {
+                if (familyId != null) {
+                    showRoleOptions(member, anchor);
+                }
+            }
         });
         rvMembers.setLayoutManager(new LinearLayoutManager(requireContext()));
         rvMembers.setAdapter(adapter);
@@ -175,6 +182,9 @@ public class MemberListFragment extends Fragment {
     private void updateList() {
         List<MemberListItem> items = new ArrayList<>();
         // Priority: Join Requests, then Email Invitations, then Members
+        String userRole = "member";
+        String myUid = FirebaseAuth.getInstance().getUid();
+
         for (Invitation i : currentJoinRequests) {
             items.add(new MemberListItem(i));
         }
@@ -183,9 +193,31 @@ public class MemberListFragment extends Fragment {
         }
         for (Member m : currentMembers) {
             items.add(new MemberListItem(m));
+            if (m.getUid().equals(myUid)) {
+                userRole = m.getRole();
+            }
         }
-        adapter.setItems(items);
+        adapter.setItems(items, userRole, myUid);
         tvEmpty.setVisibility(items.isEmpty() ? View.VISIBLE : View.GONE);
+    }
+
+    private void showRoleOptions(Member member, View anchor) {
+        android.widget.PopupMenu popup = new android.widget.PopupMenu(requireContext(), anchor);
+        
+        boolean targetIsAdmin = "admin".equals(member.getRole());
+        String menuItemTitle = targetIsAdmin 
+                ? getString(com.finanzapp.app.R.string.menu_remove_admin) 
+                : getString(com.finanzapp.app.R.string.menu_make_admin);
+        
+        popup.getMenu().add(menuItemTitle);
+        
+        popup.setOnMenuItemClickListener(item -> {
+            String newRole = targetIsAdmin ? "member" : "admin";
+            viewModel.updateMemberRole(familyId, member.getUid(), newRole);
+            return true;
+        });
+        
+        popup.show();
     }
 
     @Override

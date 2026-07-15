@@ -22,16 +22,22 @@ public class MemberAdapter extends RecyclerView.Adapter<MemberAdapter.ViewHolder
         void onCancel(Invitation invitation);
         void onApprove(Invitation invitation);
         void onReject(Invitation invitation);
+        void onToggleRole(Member member, View anchor);
     }
 
     public void setOnActionListener(OnActionListener listener) {
         this.actionListener = listener;
     }
 
-    public void setItems(List<MemberListItem> items) {
+    public void setItems(List<MemberListItem> items, String currentUserRole, String currentUserUid) {
         this.items = items;
+        this.userRole = currentUserRole;
+        this.currentUid = currentUserUid;
         notifyDataSetChanged();
     }
+
+    private String userRole = "member";
+    private String currentUid = "";
 
     @NonNull
     @Override
@@ -48,6 +54,7 @@ public class MemberAdapter extends RecyclerView.Adapter<MemberAdapter.ViewHolder
         holder.binding.tvPendingTag.setVisibility(View.GONE);
         holder.binding.btnCancelInvite.setVisibility(View.GONE);
         holder.binding.layoutRequestActions.setVisibility(View.GONE);
+        holder.binding.btnOptions.setVisibility(View.GONE);
         holder.binding.tvRole.setVisibility(View.VISIBLE);
 
         if (item.getType() == MemberListItem.TYPE_MEMBER) {
@@ -55,6 +62,24 @@ public class MemberAdapter extends RecyclerView.Adapter<MemberAdapter.ViewHolder
             holder.binding.tvName.setText(m.getDisplayName() != null ? m.getDisplayName() : "-");
             holder.binding.tvEmail.setText(m.getEmail() != null ? m.getEmail() : "-");
             holder.binding.tvRole.setText(m.getRole());
+
+            boolean canManage = false;
+            if (!m.getUid().equals(currentUid)) {
+                if ("owner".equals(userRole)) {
+                    canManage = true;
+                } else if ("admin".equals(userRole) && "member".equals(m.getRole())) {
+                    canManage = true;
+                }
+            }
+
+            if (canManage) {
+                holder.binding.btnOptions.setVisibility(View.VISIBLE);
+                holder.binding.btnOptions.setOnClickListener(v -> {
+                    if (actionListener != null) {
+                        actionListener.onToggleRole(m, v);
+                    }
+                });
+            }
         } else if (item.getType() == MemberListItem.TYPE_INVITATION) {
             Invitation i = item.getInvitation();
             // Para invitaciones por email, mostrar el email como nombre principal

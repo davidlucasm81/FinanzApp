@@ -56,7 +56,7 @@ public class FamilyRepository {
                 uid,
                 displayName,
                 currentUser.getEmail(),
-                "admin",
+                "owner",
                 "approved",
                 Timestamp.now()
         );
@@ -528,8 +528,7 @@ public class FamilyRepository {
 
     private void checkAndLeave(String familyId, String uid, List<DocumentSnapshot> memberDocs, ApproveCallback callback) {
         DocumentSnapshot myDoc = null;
-        DocumentSnapshot anotherAdmin = null;
-        DocumentSnapshot anotherMember = null;
+        List<Member> others = new ArrayList<>();
 
         for (DocumentSnapshot doc : memberDocs) {
             if (doc.getId().equals(uid)) {
@@ -537,23 +536,43 @@ public class FamilyRepository {
             } else {
                 Member m = doc.toObject(Member.class);
                 if (m != null) {
-                    if ("admin".equals(m.getRole())) {
-                        anotherAdmin = doc;
-                    } else {
-                        anotherMember = doc;
-                    }
+                    m.setUid(doc.getId());
+                    others.add(m);
                 }
             }
         }
 
+        if (myDoc == null) {
+            callback.onResult(new Result.Error<>(new Exception("Member document not found")));
+            return;
+        }
+
+        String myRole = myDoc.getString("role");
         WriteBatch batch = db.batch();
         batch.delete(db.collection(FirestorePaths.getMembersPath(familyId)).document(uid));
         batch.update(db.collection(FirestorePaths.USERS).document(uid), "familyId", null);
 
-        if (myDoc != null && "admin".equals(myDoc.getString("role")) && anotherAdmin == null) {
-            // I was the only admin, promote someone
-            if (anotherMember != null) {
-                batch.update(db.collection(FirestorePaths.getMembersPath(familyId)).document(anotherMember.getId()), "role", "admin");
+        if ("owner".equals(myRole)) {
+            // Owner is leaving, transfer ownership
+            Member successor = findSuccessor(others);
+            if (successor != null) {
+                batch.update(db.collection(FirestorePaths.getMembersPath(familyId)).document(successor.getUid()), "role", "owner");
+            }
+        } else if ("admin".equals(myRole)) {
+            // If I was the only admin/owner left, promote someone? 
+            // Actually, if owner exists, no problem. If no owner (shouldn't happen) and I'm last admin, promote.
+            boolean ownerOrAdminExists = false;
+            for (Member other : others) {
+                if ("owner".equals(other.getRole()) || "admin".equals(other.getRole())) {
+                    ownerOrAdminExists = true;
+                    break;
+                }
+            }
+            if (!ownerOrAdminExists && !others.isEmpty()) {
+                Member successor = findSuccessor(others);
+                if (successor != null) {
+                    batch.update(db.collection(FirestorePaths.getMembersPath(familyId)).document(successor.getUid()), "role", "admin");
+                }
             }
         }
 
@@ -564,6 +583,55 @@ public class FamilyRepository {
                 callback.onResult(new Result.Error<>(task.getException()));
             }
         });
+    }
+
+    private Member findSuccessor(List<Member> members) {
+        if (members.isEmpty()) return null;
+
+        Member bestMatch = null;
+        for (Member m : members) {
+            if (bestMatch == null) {
+                bestMatch = m;
+                continue;
+            }
+
+            // Priority 1: owner (should not be in 'others' if owner is leaving, but for robustness)
+            // Priority 2: admin
+            // Priority 3: member
+            
+            int bestScore = getRoleScore(bestMatch.getRole());
+            int currentScore = getRoleScore(m.getRole());
+
+            if (currentScore > bestScore) {
+                bestMatch = m;
+            } else if (currentScore == bestScore) {
+                // Same role, compare joinedAt
+                if (m.getJoinedAt() != null && bestMatch.getJoinedAt() != null) {
+                    if (m.getJoinedAt().compareTo(bestMatch.getJoinedAt()) < 0) {
+                        bestMatch = m;
+                    }
+                }
+            }
+        }
+        return bestMatch;
+    }
+
+    private int getRoleScore(String role) {
+        if ("owner".equals(role)) return 3;
+        if ("admin".equals(role)) return 2;
+        return 1;
+    }
+
+    public void updateMemberRole(String familyId, String memberUid, String newRole, ApproveCallback callback) {
+        db.collection(FirestorePaths.getMembersPath(familyId)).document(memberUid)
+                .update("role", newRole)
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        callback.onResult(new Result.Success<>(true));
+                    } else {
+                        callback.onResult(new Result.Error<>(task.getException()));
+                    }
+                });
     }
 
     private void deleteFamily(String familyId, ApproveCallback callback) {

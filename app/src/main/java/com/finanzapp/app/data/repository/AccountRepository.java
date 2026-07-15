@@ -68,26 +68,52 @@ public class AccountRepository {
     }
 
     /**
-     * Actualiza una cuenta existente. Pensado para la fase de onboarding, donde todavía no
-     * existen movimientos asociados: aquí currentBalance se iguala directamente a initialBalance.
-     * NOTA (Fase 4): una vez existan transacciones, la edición del initialBalance de una cuenta
-     * ya creada debe recalcular currentBalance mediante un delta dentro de una Firestore
-     * transaction (currentBalance_nuevo = currentBalance_actual + (initialBalance_nuevo - initialBalance_anterior)),
-     * en vez de sobrescribirlo directamente como se hace aquí.
+     * Actualiza una cuenta existente de forma atómica.
+     * Calcula el delta entre el saldo inicial nuevo y el anterior para actualizar el saldo actual,
+     * preservando así el efecto de los movimientos ya registrados.
      */
-    public void updateAccount(String familyId, Account account, AccountCallback callback) {
-        if (account.getId() == null) {
+    public void updateAccount(String familyId, Account updatedAccount, AccountCallback callback) {
+        if (updatedAccount.getId() == null) {
             callback.onResult(new Result.Error<>(new Exception("Account id missing")));
             return;
         }
-        account.setCurrentBalance(account.getInitialBalance());
 
+        DocumentReference accountRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS)
+                .document(updatedAccount.getId());
+
+        db.runTransaction(transaction -> {
+            Account oldAccount = transaction.get(accountRef).toObject(Account.class);
+            if (oldAccount == null) {
+                throw new RuntimeException("Account not found");
+            }
+
+            double initialBalanceDelta = updatedAccount.getInitialBalance() - oldAccount.getInitialBalance();
+            updatedAccount.setCurrentBalance(oldAccount.getCurrentBalance() + initialBalanceDelta);
+
+            // Preservamos metadatos si no vienen en el objeto actualizado
+            if (updatedAccount.getCreatedBy() == null) updatedAccount.setCreatedBy(oldAccount.getCreatedBy());
+            if (updatedAccount.getCreatedAt() == null) updatedAccount.setCreatedAt(oldAccount.getCreatedAt());
+            // Mantener el estado activo a menos que se cambie explícitamente
+            // (updateAccount suele usarse para nombre/saldo inicial)
+
+            transaction.set(accountRef, updatedAccount);
+            return updatedAccount;
+        }).addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                callback.onResult(new Result.Success<>(task.getResult()));
+            } else {
+                callback.onResult(new Result.Error<>(task.getException()));
+            }
+        });
+    }
+
+    public void archiveAccount(String familyId, String accountId, boolean active, SimpleCallback callback) {
         db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS)
-                .document(account.getId())
-                .set(account)
+                .document(accountId)
+                .update("active", active)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
-                        callback.onResult(new Result.Success<>(account));
+                        callback.onResult(new Result.Success<>(accountId));
                     } else {
                         callback.onResult(new Result.Error<>(task.getException()));
                     }
@@ -95,14 +121,25 @@ public class AccountRepository {
     }
 
     public void deleteAccount(String familyId, String accountId, SimpleCallback callback) {
-        db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS)
-                .document(accountId)
-                .delete()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        callback.onResult(new Result.Success<>(accountId));
+        // Verificamos si hay transacciones antes de borrar físicamente
+        db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.TRANSACTIONS)
+                .whereEqualTo("accountId", accountId)
+                .limit(1)
+                .get()
+                .addOnCompleteListener(queryTask -> {
+                    if (queryTask.isSuccessful() && !queryTask.getResult().isEmpty()) {
+                        callback.onResult(new Result.Error<>(new Exception("No se puede eliminar una cuenta con movimientos. Archívala en su lugar.")));
                     } else {
-                        callback.onResult(new Result.Error<>(task.getException()));
+                        db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS)
+                                .document(accountId)
+                                .delete()
+                                .addOnCompleteListener(task -> {
+                                    if (task.isSuccessful()) {
+                                        callback.onResult(new Result.Success<>(accountId));
+                                    } else {
+                                        callback.onResult(new Result.Error<>(task.getException()));
+                                    }
+                                });
                     }
                 });
     }

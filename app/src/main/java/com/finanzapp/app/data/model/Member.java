@@ -8,7 +8,7 @@ public class Member {
     private String uid;
     private String displayName;
     private String email;
-    private String role; // "admin" | "member"
+    private String role; // "owner" | "admin" | "member"
     private String status; // "approved"
     private Timestamp joinedAt;
 

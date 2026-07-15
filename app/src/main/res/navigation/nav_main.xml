@@ -11,6 +11,12 @@
         android:label="Dashboard"
         tools:layout="@layout/fragment_dashboard" />
 
+    <fragment
+        android:id="@+id/accountListFragment"
+        android:name="com.finanzapp.app.ui.accounts.AccountListFragment"
+        android:label="Cuentas"
+        tools:layout="@layout/fragment_account_list" />
+
 
     <fragment
         android:id="@+id/inviteMemberFragment"

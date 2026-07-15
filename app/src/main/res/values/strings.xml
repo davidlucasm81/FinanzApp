@@ -27,4 +27,7 @@
     <string name="reject_button">No, gracias</string>
     <string name="pending_invitation_label">Invitación pendiente</string>
     <string name="pending_tag">PENDIENTE</string>
+    <string name="options_desc">Opciones</string>
+    <string name="menu_make_admin">Hacer administrador</string>
+    <string name="menu_remove_admin">Quitar administrador</string>
 </resources>

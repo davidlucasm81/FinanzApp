@@ -75,7 +75,7 @@ families/{familyId}
 families/{familyId}/members/{uid}
   displayName: string
   email: string
-  role: "admin" | "member"
+  role: "owner" | "admin" | "member"
   status: "approved"              // el doc solo se crea cuando ya está aprobado
   joinedAt: timestamp
 
@@ -205,7 +205,10 @@ El enunciado pide que el creador de la familia apruebe la incorporación. Para q
 Implementar (y testear con el Firebase Emulator Suite) algo equivalente a:
 - Un usuario solo puede leer/escribir su propio documento en `users/{uid}`.
 - Solo se puede leer/escribir en `families/{familyId}/**` si `request.auth.uid` existe como documento en `families/{familyId}/members`, o si el usuario está en proceso de crear la familia o resolver su propia invitación.
-- Solo un `member` con `role == "admin"` puede: aprobar/rechazar `code_request`, cambiar `currencyCode`, editar el `initialBalance` de una cuenta (es decir, corregir la posición neta inicial), archivar o eliminar cuentas, gestionar categorías del sistema. Cualquier miembro aprobado puede leer y crear cuentas nuevas.
+- Solo un `member` con `role == "admin"` o `role == "owner"` puede: aprobar/rechazar `code_request`, cambiar `currencyCode`, editar el `initialBalance` de una cuenta (es decir, corregir la posición neta inicial), archivar o eliminar cuentas, gestionar categorías del sistema, y cambiar el rol de otros miembros. 
+- **Jerarquía de Roles**: Solo el `owner` puede cambiar el rol de un `admin`. Un `admin` solo puede cambiar el rol de un `member`. Nadie puede cambiar el rol del `owner`.
+- Al crear una familia, el creador recibe el rol de `owner`.
+- Al abandonar la familia, si el que sale es el `owner`, la propiedad debe traspasarse a otro miembro (priorizando `admin`).
 - Nadie escribe directamente `currentBalance` de una cuenta salvo a través de la misma transacción de Firestore que crea/edita/borra el movimiento correspondiente, o que edita el `initialBalance` de la cuenta (para que nunca se descuadre).
 - Una cuenta solo puede eliminarse físicamente si no tiene ningún movimiento asociado; si ya tiene movimientos, solo puede archivarse/desactivarse (`active: false`), nunca borrarse, para no perder el histórico.
 

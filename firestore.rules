@@ -11,13 +11,15 @@ service cloud.firestore {
       );
     }
 
-    // Helper to check if user is an admin (or becoming one in this batch)
+    // Helper to check if user is an admin or owner (or becoming one in this batch)
     function isAdmin(familyId) {
       return request.auth != null && (
         (exists(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)).data.role == 'admin') ||
+         (get(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)).data.role == 'admin' ||
+          get(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)).data.role == 'owner')) ||
         (existsAfter(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)) &&
-         getAfter(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)).data.role == 'admin')
+         (getAfter(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)).data.role == 'admin' ||
+          getAfter(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)).data.role == 'owner'))
       );
     }
 
@@ -41,7 +43,8 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).changedKeys().hasOnly(['familyId'])
           // Ensure the admin is indeed admin of the family being assigned
           && exists(/databases/$(database)/documents/families/$(request.resource.data.familyId)/members/$(request.auth.uid))
-          && get(/databases/$(database)/documents/families/$(request.resource.data.familyId)/members/$(request.auth.uid)).data.role == 'admin'
+          && (get(/databases/$(database)/documents/families/$(request.resource.data.familyId)/members/$(request.auth.uid)).data.role == 'admin' ||
+              get(/databases/$(database)/documents/families/$(request.resource.data.familyId)/members/$(request.auth.uid)).data.role == 'owner')
         );
     }
 
@@ -54,7 +57,13 @@ service cloud.firestore {
       // Members
       match /members/{memberId} {
         allow read: if isMember(familyId);
-        allow write: if isAdmin(familyId) || (request.auth != null && request.auth.uid == memberId);
+
+        // Split write into create, update, delete for finer control
+        allow create: if isAdmin(familyId) || (request.auth != null && request.auth.uid == memberId);
+
+        allow update: if isAdmin(familyId) || (request.auth != null && request.auth.uid == memberId);
+
+        allow delete: if isAdmin(familyId) || (request.auth != null && request.auth.uid == memberId);
       }
 
       // Invitations
