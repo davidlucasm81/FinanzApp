@@ -89,7 +89,7 @@
 - [x] Guardar el movimiento: **obligatorio** guardar el ID del usuario que lo creó (`createdBy`).
 - [x] Actualizar `currentBalance` de la cuenta en una única Firestore transaction (atómico).
 - [x] Igual para edición y borrado: recalcular el saldo de la cuenta afectada dentro de la misma transacción atómica.
-- [x] Listado de movimientos con filtros: por cuenta, por categoría, por rango de fechas, por tipo.
+- [x] Listado de movimientos con filtros: por cuenta, por categoría, por rango de fechas, por tipo y método de pago. Soporte completo para modo oscuro y UI adaptativa.
 - [x] Mostrar en el detalle del movimiento quién lo registró.
 - [x] Reglas de seguridad para `transactions`.
 

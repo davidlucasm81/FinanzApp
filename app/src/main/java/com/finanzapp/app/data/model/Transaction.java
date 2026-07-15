@@ -3,8 +3,10 @@ package com.finanzapp.app.data.model;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.IgnoreExtraProperties;
 
+import java.io.Serializable;
+
 @IgnoreExtraProperties
-public class Transaction {
+public class Transaction implements Serializable {
     private String id;
     private String accountId;
     private Timestamp date;

@@ -39,11 +39,12 @@ import java.util.Locale;
 public class AddEditTransactionFragment extends Fragment {
     private TransactionViewModel viewModel;
     private String familyId;
+    private Transaction existingTransaction;
     
     private TextInputLayout tilAmount, tilDescription;
     private RadioGroup rgType;
     private RadioButton rbExpense, rbIncome;
-    private Button btnDate, btnSave;
+    private Button btnDate, btnSave, btnDelete;
     private Spinner spinnerCategory, spinnerAccount, spinnerMethod;
     
     private Calendar selectedDate = Calendar.getInstance();
@@ -71,6 +72,7 @@ public class AddEditTransactionFragment extends Fragment {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
             familyId = getArguments().getString("familyId");
+            existingTransaction = (Transaction) getArguments().getSerializable("transaction");
         }
     }
 
@@ -91,9 +93,16 @@ public class AddEditTransactionFragment extends Fragment {
         rbIncome = view.findViewById(R.id.rb_income);
         btnDate = view.findViewById(R.id.btn_date);
         btnSave = view.findViewById(R.id.btn_save);
+        btnDelete = view.findViewById(R.id.btn_delete);
         spinnerCategory = view.findViewById(R.id.spinner_category);
         spinnerAccount = view.findViewById(R.id.spinner_account);
         spinnerMethod = view.findViewById(R.id.spinner_method);
+
+        com.google.android.material.appbar.MaterialToolbar toolbar = view.findViewById(R.id.toolbar);
+        if (existingTransaction != null) {
+            toolbar.setTitle("Editar Movimiento");
+        }
+        toolbar.setNavigationOnClickListener(v -> Navigation.findNavController(v).popBackStack());
 
         updateDateButton();
         btnDate.setOnClickListener(v -> showDatePicker());
@@ -104,6 +113,44 @@ public class AddEditTransactionFragment extends Fragment {
         setupObservers();
         
         btnSave.setOnClickListener(v -> saveTransaction());
+        
+        if (existingTransaction != null) {
+            populateFields();
+            btnDelete.setVisibility(View.VISIBLE);
+            btnDelete.setOnClickListener(v -> showDeleteConfirmation());
+        }
+    }
+
+    private void populateFields() {
+        if (tilAmount.getEditText() != null) tilAmount.getEditText().setText(String.valueOf(existingTransaction.getAmount()));
+        if (tilDescription.getEditText() != null) tilDescription.getEditText().setText(existingTransaction.getDescription());
+        
+        if ("income".equals(existingTransaction.getType())) {
+            rbIncome.setChecked(true);
+        } else {
+            rbExpense.setChecked(true);
+        }
+
+        selectedDate.setTime(existingTransaction.getDate().toDate());
+        updateDateButton();
+
+        for (int i = 0; i < paymentMethodValues.length; i++) {
+            if (paymentMethodValues[i].equals(existingTransaction.getPaymentMethod())) {
+                spinnerMethod.setSelection(i);
+                break;
+            }
+        }
+    }
+
+    private void showDeleteConfirmation() {
+        new android.app.AlertDialog.Builder(requireContext())
+                .setTitle(R.string.delete_transaction_title)
+                .setMessage(R.string.delete_transaction_message)
+                .setPositiveButton(R.string.delete_button, (dialog, which) -> {
+                    viewModel.deleteTransaction(familyId, existingTransaction);
+                })
+                .setNegativeButton(R.string.cancel_button, null)
+                .show();
     }
 
     private void setupMethodSpinner() {
@@ -117,6 +164,18 @@ public class AddEditTransactionFragment extends Fragment {
             if (categories != null) {
                 allCategories = categories;
                 filterCategories();
+                
+                if (existingTransaction != null) {
+                    List<Category> filtered = (List<Category>) spinnerCategory.getTag();
+                    if (filtered != null) {
+                        for (int i = 0; i < filtered.size(); i++) {
+                            if (filtered.get(i).getId().equals(existingTransaction.getCategoryId())) {
+                                spinnerCategory.setSelection(i);
+                                break;
+                            }
+                        }
+                    }
+                }
             }
         });
 
@@ -124,16 +183,27 @@ public class AddEditTransactionFragment extends Fragment {
             if (accounts != null) {
                 allAccounts = accounts;
                 List<String> names = new ArrayList<>();
-                for (Account a : accounts) if (a.isActive()) names.add(a.getName());
+                int selectedIndex = -1;
+                for (int i = 0; i < accounts.size(); i++) {
+                    Account a = accounts.get(i);
+                    if (a.isActive()) {
+                        names.add(a.getName());
+                        if (existingTransaction != null && a.getId().equals(existingTransaction.getAccountId())) {
+                            selectedIndex = names.size() - 1;
+                        }
+                    }
+                }
                 ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, names);
                 adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
                 spinnerAccount.setAdapter(adapter);
+                if (selectedIndex != -1) spinnerAccount.setSelection(selectedIndex);
             }
         });
 
         viewModel.getOperationResult().observe(getViewLifecycleOwner(), result -> {
             if (result instanceof Result.Success) {
-                Toast.makeText(requireContext(), "Movimiento guardado", Toast.LENGTH_SHORT).show();
+                String msg = existingTransaction != null ? getString(R.string.transaction_updated) : getString(R.string.transaction_saved);
+                Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
                 Navigation.findNavController(requireView()).popBackStack();
             } else if (result instanceof Result.Error) {
                 Toast.makeText(requireContext(), "Error al guardar", Toast.LENGTH_SHORT).show();
@@ -173,14 +243,14 @@ public class AddEditTransactionFragment extends Fragment {
     private void saveTransaction() {
         String amountStr = tilAmount.getEditText() != null ? tilAmount.getEditText().getText().toString().trim() : "";
         if (amountStr.isEmpty()) {
-            tilAmount.setError("Introduce un importe");
+            tilAmount.setError(getString(R.string.error_amount));
             return;
         }
         double amount = Double.parseDouble(amountStr);
         String description = tilDescription.getEditText() != null ? tilDescription.getEditText().getText().toString().trim() : "";
         
         if (spinnerAccount.getSelectedItem() == null) {
-            Toast.makeText(requireContext(), "Selecciona una cuenta", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), getString(R.string.error_account), Toast.LENGTH_SHORT).show();
             return;
         }
         
@@ -195,7 +265,7 @@ public class AddEditTransactionFragment extends Fragment {
 
         List<Category> filtered = (List<Category>) spinnerCategory.getTag();
         if (filtered == null || spinnerCategory.getSelectedItem() == null) {
-            Toast.makeText(requireContext(), "Selecciona una categoría", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), getString(R.string.error_category), Toast.LENGTH_SHORT).show();
             return;
         }
         String categoryId = filtered.get(spinnerCategory.getSelectedItemPosition()).getId();
@@ -203,11 +273,18 @@ public class AddEditTransactionFragment extends Fragment {
         String method = paymentMethodValues[spinnerMethod.getSelectedItemPosition()];
         String type = rbIncome.isChecked() ? "income" : "expense";
 
-        Transaction t = new Transaction(
-                null, accountId, new Timestamp(selectedDate.getTime()), 
-                description, amount, type, categoryId, method, null, null
-        );
-
-        viewModel.addTransaction(familyId, t);
+        if (existingTransaction != null) {
+            Transaction updated = new Transaction(
+                    existingTransaction.getId(), accountId, new Timestamp(selectedDate.getTime()),
+                    description, amount, type, categoryId, method, existingTransaction.getCreatedBy(), existingTransaction.getCreatedAt()
+            );
+            viewModel.updateTransaction(familyId, existingTransaction, updated);
+        } else {
+            Transaction t = new Transaction(
+                    null, accountId, new Timestamp(selectedDate.getTime()), 
+                    description, amount, type, categoryId, method, null, null
+            );
+            viewModel.addTransaction(familyId, t);
+        }
     }
 }

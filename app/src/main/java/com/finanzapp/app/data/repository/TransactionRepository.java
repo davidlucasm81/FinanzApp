@@ -127,17 +127,45 @@ public class TransactionRepository {
     }
 
     public LiveData<List<Transaction>> getTransactions(String familyId) {
+        return getTransactions(familyId, null, null, null, null, null, null);
+    }
+
+    public LiveData<List<Transaction>> getTransactions(String familyId, String accountId, String categoryId, String type, String paymentMethod, Timestamp startDate, Timestamp endDate) {
         MutableLiveData<List<Transaction>> liveData = new MutableLiveData<>();
-        db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.TRANSACTIONS)
-                .orderBy("date", Query.Direction.DESCENDING)
-                .addSnapshotListener((value, error) -> {
-                    if (error != null || value == null) return;
-                    List<Transaction> transactions = new ArrayList<>();
-                    for (QueryDocumentSnapshot doc : value) {
-                        transactions.add(doc.toObject(Transaction.class));
-                    }
-                    liveData.setValue(transactions);
-                });
+        
+        Query query = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.TRANSACTIONS)
+                .orderBy("date", Query.Direction.DESCENDING);
+
+        if (accountId != null && !accountId.isEmpty()) {
+            query = query.whereEqualTo("accountId", accountId);
+        }
+        if (categoryId != null && !categoryId.isEmpty()) {
+            query = query.whereEqualTo("categoryId", categoryId);
+        }
+        if (type != null && !type.isEmpty()) {
+            query = query.whereEqualTo("type", type);
+        }
+        if (paymentMethod != null && !paymentMethod.isEmpty()) {
+            query = query.whereEqualTo("paymentMethod", paymentMethod);
+        }
+        if (startDate != null) {
+            query = query.whereGreaterThanOrEqualTo("date", startDate);
+        }
+        if (endDate != null) {
+            query = query.whereLessThanOrEqualTo("date", endDate);
+        }
+
+        query.addSnapshotListener((value, error) -> {
+            if (error != null || value == null) {
+                android.util.Log.e("TransactionRepository", "Error getting transactions", error);
+                return;
+            }
+            List<Transaction> transactions = new ArrayList<>();
+            for (QueryDocumentSnapshot doc : value) {
+                transactions.add(doc.toObject(Transaction.class));
+            }
+            liveData.setValue(transactions);
+        });
         return liveData;
     }
 }

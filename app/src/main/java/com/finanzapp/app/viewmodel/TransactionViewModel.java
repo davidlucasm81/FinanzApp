@@ -6,9 +6,11 @@ import androidx.lifecycle.ViewModel;
 
 import com.finanzapp.app.data.model.Account;
 import com.finanzapp.app.data.model.Category;
+import com.finanzapp.app.data.model.Member;
 import com.finanzapp.app.data.model.Transaction;
 import com.finanzapp.app.data.repository.AccountRepository;
 import com.finanzapp.app.data.repository.CategoryRepository;
+import com.finanzapp.app.data.repository.FamilyRepository;
 import com.finanzapp.app.data.repository.TransactionRepository;
 import com.finanzapp.app.util.Result;
 
@@ -18,19 +20,36 @@ public class TransactionViewModel extends ViewModel {
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
     private final CategoryRepository categoryRepository;
+    private final FamilyRepository familyRepository;
     
     private final MutableLiveData<Result<Boolean>> operationResult = new MutableLiveData<>();
+    private final MutableLiveData<List<com.finanzapp.app.data.model.Member>> members = new MutableLiveData<>();
 
     public TransactionViewModel(TransactionRepository transactionRepository, 
                                 AccountRepository accountRepository, 
-                                CategoryRepository categoryRepository) {
+                                CategoryRepository categoryRepository,
+                                FamilyRepository familyRepository) {
         this.transactionRepository = transactionRepository;
         this.accountRepository = accountRepository;
         this.categoryRepository = categoryRepository;
+        this.familyRepository = familyRepository;
     }
 
     public LiveData<List<Transaction>> getTransactions(String familyId) {
         return transactionRepository.getTransactions(familyId);
+    }
+
+    public LiveData<List<Transaction>> getFilteredTransactions(String familyId, String accountId, String categoryId, String type, String paymentMethod, com.google.firebase.Timestamp start, com.google.firebase.Timestamp end) {
+        return transactionRepository.getTransactions(familyId, accountId, categoryId, type, paymentMethod, start, end);
+    }
+
+    public LiveData<List<Member>> getMembers(String familyId) {
+        familyRepository.getMembers(familyId, result -> {
+            if (result instanceof Result.Success) {
+                members.setValue(((Result.Success<List<Member>>) result).getData());
+            }
+        });
+        return members;
     }
 
     public LiveData<List<Account>> getAccounts(String familyId) {

@@ -8,7 +8,7 @@
     <string name="nav_settings">Familia</string>
     <string name="welcome_greeting">¡Hola!</string>
     <string name="net_position">Posición Neta</string>
-    <string name="dashboard_placeholder">Tus cuentas y movimientos aparecerán aquí (Fase 4 y 5)</string>
+    <string name="dashboard_placeholder">Tus cuentas y movimientos aparecerán aquí (Fase 7)</string>
     <string name="desc_settings">Ajustes</string>
     <string name="family_label">Familia</string>
     <string name="invite_code_label">Código de invitación</string>
@@ -30,4 +30,33 @@
     <string name="options_desc">Opciones</string>
     <string name="menu_make_admin">Hacer administrador</string>
     <string name="menu_remove_admin">Quitar administrador</string>
+
+    <!-- Transactions -->
+    <string name="transactions_title">Movimientos</string>
+    <string name="add_transaction">Añadir movimiento</string>
+    <string name="filter_all_accounts">Todas las cuentas</string>
+    <string name="filter_all_categories">Todas las categorías</string>
+    <string name="filter_all_types">Todos los tipos</string>
+    <string name="filter_all_methods">Todos los métodos</string>
+    <string name="filter_expenses">Gastos</string>
+    <string name="filter_income">Ingresos</string>
+    <string name="filter_dates">Fechas</string>
+    <string name="clear_filters">Limpiar filtros</string>
+    <string name="delete_transaction_title">Borrar movimiento</string>
+    <string name="delete_transaction_message">¿Estás seguro de que quieres borrar este movimiento? El saldo de la cuenta se ajustará automáticamente.</string>
+    <string name="transaction_saved">Movimiento guardado</string>
+    <string name="transaction_updated">Movimiento actualizado</string>
+    <string name="operation_success">Operación realizada</string>
+    <string name="by_user">por %1$s</string>
+    <string name="error_amount">Introduce un importe</string>
+    <string name="error_account">Selecciona una cuenta</string>
+    <string name="error_category">Selecciona una categoría</string>
+    <string name="empty_transactions_title">No hay movimientos</string>
+    <string name="empty_transactions_desc">Pulsa el botón + para añadir uno</string>
+    <string name="filter_section_title">Filtrar movimientos</string>
+    <string name="label_account">Cuenta</string>
+    <string name="label_category">Categoría</string>
+    <string name="label_type">Tipo</string>
+    <string name="label_method">Método</string>
+    <string name="label_date_range">Rango de fechas</string>
 </resources>
