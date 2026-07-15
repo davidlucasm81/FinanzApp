@@ -29,17 +29,17 @@
 - [x] **Crear familia**: formulario con nombre + selector de moneda (lista corta de ISO 4217 comunes: EUR, USD, GBP, etc.). Al confirmar: crear `families/{familyId}` con `inviteCode` generado y único, crear `families/{familyId}/members/{uid}` con `role: admin`, actualizar `users/{uid}.familyId`.
 - [x] Al crear la familia, sembrar las categorías por defecto (Fase 5) en `families/{familyId}/categories`.
 - [x] **Cuentas iniciales (posición neta inicial)**: tras el formulario de nombre + moneda, añadir un paso más al asistente de creación de familia — "Añade tus cuentas" — que permita dar de alta N cuentas (nombre, saldo inicial) reutilizando el mismo formulario de la Fase 4 (`AddEditAccountFragment`/`AccountViewModel`), o pulsar "Continuar sin cuentas" para añadirlas más tarde desde Ajustes. La suma de los `initialBalance` de las cuentas dadas de alta aquí es la posición neta inicial de la familia.
-  - ⚠️ Dependencia con la Fase 4: para implementar esta tarea hace falta adelantar el modelo `Account` + `AccountRepository` y una versión mínima del formulario de alta de cuenta (nombre, saldo inicial). Constrúyelos aquí aunque el resto de la Fase 4 (listado completo, archivado, etc.) se termine después.
-  - **2026-07-13**: se elimina el campo "tipo de cuenta" del modelo y del formulario — una cuenta se define únicamente por su nombre y su saldo inicial. Verificado el flujo completo: `CreateFamilyFragment` crea familia+member admin, navega con `familyId` a `AddInitialAccountsFragment`, que usa `AccountViewModel`/`AccountRepository` para dar de alta cuentas ya como miembro existente de la familia.
-  - **2026-07-13**: se elimina el campo "tipo de cuenta" del modelo y del formulario — una cuenta se define únicamente por su nombre y su saldo inicial.
+    - ⚠️ Dependencia con la Fase 4: para implementar esta tarea hace falta adelantar el modelo `Account` + `AccountRepository` y una versión mínima del formulario de alta de cuenta (nombre, saldo inicial). Constrúyelos aquí aunque el resto de la Fase 4 (listado completo, archivado, etc.) se termine después.
+    - **2026-07-13**: se elimina el campo "tipo de cuenta" del modelo y del formulario — una cuenta se define únicamente por su nombre y su saldo inicial. Verificado el flujo completo: `CreateFamilyFragment` crea familia+member admin, navega con `familyId` a `AddInitialAccountsFragment`, que usa `AccountViewModel`/`AccountRepository` para dar de alta cuentas ya como miembro existente de la familia.
+    - **2026-07-13**: se elimina el campo "tipo de cuenta" del modelo y del formulario — una cuenta se define únicamente por su nombre y su saldo inicial.
 - [x] Ampliar las reglas de seguridad de Firestore para que el creador de la familia pueda, durante el propio alta, escribir también en `families/{familyId}/accounts`; volver a probar con el Firebase Emulator Suite.
 - [x] **Unirse por código**: input del código → buscar la familia por `inviteCode` → crear entrada en `invitations` (`type: code_request`, `status: pending`) → navegar a "Esperando aprobación".
 - [x] **Unirse por invitación de correo**: tras el login, comprobar si existe alguna `invitation` con `type: email_invite`, `targetEmail == email del usuario`, `status: pending`. Si existe, mostrar "Te han invitado a la familia X" con aceptar/rechazar. Al aceptar: crear `member` con `status: approved` directamente, marcar `invitation.status = accepted`, actualizar `users/{uid}.familyId`.
 - [x] Escribir las reglas de seguridad de Firestore de esta fase (creación de familia, members, invitations) y probarlas con el Firebase Emulator Suite antes de continuar.
 
 ## Fase 3 — Gestión de la Familia y Ajustes
- - [x] Pantalla de perfil/ajustes: ver datos del usuario, cerrar sesión.
- - [x] **Gestión de miembros**:
+- [x] Pantalla de perfil/ajustes: ver datos del usuario, cerrar sesión.
+- [x] **Gestión de miembros**:
     - [x] Listado de miembros de la unidad familiar (nombre, email, rol).
     - [x] Botón "Invitar miembro" (abre diálogo para introducir email) — `InviteMemberFragment` implementado.
     - [x] Listado de solicitudes de unión por código (`code_request`) pendientes (solo para admins) — Integrado en `MemberListFragment`.
@@ -47,14 +47,14 @@
     - [x] **Modificar rol de miembros**: permitir a un admin cambiar el rol de otro miembro (de "member" a "admin" y viceversa).
     - [x] **Rol de Dueño (Owner)**: implementar el rol `owner`. El creador de la familia es el `owner`. Solo el `owner` puede cambiar roles de otros `admin`. El `owner` no puede ser degradado por un `admin`.
     - [x] **Traspaso de Propiedad**: al abandonar la familia, si el que sale es el `owner`, la propiedad se traspasa al admin más antiguo (o miembro si no hay admins). Si es el único miembro, la familia se borra.
- - [x] Configuración de la familia (solo admins): editar nombre de la familia, cambiar moneda (con aviso de que no recalcula históricos) — `FamilySettingsFragment`.
- - [x] **Abandonar familia**:
+- [x] Configuración de la familia (solo admins): editar nombre de la familia, cambiar moneda (con aviso de que no recalcula históricos) — `FamilySettingsFragment`.
+- [x] **Abandonar familia**:
     - [x] Acción de "Salirse de la familia".
     - [x] Lógica: si es el único miembro, borrar la familia y todas sus subcolecciones (limpieza total) — repository realiza borrado básico; se recomienda borrado recursivo adicional en el futuro.
     - [x] Lógica: si hay más miembros y es el único admin, pedir promover a otro antes de salir o promover automáticamente (implementación automática de promoción en `FamilyRepository`).
     - [x] Actualizar `users/{uid}.familyId = null` y navegar a Onboarding (la navegación al salir queda hecha hacia el inicio; el flujo de onboarding depende del guard routing en la app).
- - [x] Borrado de cuenta (opcional): eliminar `users/{uid}` y forzar salida de la familia.
- - [x] **Mejoras de UX y Estabilidad (Fase 3 bis)**:
+- [x] Borrado de cuenta (opcional): eliminar `users/{uid}` y forzar salida de la familia.
+- [x] **Mejoras de UX y Estabilidad (Fase 3 bis)**:
     - [x] Rediseño del Dashboard: prioridad al nombre de la familia y foto de perfil (Glide).
     - [x] Navegación de Ajustes: acceso a perfil vía foto y a familia vía barra inferior.
     - [x] Seguridad en Borrado: verificación mediante frase escrita ("BORRAR CUENTA").
@@ -62,6 +62,7 @@
     - [x] Onboarding Inteligente: detección automática de invitaciones pendientes en la pantalla de Bienvenida para acceso directo.
     - [x] Código de Familia: visualización y opción de copiar el código de invitación desde los ajustes de familia.
     - [x] Limpieza de Recursos: eliminación de escuchas (listeners) de Firestore al cerrar sesión para evitar errores de permisos.
+    - [x] **Edge-to-edge / insets del sistema**: `MainActivity` aplica `WindowInsets` manualmente (`systemBars`) para que el `NavHostFragment` no quede debajo de la status bar y el `BottomNavigationView` respete la barra de gestos inferior (`android:clipToPadding="false"` en `activity_main.xml` + listener en `MainActivity.onCreate()`). Necesario porque el `targetSdk` reciente activa edge-to-edge por defecto.
 
 ## Fase 4 — Cuentas bancarias
 > Nota: la parte mínima de esta fase (modelo `Account` + formulario de alta con nombre/saldo inicial) puede haberse adelantado ya en la Fase 2, porque el asistente de creación de familia permite dar de alta cuentas y fijar la posición neta inicial en el propio onboarding. Aquí se completa/consolida el resto: listado, edición posterior del saldo inicial, archivado, borrado y reglas de seguridad definitivas.
@@ -77,11 +78,11 @@
 - [x] Modelo `Category` + `CategoryRepository`.
 - [x] Categorías por defecto a sembrar al crear la familia (ejemplo: Nómina, Otros ingresos, Alimentación, Vivienda, Transporte, Ocio, Salud, Educación, Otros gastos).
 - [x] Pantalla de gestión de categorías: listar, añadir personalizada (nombre, tipo, icono/color), editar, eliminar (solo si no está en uso, o marcarla inactiva).
-  - [x] Listado y borrado de categorías.
-  - [x] **Edición y colores**: Permitir editar categorías existentes y asociarles un color personalizado de una paleta (RGB wheel).
-  - [x] **Borrado de categorías predeterminadas**: Permitir borrar categorías por defecto.
-  - [x] **Control de integridad**: Impedir borrar categorías que ya hayan sido utilizadas en movimientos. El usuario debe borrar primero el movimiento.
-  - [x] **Acceso restringido**: El botón de gestionar categorías solo debe ser visible para usuarios con rol `admin` o `owner`.
+    - [x] Listado y borrado de categorías.
+    - [x] **Edición y colores**: Permitir editar categorías existentes y asociarles un color personalizado de una paleta (RGB wheel).
+    - [x] **Borrado de categorías predeterminadas**: Permitir borrar categorías por defecto.
+    - [x] **Control de integridad**: Impedir borrar categorías que ya hayan sido utilizadas en movimientos. El usuario debe borrar primero el movimiento.
+    - [x] **Acceso restringido**: El botón de gestionar categorías solo debe ser visible para usuarios con rol `admin` o `owner`.
 
 ## Fase 6 — Registro de movimientos (gasto/ingreso)
 - [x] Modelo `Transaction` + `TransactionRepository`.
