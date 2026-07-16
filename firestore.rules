@@ -122,11 +122,14 @@ service cloud.firestore {
         // Creation is allowed for members (including becoming-members in the same batch)
         allow create: if isMember(familyId);
 
-        // Updates: allow admins to update any field. Allow regular members to update
-        // only non-privileged fields (for example: name).
+        // Updates: admin/owner puede editar cualquier campo (nombre, initialBalance, active, etc.).
+        // Un member normal NO puede editar la cuenta (ni siquiera el nombre); la única excepción
+        // es el campo `currentBalance`, que se actualiza automáticamente y de forma atómica al
+        // registrar/editar/borrar un movimiento (ver TransactionRepository) — eso sí debe poder
+        // hacerlo cualquier member, o no podría registrar ingresos/gastos.
         allow update: if isAdmin(familyId) || (
           isMember(familyId)
-          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['name'])
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['currentBalance'])
         );
 
         // Deletion (physical) and archiving should be restricted to admins
