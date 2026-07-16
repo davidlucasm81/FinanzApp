@@ -25,6 +25,10 @@
         <!-- Typography -->
         <item name="android:textColorPrimary">@color/on_background_dark</item>
         <item name="android:textColorSecondary">@color/gray_300</item>
+        <!-- Sin esto, algunos EditText sin estilo Material explícito (p.ej. cuando falta
+             el style OutlinedBox/FilledBox en el TextInputEditText hijo) heredan el hint
+             color por defecto de la plataforma, poco legible en modo oscuro. -->
+        <item name="android:textColorHint">@color/gray_300</item>
 
         <!-- Button Styles -->
         <item name="materialButtonStyle">@style/Widget.FinanzApp.Button</item>

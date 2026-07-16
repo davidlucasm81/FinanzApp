@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Colócalo en: app/src/main/res/color/selector_text_field_stroke.xml
+
+    Antes, app:boxStrokeColor="?attr/colorPrimary" aplicaba el mismo color en todos
+    los estados. Con este selector, el borde es sutil (textColorSecondary) cuando el
+    campo no tiene foco -igual que el borde de los Spinners de al lado (Cuenta,
+    Categoría, Método de pago)-, y se resalta con colorPrimary solo al escribir.
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="?attr/colorOnSurface" android:state_focused="true" />
+    <item android:color="?attr/android:textColorSecondary" />
+</selector>

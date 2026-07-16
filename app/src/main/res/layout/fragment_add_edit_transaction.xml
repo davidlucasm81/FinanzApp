@@ -110,14 +110,18 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
                 android:hint="Descripción"
+                app:boxBackgroundMode="outline"
+                app:boxBackgroundColor="?attr/colorSurface"
                 app:hintTextColor="?attr/colorPrimary"
-                app:boxStrokeColor="?attr/colorPrimary">
+                app:boxStrokeColor="@color/selector_text_field_stroke">
 
                 <com.google.android.material.textfield.TextInputEditText
+                    style="@style/Widget.MaterialComponents.TextInputEditText.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="textCapSentences"
-                    android:textColor="?attr/colorOnSurface" />
+                    android:textColor="?attr/colorOnSurface"
+                    android:textColorHint="?attr/android:textColorSecondary" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <TextView

@@ -148,7 +148,26 @@ public class ManageCategoriesFragment extends Fragment {
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             Category category = categories.get(position);
             holder.tvName.setText(category.getName());
-            holder.tvType.setText("income".equals(category.getAppliesTo()) ? "Ingreso" : "Gasto");
+            String typeText;
+            switch (category.getAppliesTo()) {
+                case "income":
+                    typeText = "Ingreso";
+                    break;
+
+                case "expense":
+                    typeText = "Gasto";
+                    break;
+
+                case "both":
+                    typeText = "Ingreso / Gasto";
+                    break;
+
+                default:
+                    typeText = "-";
+                    break;
+            }
+
+            holder.tvType.setText(typeText);
             
             int color = android.graphics.Color.parseColor(category.getColor() != null ? category.getColor() : "#808080");
             

@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
@@ -84,8 +85,8 @@ public class AddEditCategoryDialogFragment extends DialogFragment {
 
         TextView tvTitle = view.findViewById(R.id.tv_dialog_title);
         TextInputLayout tilName = view.findViewById(R.id.til_category_name);
-        RadioButton rbExpense = view.findViewById(R.id.rb_expense);
-        RadioButton rbIncome = view.findViewById(R.id.rb_income);
+        CheckBox cbExpense = view.findViewById(R.id.cb_expense);
+        CheckBox cbIncome = view.findViewById(R.id.cb_income);
         viewSelectedColor = view.findViewById(R.id.view_selected_color);
         Button btnPickColor = view.findViewById(R.id.btn_pick_color);
         Button btnSave = view.findViewById(R.id.btn_save);
@@ -110,10 +111,19 @@ public class AddEditCategoryDialogFragment extends DialogFragment {
             if (tilName.getEditText() != null) {
                 tilName.getEditText().setText(categoryToEdit.getName());
             }
-            if ("income".equals(categoryToEdit.getAppliesTo())) {
-                rbIncome.setChecked(true);
-            } else {
-                rbExpense.setChecked(true);
+            switch (categoryToEdit.getAppliesTo()) {
+                case "income":
+                    cbIncome.setChecked(true);
+                    break;
+
+                case "expense":
+                    cbExpense.setChecked(true);
+                    break;
+
+                case "both":
+                    cbIncome.setChecked(true);
+                    cbExpense.setChecked(true);
+                    break;
             }
         }
 
@@ -129,8 +139,37 @@ public class AddEditCategoryDialogFragment extends DialogFragment {
                 return;
             }
 
-            String type = rbIncome.isChecked() ? "income" : "expense";
-            String icon = rbIncome.isChecked() ? "ic_income" : "ic_expense";
+            if (!cbIncome.isChecked() && !cbExpense.isChecked()) {
+                Toast.makeText(requireContext(),
+                        "Selecciona al menos un tipo",
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            String type;
+
+            if (cbIncome.isChecked() && cbExpense.isChecked()) {
+                type = "both";
+            } else if (cbIncome.isChecked()) {
+                type = "income";
+            } else {
+                type = "expense";
+            }
+
+            String icon;
+            switch (type) {
+                case "income":
+                    icon = "ic_income";
+                    break;
+
+                case "expense":
+                    icon = "ic_expense";
+                    break;
+
+                default:
+                    icon = "ic_category"; // icono genérico para categorías mixtas
+                    break;
+            }
 
             if (categoryToEdit == null) {
                 Category newCategory = new Category(null, name, type, icon, selectedColor, false, FirebaseAuth.getInstance().getUid());
