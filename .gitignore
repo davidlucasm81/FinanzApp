@@ -23,3 +23,5 @@ google-services.json
 
 # Artefactos generados por herramientas de agente (Claude Code, etc.)
 .artifacts/
+
+app/release/*
