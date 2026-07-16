@@ -13,6 +13,7 @@ googleid = "1.2.0"
 desugar_jdk_libs = "2.1.5"
 navigation = "2.8.5"
 colorpicker = "2.3"
+mpandroidchart = "v3.1.0"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -31,6 +32,7 @@ desugar_jdk_libs = { group = "com.android.tools", name = "desugar_jdk_libs", ver
 androidx-navigation-fragment = { group = "androidx.navigation", name = "navigation-fragment", version.ref = "navigation" }
 androidx-navigation-ui = { group = "androidx.navigation", name = "navigation-ui", version.ref = "navigation" }
 colorpicker = { group = "com.github.Dhaval2404", name = "ColorPicker", version.ref = "colorpicker" }
+mpandroidchart = { group = "com.github.PhilJay", name = "MPAndroidChart", version.ref = "mpandroidchart" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

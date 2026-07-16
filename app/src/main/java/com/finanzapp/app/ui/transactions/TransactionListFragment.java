@@ -43,9 +43,11 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public class TransactionListFragment extends Fragment {
     private TransactionViewModel viewModel;
@@ -73,6 +75,9 @@ public class TransactionListFragment extends Fragment {
 
     private List<Account> allAccounts = new ArrayList<>();
     private List<Category> allCategories = new ArrayList<>();
+    // Cuentas archivadas: se excluyen del spinner de filtro y de la lista de movimientos,
+    // ya que la lista de movimientos debe mostrar exclusivamente movimientos de cuentas activas.
+    private final Set<String> archivedAccountIds = new HashSet<>();
 
     @Nullable
     @Override
@@ -297,12 +302,25 @@ public class TransactionListFragment extends Fragment {
 
         viewModel.getAccounts(familyId).observe(getViewLifecycleOwner(), accounts -> {
             if (accounts != null) {
-                allAccounts = accounts;
                 accountNames.clear();
-                List<String> names = new ArrayList<>();
-                names.add(getString(R.string.filter_all_accounts));
+                archivedAccountIds.clear();
+                // El repositorio devuelve tanto cuentas activas como archivadas (otras pantallas
+                // necesitan verlas todas). Aquí nos quedamos solo con las activas para el spinner
+                // de filtro, y guardamos las archivadas para poder excluir sus movimientos más abajo.
+                List<Account> activeAccounts = new ArrayList<>();
                 for (Account a : accounts) {
                     accountNames.put(a.getId(), a.getName());
+                    if (a.isActive()) {
+                        activeAccounts.add(a);
+                    } else {
+                        archivedAccountIds.add(a.getId());
+                    }
+                }
+                allAccounts = activeAccounts;
+
+                List<String> names = new ArrayList<>();
+                names.add(getString(R.string.filter_all_accounts));
+                for (Account a : activeAccounts) {
                     names.add(a.getName());
                 }
                 ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, names);
@@ -317,6 +335,10 @@ public class TransactionListFragment extends Fragment {
                     @Override
                     public void onNothingSelected(AdapterView<?> parent) {}
                 });
+
+                // Puede que ya hubiera movimientos pintados (sin filtrar por archivadas) antes de
+                // que se resolviera esta llamada; recalculamos para aplicar el filtro correctamente.
+                updateTransactions();
             }
         });
 
@@ -352,8 +374,18 @@ public class TransactionListFragment extends Fragment {
                 .observe(getViewLifecycleOwner(), transactions -> {
                     progressBar.setVisibility(View.GONE);
                     if (transactions != null) {
-                        adapter.updateTransactions(transactions);
-                        emptyState.setVisibility(transactions.isEmpty() ? View.VISIBLE : View.GONE);
+                        // El listado de movimientos debe ser exclusivamente de cuentas activas:
+                        // TransactionRepository no distingue cuentas archivadas (no tiene por qué
+                        // conocer ese concepto), así que se descartan aquí los movimientos cuya
+                        // cuenta esté en archivedAccountIds.
+                        List<Transaction> visibleTransactions = new ArrayList<>();
+                        for (Transaction t : transactions) {
+                            if (!archivedAccountIds.contains(t.getAccountId())) {
+                                visibleTransactions.add(t);
+                            }
+                        }
+                        adapter.updateTransactions(visibleTransactions);
+                        emptyState.setVisibility(visibleTransactions.isEmpty() ? View.VISIBLE : View.GONE);
                     }
                 });
 

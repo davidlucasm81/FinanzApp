@@ -29,8 +29,10 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class DashboardViewModel extends ViewModel {
     private final AuthRepository authRepository;
@@ -50,10 +52,17 @@ public class DashboardViewModel extends ViewModel {
 
     private ListenerRegistration userListener;
 
+    // Último estado conocido de cada fuente async, para poder recalcular las estadísticas
+    // (ingresos/gastos/desglose por categoría) cada vez que cambia cualquiera de ellas,
+    // filtrando siempre por cuentas activas (ver sección "Decisiones tomadas" en AGENTS.md).
+    private Set<String> activeAccountIds = null; // null = todavía no ha llegado el primer snapshot de cuentas
+    private List<Transaction> latestTransactions = new ArrayList<>();
+    private List<Category> latestCategories = new ArrayList<>();
+
     public DashboardViewModel(AuthRepository authRepository, FamilyRepository familyRepository) {
         this.authRepository = authRepository;
         this.familyRepository = familyRepository;
-        
+
         // Default range: current month
         Calendar cal = Calendar.getInstance();
         cal.set(Calendar.DAY_OF_MONTH, 1);
@@ -61,11 +70,11 @@ public class DashboardViewModel extends ViewModel {
         cal.set(Calendar.MINUTE, 0);
         cal.set(Calendar.SECOND, 0);
         long start = cal.getTimeInMillis();
-        
+
         cal.add(Calendar.MONTH, 1);
         cal.add(Calendar.SECOND, -1);
         long end = cal.getTimeInMillis();
-        
+
         dateRange.setValue(new Pair<>(start, end));
     }
 
@@ -132,12 +141,21 @@ public class DashboardViewModel extends ViewModel {
             if (accounts != null) {
                 accountsList.postValue(accounts);
                 double total = 0;
+                Set<String> activeIds = new HashSet<>();
                 for (Account account : accounts) {
                     if (account.isActive()) {
                         total += account.getCurrentBalance();
+                        if (account.getId() != null) {
+                            activeIds.add(account.getId());
+                        }
                     }
                 }
                 netBalance.postValue(total);
+                // Guardamos el set de cuentas activas y recalculamos las estadísticas del
+                // periodo (ingresos/gastos/desglose por categoría), que deben excluir siempre
+                // los movimientos de cuentas archivadas, igual que ya se hace con el saldo total.
+                activeAccountIds = activeIds;
+                recomputeStatistics();
             }
         });
 
@@ -145,7 +163,7 @@ public class DashboardViewModel extends ViewModel {
         Pair<Long, Long> range = dateRange.getValue();
         Timestamp start = null;
         Timestamp end = null;
-        
+
         if (range != null) {
             start = new Timestamp(new Date(range.first));
             end = new Timestamp(new Date(range.second));
@@ -154,12 +172,45 @@ public class DashboardViewModel extends ViewModel {
         LiveData<List<Transaction>> transactionsRange = transactionRepository.getTransactions(familyId, null, null, null, null, start, end);
         LiveData<List<Category>> categories = categoryRepository.getCategories(familyId);
 
-        // Combine categories and transactions to build the breakdown
+        // Cada fuente guarda su último valor conocido y dispara un recálculo; así el
+        // desglose se mantiene correcto sin importar en qué orden lleguen los snapshots
+        // de cuentas, categorías o movimientos (los tres llegan de listeners independientes).
         categories.observeForever(categoryList -> {
-            transactionsRange.observeForever(transactions -> {
-                processTransactions(transactions, categoryList);
-            });
+            latestCategories = (categoryList != null) ? categoryList : new ArrayList<>();
+            recomputeStatistics();
         });
+
+        transactionsRange.observeForever(transactions -> {
+            latestTransactions = (transactions != null) ? transactions : new ArrayList<>();
+            recomputeStatistics();
+        });
+    }
+
+    /**
+     * Recalcula ingresos, gastos y desglose por categoría del periodo seleccionado a partir
+     * del último estado conocido de cuentas activas, movimientos y categorías. Se llama cada
+     * vez que cambia cualquiera de esas tres fuentes.
+     * <p>
+     * Importante: todas las estadísticas del Dashboard deben considerar únicamente cuentas
+     * activas (igual que el saldo total), por lo que los movimientos de cuentas archivadas se
+     * descartan aquí antes de sumar nada. Este mismo criterio debe aplicarse en la Fase 8
+     * (Estadísticas avanzadas) desde el principio.
+     */
+    private void recomputeStatistics() {
+        if (activeAccountIds == null) {
+            // Aún no ha llegado el primer snapshot de cuentas; no hay forma de saber qué
+            // movimientos pertenecen a cuentas activas todavía.
+            return;
+        }
+
+        List<Transaction> activeAccountTransactions = new ArrayList<>();
+        for (Transaction t : latestTransactions) {
+            if (t.getAccountId() != null && activeAccountIds.contains(t.getAccountId())) {
+                activeAccountTransactions.add(t);
+            }
+        }
+
+        processTransactions(activeAccountTransactions, latestCategories);
     }
 
     private void processTransactions(List<Transaction> transactions, List<Category> categories) {

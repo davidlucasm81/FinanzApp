@@ -21,7 +21,14 @@ public class DashboardAccountAdapter extends RecyclerView.Adapter<DashboardAccou
 
     public void setItems(List<Account> newItems, String currencyCode) {
         this.items.clear();
-        this.items.addAll(newItems);
+        // El Dashboard solo debe mostrar cuentas activas: una cuenta archivada
+        // (active == false) sigue existiendo para conservar el histórico de
+        // movimientos, pero no debe listarse aquí ni sumar en el desglose.
+        for (Account account : newItems) {
+            if (account.isActive()) {
+                this.items.add(account);
+            }
+        }
         this.currencyCode = currencyCode;
         notifyDataSetChanged();
     }
