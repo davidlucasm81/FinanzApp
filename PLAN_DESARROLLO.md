@@ -115,10 +115,10 @@
     - [x] Se sustituyen los colores de importe (ingreso/gasto) codificados en hexadecimal por los recursos `@color/success` y `@color/error` de `colors.xml`, para mantener consistencia con la paleta de la app.
 
 ## Fase 7 — Posición neta / Dashboard
-- [ ] Pantalla principal (home tras login): saldo total de la familia (suma de `currentBalance` de cuentas activas).
-- [ ] Desglose por cuenta (lista/tarjetas).
-- [ ] Desglose ingresos vs gastos del periodo seleccionado (selector: mes actual / últimos 3 meses / año / rango personalizado).
-- [ ] Desglose por categoría del periodo seleccionado (lista ordenada de mayor a menor importe).
+- [x] Pantalla principal (home tras login): saldo total de la familia (suma de `currentBalance` de cuentas activas).
+- [x] Desglose por cuenta (lista/tarjetas).
+- [x] Desglose ingresos vs gastos del periodo seleccionado (selector: rango de fechas personalizado mediante un selector de fecha desde/hasta).
+- [x] Desglose por categoría del periodo seleccionado (lista ordenada de mayor a menor importe).
 
 ## Fase 8 — Estadísticas avanzadas
 - [ ] Añadir dependencia MPAndroidChart.
