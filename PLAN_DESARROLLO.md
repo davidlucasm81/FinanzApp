@@ -97,6 +97,12 @@
 - [x] Listado de movimientos con filtros: por cuenta, por categoría, por rango de fechas, por tipo y método de pago. Soporte completo para modo oscuro y UI adaptativa.
 - [x] Mostrar en el detalle del movimiento quién lo registró.
 - [x] Reglas de seguridad para `transactions`.
+- [x] **Correcciones de UX en la pantalla de Movimientos (2026-07-16)**:
+    - [x] Indicador de carga (`ProgressBar`) mientras se buscan/filtran movimientos, visible desde que cambia cualquier filtro hasta que llega el resultado de Firestore.
+    - [x] Mostrar el método de pago de cada movimiento en el listado (`item_transaction.xml`), reutilizando el mapeo código→etiqueta ya existente para los filtros.
+    - [x] Navegación de vuelta al Dashboard desde Movimientos: flecha atrás en la Toolbar (`ic_arrow_back`) que hace `navigateUp()`.
+    - [x] El color de la categoría (`Category.color`) ahora se usa realmente en el listado: un punto de color y el nombre de la categoría se pintan con ese color (con fallback a `colorPrimary` del tema si el valor no es válido).
+    - [x] Se sustituyen los colores de importe (ingreso/gasto) codificados en hexadecimal por los recursos `@color/success` y `@color/error` de `colors.xml`, para mantener consistencia con la paleta de la app.
 
 ## Fase 7 — Posición neta / Dashboard
 - [ ] Pantalla principal (home tras login): saldo total de la familia (suma de `currentBalance` de cuentas activas).

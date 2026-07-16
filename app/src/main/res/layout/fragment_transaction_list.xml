@@ -23,6 +23,8 @@
                 android:id="@+id/toolbar"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
+                app:navigationIcon="@drawable/ic_arrow_back"
+                app:navigationIconTint="?attr/colorPrimary"
                 app:title="@string/transactions_title"
                 app:titleTextColor="?attr/colorPrimary"
                 app:titleMarginStart="16dp">
@@ -67,6 +69,14 @@
             android:paddingBottom="88dp"
             app:layout_behavior="@string/appbar_scrolling_view_behavior"
             tools:listitem="@layout/item_transaction" />
+
+        <ProgressBar
+            android:id="@+id/pb_loading"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center"
+            android:visibility="gone"
+            tools:visibility="visible" />
 
         <LinearLayout
             android:id="@+id/ll_empty_state"

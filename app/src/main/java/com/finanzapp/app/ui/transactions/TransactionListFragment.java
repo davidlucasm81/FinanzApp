@@ -52,15 +52,18 @@ public class TransactionListFragment extends Fragment {
     private TransactionAdapter adapter;
     private String familyId;
     private final Map<String, String> categoryNames = new HashMap<>();
+    private final Map<String, String> categoryColors = new HashMap<>();
     private final Map<String, String> accountNames = new HashMap<>();
     private final Map<String, String> memberNames = new HashMap<>();
+    private final Map<String, String> paymentMethodLabels = new HashMap<>();
 
     private Spinner spinnerFilterAccount, spinnerFilterCategory, spinnerFilterType, spinnerFilterMethod;
     private View btnFilterDate, emptyState;
     private ImageButton btnClearFiltersTop;
     private View btnClearFiltersDrawer;
     private DrawerLayout drawerLayout;
-    
+    private View progressBar;
+
     private String filterAccountId = null;
     private String filterCategoryId = null;
     private String filterType = null;
@@ -82,14 +85,14 @@ public class TransactionListFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         FinanzAppApplication.AppContainer appContainer = ((FinanzAppApplication) requireActivity().getApplication()).getAppContainer();
-        ViewModelFactory factory = new ViewModelFactory(appContainer.getAuthRepository(), appContainer.getFamilyRepository(), 
-                                                        appContainer.getAccountRepository(), appContainer.getCategoryRepository(),
-                                                        appContainer.getTransactionRepository());
+        ViewModelFactory factory = new ViewModelFactory(appContainer.getAuthRepository(), appContainer.getFamilyRepository(),
+                appContainer.getAccountRepository(), appContainer.getCategoryRepository(),
+                appContainer.getTransactionRepository());
         viewModel = new ViewModelProvider(this, factory).get(TransactionViewModel.class);
 
         RecyclerView rvTransactions = view.findViewById(R.id.rv_transactions);
         FloatingActionButton fabAdd = view.findViewById(R.id.fab_add_transaction);
-        
+
         spinnerFilterAccount = view.findViewById(R.id.spinner_filter_account);
         spinnerFilterCategory = view.findViewById(R.id.spinner_filter_category);
         spinnerFilterType = view.findViewById(R.id.spinner_filter_type);
@@ -98,12 +101,20 @@ public class TransactionListFragment extends Fragment {
         btnClearFiltersTop = view.findViewById(R.id.btn_clear_filters_top);
         btnClearFiltersDrawer = view.findViewById(R.id.btn_clear_filters_drawer);
         emptyState = view.findViewById(R.id.ll_empty_state);
+        progressBar = view.findViewById(R.id.pb_loading);
         drawerLayout = view.findViewById(R.id.drawer_layout);
         View btnOpenFilters = view.findViewById(R.id.btn_open_filters);
+        androidx.appcompat.widget.Toolbar toolbar = view.findViewById(R.id.toolbar);
+
+        toolbar.setNavigationOnClickListener(v -> Navigation.findNavController(view).navigateUp());
 
         btnOpenFilters.setOnClickListener(v -> drawerLayout.openDrawer(androidx.core.view.GravityCompat.END));
 
-        adapter = new TransactionAdapter(new ArrayList<>(), categoryNames, accountNames, memberNames, new TransactionAdapter.OnTransactionClickListener() {
+        for (int i = 0; i < paymentMethods.length; i++) {
+            paymentMethodLabels.put(paymentMethodValues[i], paymentMethods[i]);
+        }
+
+        adapter = new TransactionAdapter(new ArrayList<>(), categoryNames, categoryColors, accountNames, memberNames, paymentMethodLabels, new TransactionAdapter.OnTransactionClickListener() {
             @Override
             public void onTransactionClick(Transaction t) {
                 Bundle args = new Bundle();
@@ -133,11 +144,11 @@ public class TransactionListFragment extends Fragment {
     }
 
     private final String[] paymentMethods = {
-            "Tarjeta", "Efectivo", "Transferencia", "Bizum", 
+            "Tarjeta", "Efectivo", "Transferencia", "Bizum",
             "Tarjeta restaurante", "Tarjeta transporte", "Domiciliación bancaria"
     };
     private final String[] paymentMethodValues = {
-            "tarjeta", "efectivo", "transferencia", "bizum", 
+            "tarjeta", "efectivo", "transferencia", "bizum",
             "tarjeta_restaurante", "tarjeta_transporte", "domiciliacion_bancaria"
     };
 
@@ -167,7 +178,7 @@ public class TransactionListFragment extends Fragment {
         List<String> methodsList = new ArrayList<>();
         methodsList.add(getString(R.string.filter_all_methods));
         for (String m : paymentMethods) methodsList.add(m);
-        
+
         ArrayAdapter<String> methodAdapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, methodsList);
         methodAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerFilterMethod.setAdapter(methodAdapter);
@@ -188,33 +199,33 @@ public class TransactionListFragment extends Fragment {
 
     private void showDateRangePicker() {
         Calendar now = Calendar.getInstance();
-        
+
         DatePickerDialog startPicker = new DatePickerDialog(requireContext(), (view, year, month, day) -> {
             Calendar startCal = Calendar.getInstance();
             startCal.set(year, month, day, 0, 0, 0);
             startCal.set(Calendar.MILLISECOND, 0);
-            
+
             DatePickerDialog endPicker = new DatePickerDialog(requireContext(), (view2, year2, month2, day2) -> {
                 Calendar endCal = Calendar.getInstance();
                 endCal.set(year2, month2, day2, 23, 59, 59);
                 endCal.set(Calendar.MILLISECOND, 999);
-                
+
                 if (endCal.before(startCal)) {
                     Toast.makeText(requireContext(), "La fecha de fin debe ser posterior a la de inicio", Toast.LENGTH_LONG).show();
                     return;
                 }
-                
+
                 filterStartDate = startCal;
                 filterEndDate = endCal;
                 updateTransactions();
             }, year, month, day);
-            
+
             endPicker.setTitle("Selecciona fecha de fin");
             endPicker.show();
-            
+
         }, filterStartDate != null ? filterStartDate.get(Calendar.YEAR) : now.get(Calendar.YEAR),
-           filterStartDate != null ? filterStartDate.get(Calendar.MONTH) : now.get(Calendar.MONTH),
-           filterStartDate != null ? filterStartDate.get(Calendar.DAY_OF_MONTH) : now.get(Calendar.DAY_OF_MONTH));
+                filterStartDate != null ? filterStartDate.get(Calendar.MONTH) : now.get(Calendar.MONTH),
+                filterStartDate != null ? filterStartDate.get(Calendar.DAY_OF_MONTH) : now.get(Calendar.DAY_OF_MONTH));
 
         startPicker.setTitle("Selecciona fecha de inicio");
         startPicker.show();
@@ -260,12 +271,15 @@ public class TransactionListFragment extends Fragment {
             if (categories != null) {
                 allCategories = categories;
                 categoryNames.clear();
+                categoryColors.clear();
                 List<String> names = new ArrayList<>();
                 names.add(getString(R.string.filter_all_categories));
                 for (Category c : categories) {
                     categoryNames.put(c.getId(), c.getName());
+                    categoryColors.put(c.getId(), c.getColor());
                     names.add(c.getName());
                 }
+                adapter.notifyDataSetChanged();
                 ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, names);
                 adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
                 spinnerFilterCategory.setAdapter(adapter);
@@ -315,7 +329,7 @@ public class TransactionListFragment extends Fragment {
         });
 
         updateTransactions();
-        
+
         viewModel.getOperationResult().observe(getViewLifecycleOwner(), result -> {
             if (result instanceof Result.Success) {
                 Toast.makeText(requireContext(), getString(R.string.operation_success), Toast.LENGTH_SHORT).show();
@@ -330,15 +344,19 @@ public class TransactionListFragment extends Fragment {
 
         Timestamp start = filterStartDate != null ? new Timestamp(filterStartDate.getTime()) : null;
         Timestamp end = filterEndDate != null ? new Timestamp(filterEndDate.getTime()) : null;
-        
+
+        progressBar.setVisibility(View.VISIBLE);
+        emptyState.setVisibility(View.GONE);
+
         viewModel.getFilteredTransactions(familyId, filterAccountId, filterCategoryId, filterType, filterMethod, start, end)
                 .observe(getViewLifecycleOwner(), transactions -> {
+                    progressBar.setVisibility(View.GONE);
                     if (transactions != null) {
                         adapter.updateTransactions(transactions);
                         emptyState.setVisibility(transactions.isEmpty() ? View.VISIBLE : View.GONE);
                     }
                 });
-        
+
         boolean hasFilters = filterAccountId != null || filterCategoryId != null || filterType != null || filterMethod != null || filterStartDate != null;
         btnClearFiltersTop.setVisibility(hasFilters ? View.VISIBLE : View.GONE);
         btnClearFiltersDrawer.setVisibility(hasFilters ? View.VISIBLE : View.GONE);
@@ -359,19 +377,24 @@ public class TransactionListFragment extends Fragment {
 
         private final List<Transaction> transactions;
         private final Map<String, String> categoryNames;
+        private final Map<String, String> categoryColors;
         private final Map<String, String> accountNames;
         private final Map<String, String> memberNames;
+        private final Map<String, String> paymentMethodLabels;
         private final OnTransactionClickListener listener;
         private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd MMM yyyy", Locale.getDefault());
         private final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(new Locale("es", "ES"));
 
-        TransactionAdapter(List<Transaction> transactions, Map<String, String> categoryNames, 
-                           Map<String, String> accountNames, Map<String, String> memberNames,
+        TransactionAdapter(List<Transaction> transactions, Map<String, String> categoryNames,
+                           Map<String, String> categoryColors, Map<String, String> accountNames,
+                           Map<String, String> memberNames, Map<String, String> paymentMethodLabels,
                            OnTransactionClickListener listener) {
             this.transactions = transactions;
             this.categoryNames = categoryNames;
+            this.categoryColors = categoryColors;
             this.accountNames = accountNames;
             this.memberNames = memberNames;
+            this.paymentMethodLabels = paymentMethodLabels;
             this.listener = listener;
         }
 
@@ -391,12 +414,20 @@ public class TransactionListFragment extends Fragment {
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             Transaction t = transactions.get(position);
-            
+
             holder.tvDate.setText(t.getDate() != null ? dateFormat.format(t.getDate().toDate()) : "");
             holder.tvCategory.setText(categoryNames.getOrDefault(t.getCategoryId(), "Categoría"));
             holder.tvDescription.setText(t.getDescription());
             holder.tvAccount.setText(accountNames.getOrDefault(t.getAccountId(), "Cuenta"));
-            
+
+            int defaultCategoryColor = resolveColorPrimary(holder.itemView.getContext());
+            int categoryColor = parseColorSafe(categoryColors.get(t.getCategoryId()), defaultCategoryColor);
+            holder.tvCategory.setTextColor(categoryColor);
+            holder.vCategoryColor.setBackgroundTintList(android.content.res.ColorStateList.valueOf(categoryColor));
+
+            String methodLabel = paymentMethodLabels.getOrDefault(t.getPaymentMethod(), t.getPaymentMethod());
+            holder.tvPaymentMethod.setText(methodLabel != null ? methodLabel : "");
+
             String creatorName = memberNames.getOrDefault(t.getCreatedBy(), "Usuario");
             holder.tvCreator.setText(holder.itemView.getContext().getString(R.string.by_user, creatorName));
 
@@ -404,7 +435,8 @@ public class TransactionListFragment extends Fragment {
             double amount = t.getAmount();
             String amountStr = (isIncome ? "+" : "-") + currencyFormat.format(amount);
             holder.tvAmount.setText(amountStr);
-            holder.tvAmount.setTextColor(isIncome ? 0xFF2E7D32 : 0xFFB00020);
+            int amountColorRes = isIncome ? R.color.success : R.color.error;
+            holder.tvAmount.setTextColor(androidx.core.content.ContextCompat.getColor(holder.itemView.getContext(), amountColorRes));
 
             holder.itemView.setOnClickListener(v -> listener.onTransactionClick(t));
             holder.itemView.setOnLongClickListener(v -> {
@@ -418,8 +450,24 @@ public class TransactionListFragment extends Fragment {
             return transactions.size();
         }
 
+        private static int resolveColorPrimary(android.content.Context context) {
+            android.util.TypedValue typedValue = new android.util.TypedValue();
+            context.getTheme().resolveAttribute(android.R.attr.colorPrimary, typedValue, true);
+            return typedValue.data;
+        }
+
+        private static int parseColorSafe(String colorStr, int fallback) {
+            if (colorStr == null || colorStr.isEmpty()) return fallback;
+            try {
+                return android.graphics.Color.parseColor(colorStr);
+            } catch (IllegalArgumentException e) {
+                return fallback;
+            }
+        }
+
         static class ViewHolder extends RecyclerView.ViewHolder {
-            TextView tvDate, tvCategory, tvDescription, tvAmount, tvAccount, tvCreator;
+            TextView tvDate, tvCategory, tvDescription, tvAmount, tvAccount, tvCreator, tvPaymentMethod;
+            View vCategoryColor;
 
             ViewHolder(View itemView) {
                 super(itemView);
@@ -429,6 +477,8 @@ public class TransactionListFragment extends Fragment {
                 tvAmount = itemView.findViewById(R.id.tv_amount);
                 tvAccount = itemView.findViewById(R.id.tv_account);
                 tvCreator = itemView.findViewById(R.id.tv_creator);
+                tvPaymentMethod = itemView.findViewById(R.id.tv_payment_method);
+                vCategoryColor = itemView.findViewById(R.id.v_category_color);
             }
         }
     }

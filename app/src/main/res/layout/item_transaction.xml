@@ -26,18 +26,37 @@
             app:layout_constraintTop_toTopOf="parent"
             tools:text="15 Jul 2026" />
 
-        <TextView
-            android:id="@+id/tv_category"
+        <LinearLayout
+            android:id="@+id/row_category"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:textColor="?attr/colorPrimary"
-            android:textSize="16sp"
-            android:textStyle="bold"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
             app:layout_constraintEnd_toStartOf="@+id/tv_amount"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tv_date"
-            tools:text="Supermercado" />
+            app:layout_constraintTop_toBottomOf="@id/tv_date">
+
+            <View
+                android:id="@+id/v_category_color"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/dot_separator"
+                tools:backgroundTint="@color/error" />
+
+            <TextView
+                android:id="@+id/tv_category"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                tools:text="Supermercado" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/tv_description"
@@ -50,7 +69,7 @@
             android:textSize="14sp"
             app:layout_constraintEnd_toStartOf="@+id/tv_amount"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tv_category"
+            app:layout_constraintTop_toBottomOf="@id/row_category"
             tools:text="Compra semanal Mercadona" />
 
         <TextView
@@ -81,6 +100,21 @@
                 android:textColor="?attr/android:textColorSecondary"
                 android:textSize="11sp"
                 tools:text="Cuenta Corriente" />
+
+            <View
+                android:layout_width="4dp"
+                android:layout_height="4dp"
+                android:layout_marginHorizontal="8dp"
+                android:alpha="0.3"
+                android:background="@drawable/dot_separator" />
+
+            <TextView
+                android:id="@+id/tv_payment_method"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="?attr/android:textColorSecondary"
+                android:textSize="11sp"
+                tools:text="Tarjeta" />
 
             <View
                 android:layout_width="4dp"
