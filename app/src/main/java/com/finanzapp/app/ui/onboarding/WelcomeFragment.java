@@ -56,14 +56,22 @@ public class WelcomeFragment extends Fragment {
                 Navigation.findNavController(v).navigate(R.id.settingsFragment));
 
         binding.btnAcceptInvite.setOnClickListener(v -> {
-            if (currentInvitation != null && viewModel.getPendingFamilyIdValue() != null) {
-                viewModel.acceptInvitation(currentInvitation, viewModel.getPendingFamilyIdValue());
+            String pendingFamilyId = viewModel.getPendingInvitationFamilyIdValue();
+            if (currentInvitation != null && pendingFamilyId != null) {
+                viewModel.acceptInvitation(currentInvitation, pendingFamilyId);
+            } else {
+                android.util.Log.w("WelcomeFragment", "No se pudo aceptar: currentInvitation=" + currentInvitation + ", pendingInvitationFamilyId=" + pendingFamilyId);
+                android.widget.Toast.makeText(requireContext(), "No se pudo procesar la invitación, inténtalo de nuevo", android.widget.Toast.LENGTH_SHORT).show();
             }
         });
 
         binding.btnRejectInvite.setOnClickListener(v -> {
-            if (currentInvitation != null && viewModel.getPendingFamilyIdValue() != null) {
-                viewModel.rejectInvitation(viewModel.getPendingFamilyIdValue(), currentInvitation.getId());
+            String pendingFamilyId = viewModel.getPendingInvitationFamilyIdValue();
+            if (currentInvitation != null && pendingFamilyId != null) {
+                viewModel.rejectInvitation(pendingFamilyId, currentInvitation.getId());
+            } else {
+                android.util.Log.w("WelcomeFragment", "No se pudo rechazar: currentInvitation=" + currentInvitation + ", pendingInvitationFamilyId=" + pendingFamilyId);
+                android.widget.Toast.makeText(requireContext(), "No se pudo procesar la invitación, inténtalo de nuevo", android.widget.Toast.LENGTH_SHORT).show();
             }
         });
 

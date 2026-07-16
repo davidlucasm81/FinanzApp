@@ -27,6 +27,29 @@ public class AcceptInvitationFragment extends Fragment {
     private String invitationId;
     private String familyId;
 
+    /**
+     * Usar este constructor cuando quien navega hasta aquí (p. ej. la pantalla de
+     * Bienvenida) ya ha localizado la invitación pendiente, para no repetir la
+     * consulta ni depender de que termine antes de que el usuario pulse un botón.
+     */
+    public static AcceptInvitationFragment newInstance(String invitationId, String familyId) {
+        AcceptInvitationFragment fragment = new AcceptInvitationFragment();
+        Bundle args = new Bundle();
+        args.putString("invitationId", invitationId);
+        args.putString("familyId", familyId);
+        fragment.setArguments(args);
+        return fragment;
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        if (getArguments() != null) {
+            invitationId = getArguments().getString("invitationId");
+            familyId = getArguments().getString("familyId");
+        }
+    }
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -38,39 +61,67 @@ public class AcceptInvitationFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // For now, let's assume we fetch the invitation from the arguments
-        // or just look for the pending email invite again.
-        checkPendingInvitation();
-
         binding.btnAccept.setOnClickListener(v -> acceptInvitation());
         binding.btnReject.setOnClickListener(v -> rejectInvitation());
+
+        if (invitationId != null && familyId != null) {
+            // Ya nos pasaron la invitación resuelta: los botones pueden usarse ya.
+            setButtonsEnabled(true);
+        } else {
+            // Fallback: no nos pasaron argumentos, la buscamos nosotros mismos.
+            setButtonsEnabled(false);
+            checkPendingInvitation();
+        }
+    }
+
+    private void setButtonsEnabled(boolean enabled) {
+        binding.btnAccept.setEnabled(enabled);
+        binding.btnReject.setEnabled(enabled);
     }
 
     private void checkPendingInvitation() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null || user.getEmail() == null) return;
+        if (user == null || user.getEmail() == null) {
+            Toast.makeText(requireContext(), "No se pudo verificar tu sesión", Toast.LENGTH_SHORT).show();
+            Navigation.findNavController(requireView()).popBackStack();
+            return;
+        }
+
+        String normalizedEmail = user.getEmail().toLowerCase().trim();
 
         FirebaseFirestore.getInstance().collectionGroup(FirestorePaths.INVITATIONS)
                 .whereEqualTo("type", "email_invite")
-                .whereEqualTo("targetEmail", user.getEmail())
+                .whereEqualTo("targetEmail", normalizedEmail)
                 .whereEqualTo("status", "pending")
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     if (!queryDocumentSnapshots.isEmpty() && queryDocumentSnapshots.getDocuments().get(0).getReference().getParent().getParent() != null) {
                         invitationId = queryDocumentSnapshots.getDocuments().get(0).getId();
                         familyId = queryDocumentSnapshots.getDocuments().get(0).getReference().getParent().getParent().getId();
+                        setButtonsEnabled(true);
                     } else {
-                        // No invite found, go back
+                        Toast.makeText(requireContext(), "La invitación ya no está disponible", Toast.LENGTH_SHORT).show();
                         Navigation.findNavController(requireView()).popBackStack();
                     }
+                })
+                .addOnFailureListener(e -> {
+                    // Antes este fallo era silencioso: familyId/invitationId se quedaban a null
+                    // para siempre y pulsar "Aceptar" no hacía nada. Ahora lo mostramos.
+                    android.util.Log.e("AcceptInvitation", "Error buscando invitación pendiente", e);
+                    Toast.makeText(requireContext(), "No se pudo comprobar tu invitación. Inténtalo de nuevo.", Toast.LENGTH_LONG).show();
                 });
     }
 
     private void acceptInvitation() {
-        if (familyId == null || invitationId == null) return;
+        if (familyId == null || invitationId == null) {
+            Toast.makeText(requireContext(), "Todavía estamos comprobando tu invitación, espera un momento", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
         if (firebaseUser == null) return;
+
+        setButtonsEnabled(false);
 
         WriteBatch batch = FirebaseFirestore.getInstance().batch();
 
@@ -98,17 +149,32 @@ public class AcceptInvitationFragment extends Fragment {
             if (task.isSuccessful()) {
                 navigateToMain();
             } else {
+                setButtonsEnabled(true);
+                android.util.Log.e("AcceptInvitation", "Error al aceptar invitación", task.getException());
                 Toast.makeText(requireContext(), "Error al aceptar invitación", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
     private void rejectInvitation() {
-        if (familyId == null || invitationId == null) return;
+        if (familyId == null || invitationId == null) {
+            Toast.makeText(requireContext(), "Todavía estamos comprobando tu invitación, espera un momento", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        setButtonsEnabled(false);
 
         FirebaseFirestore.getInstance().collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.INVITATIONS).document(invitationId)
                 .update("status", "rejected", "resolvedAt", Timestamp.now(), "resolvedByUid", FirebaseAuth.getInstance().getUid())
-                .addOnCompleteListener(task -> Navigation.findNavController(requireView()).popBackStack());
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        Navigation.findNavController(requireView()).popBackStack();
+                    } else {
+                        setButtonsEnabled(true);
+                        android.util.Log.e("AcceptInvitation", "Error al rechazar invitación", task.getException());
+                        Toast.makeText(requireContext(), "Error al rechazar invitación", Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     private void navigateToMain() {

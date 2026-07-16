@@ -622,6 +622,25 @@ public class FamilyRepository {
         return 1;
     }
 
+    /**
+     * Expulsa a un miembro de la familia: borra su documento en members/ y limpia
+     * su users/{uid}.familyId para que vuelva al flujo de onboarding. Las reglas de
+     * seguridad exigen que quien llama sea admin/owner de esa familia.
+     */
+    public void removeMember(String familyId, String memberUid, ApproveCallback callback) {
+        WriteBatch batch = db.batch();
+        batch.delete(db.collection(FirestorePaths.getMembersPath(familyId)).document(memberUid));
+        batch.update(db.collection(FirestorePaths.USERS).document(memberUid), "familyId", null);
+
+        batch.commit().addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                callback.onResult(new Result.Success<>(true));
+            } else {
+                callback.onResult(new Result.Error<>(task.getException()));
+            }
+        });
+    }
+
     public void updateMemberRole(String familyId, String memberUid, String newRole, ApproveCallback callback) {
         db.collection(FirestorePaths.getMembersPath(familyId)).document(memberUid)
                 .update("role", newRole)

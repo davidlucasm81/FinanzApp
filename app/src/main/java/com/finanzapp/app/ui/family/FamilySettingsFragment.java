@@ -190,6 +190,14 @@ public class FamilySettingsFragment extends Fragment {
                 String role = member.getRole();
                 boolean isAdminOrOwner = "admin".equals(role) || "owner".equals(role);
                 btnManageCategories.setVisibility(isAdminOrOwner ? View.VISIBLE : View.GONE);
+
+                // Solo admin/owner pueden editar el nombre de la familia y su moneda
+                btnSave.setVisibility(isAdminOrOwner ? View.VISIBLE : View.GONE);
+                if (tilName.getEditText() != null) {
+                    tilName.getEditText().setEnabled(isAdminOrOwner);
+                }
+                tilName.setHelperText(isAdminOrOwner ? null : "Solo un admin puede editar el nombre de la familia");
+                spinnerCurrency.setEnabled(isAdminOrOwner);
             }
         });
     }

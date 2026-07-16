@@ -45,6 +45,17 @@ service cloud.firestore {
           && exists(/databases/$(database)/documents/families/$(request.resource.data.familyId)/members/$(request.auth.uid))
           && (get(/databases/$(database)/documents/families/$(request.resource.data.familyId)/members/$(request.auth.uid)).data.role == 'admin' ||
               get(/databases/$(database)/documents/families/$(request.resource.data.familyId)/members/$(request.auth.uid)).data.role == 'owner')
+        )
+        // Allow an admin/owner to clear (set to null) the familyId of a member they are
+        // removing (kicking) from their own family.
+        || (
+          request.auth != null
+          && request.resource.data.familyId == null
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['familyId'])
+          && resource.data.familyId is string
+          && exists(/databases/$(database)/documents/families/$(resource.data.familyId)/members/$(request.auth.uid))
+          && (get(/databases/$(database)/documents/families/$(resource.data.familyId)/members/$(request.auth.uid)).data.role == 'admin' ||
+              get(/databases/$(database)/documents/families/$(resource.data.familyId)/members/$(request.auth.uid)).data.role == 'owner')
         );
     }
 
@@ -69,10 +80,37 @@ service cloud.firestore {
       // Invitations
       match /invitations/{invitationId} {
         allow read: if request.auth != null && (isMember(familyId) || request.auth.uid == resource.data.requestedByUid || request.auth.token.email == resource.data.targetEmail);
-        allow create: if request.auth != null;
-        allow update, delete: if isAdmin(familyId) ||
-                              (request.auth != null && request.auth.uid == resource.data.requestedByUid) ||
-                              (request.auth != null && request.auth.token.email == resource.data.targetEmail);
+
+        // Anyone authenticated can request to join by code (code_request).
+        // Only an admin/owner of the family can create an email invitation.
+        allow create: if request.auth != null && (
+          request.resource.data.type == 'code_request' ||
+          (request.resource.data.type == 'email_invite' && isAdmin(familyId))
+        );
+
+        // Deleting/withdrawing an invitation: an admin can always remove it, the
+        // original requester of a code_request can withdraw their own pending request,
+        // and the target of an email invite can delete it (used to reject it).
+        allow delete: if isAdmin(familyId) ||
+                      (request.auth != null && request.auth.uid == resource.data.requestedByUid) ||
+                      (request.auth != null && request.auth.token.email == resource.data.targetEmail);
+
+        // Updating status: only an admin/owner may approve/reject a join request.
+        // A requester may only withdraw (reject) their own code_request, never approve it.
+        // The target of an email invite may only accept or reject their own invitation.
+        allow update: if isAdmin(familyId) ||
+                      (
+                        request.auth != null
+                        && request.auth.uid == resource.data.requestedByUid
+                        && request.resource.data.status == 'rejected'
+                        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'resolvedAt', 'resolvedByUid'])
+                      ) ||
+                      (
+                        request.auth != null
+                        && request.auth.token.email == resource.data.targetEmail
+                        && request.resource.data.status in ['accepted', 'rejected']
+                        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'resolvedAt', 'resolvedByUid'])
+                      );
       }
 
       // Accounts: allow members to read and create accounts; only admins may perform

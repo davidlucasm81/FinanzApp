@@ -82,21 +82,28 @@ public class MemberAdapter extends RecyclerView.Adapter<MemberAdapter.ViewHolder
             }
         } else if (item.getType() == MemberListItem.TYPE_INVITATION) {
             Invitation i = item.getInvitation();
+            boolean isAdminOrOwner = "admin".equals(userRole) || "owner".equals(userRole);
+
             // Para invitaciones por email, mostrar el email como nombre principal
             holder.binding.tvName.setText(i.getTargetEmail() != null ? i.getTargetEmail() : "-");
             holder.binding.tvEmail.setText("Invitación enviada");
             holder.binding.tvRole.setVisibility(View.GONE);
             
             holder.binding.tvPendingTag.setVisibility(View.VISIBLE);
-            holder.binding.btnCancelInvite.setVisibility(View.VISIBLE);
-            
-            holder.binding.btnCancelInvite.setOnClickListener(v -> {
-                if (actionListener != null) {
-                    actionListener.onCancel(i);
-                }
-            });
+            // Solo admin/owner pueden invitar, así que solo ellos pueden cancelar la invitación
+            holder.binding.btnCancelInvite.setVisibility(isAdminOrOwner ? View.VISIBLE : View.GONE);
+
+            if (isAdminOrOwner) {
+                holder.binding.btnCancelInvite.setOnClickListener(v -> {
+                    if (actionListener != null) {
+                        actionListener.onCancel(i);
+                    }
+                });
+            }
         } else if (item.getType() == MemberListItem.TYPE_REQUEST) {
             Invitation i = item.getInvitation();
+            boolean isAdminOrOwner = "admin".equals(userRole) || "owner".equals(userRole);
+
             // Mostrar nombre o email si el nombre no está disponible
             String displayName = i.getRequesterName() != null && !i.getRequesterName().isEmpty()
                 ? i.getRequesterName()
@@ -106,19 +113,22 @@ public class MemberAdapter extends RecyclerView.Adapter<MemberAdapter.ViewHolder
             holder.binding.tvRole.setVisibility(View.GONE);
 
             holder.binding.tvPendingTag.setVisibility(View.VISIBLE);
-            holder.binding.layoutRequestActions.setVisibility(View.VISIBLE);
+            // Solo admin/owner pueden aprobar/rechazar solicitudes de unión
+            holder.binding.layoutRequestActions.setVisibility(isAdminOrOwner ? View.VISIBLE : View.GONE);
 
-            holder.binding.btnApprove.setOnClickListener(v -> {
-                if (actionListener != null) {
-                    actionListener.onApprove(i);
-                }
-            });
+            if (isAdminOrOwner) {
+                holder.binding.btnApprove.setOnClickListener(v -> {
+                    if (actionListener != null) {
+                        actionListener.onApprove(i);
+                    }
+                });
 
-            holder.binding.btnReject.setOnClickListener(v -> {
-                if (actionListener != null) {
-                    actionListener.onReject(i);
-                }
-            });
+                holder.binding.btnReject.setOnClickListener(v -> {
+                    if (actionListener != null) {
+                        actionListener.onReject(i);
+                    }
+                });
+            }
         }
     }
 

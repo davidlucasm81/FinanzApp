@@ -47,7 +47,7 @@ public class WaitingApprovalFragment extends Fragment {
 
         // Check if we already have the pending data stored from fetchPendingCodeRequest (called by Welcome)
         // If not, fetch it now
-        String currentFamilyId = viewModel.getPendingFamilyIdValue();
+        String currentFamilyId = viewModel.getPendingCodeRequestFamilyIdValue();
         if (currentFamilyId == null) {
             android.util.Log.d("WaitingApprovalFragment", "familyId is null, calling fetchPendingCodeRequest");
             String uid = FirebaseAuth.getInstance().getUid();
@@ -94,7 +94,7 @@ public class WaitingApprovalFragment extends Fragment {
                 if (inv != null) {
                     android.util.Log.d("WaitingApprovalFragment", "Invitation from observer: id=" + inv.getId());
                     // Get the familyId which should have been set by the same callback that updated pendingCodeRequest
-                    String familyId = viewModel.getPendingFamilyIdValue();
+                    String familyId = viewModel.getPendingCodeRequestFamilyIdValue();
                     android.util.Log.d("WaitingApprovalFragment", "FamilyId from ViewModel: " + familyId);
                     if (familyId != null) {
                         pendingInvitation = inv;

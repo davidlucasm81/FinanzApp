@@ -10,6 +10,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -199,25 +200,60 @@ public class MemberListFragment extends Fragment {
         }
         adapter.setItems(items, userRole, myUid);
         tvEmpty.setVisibility(items.isEmpty() ? View.VISIBLE : View.GONE);
+
+        // Solo admin/owner pueden invitar nuevos miembros
+        boolean isAdminOrOwner = "admin".equals(userRole) || "owner".equals(userRole);
+        btnInvite.setVisibility(isAdminOrOwner ? View.VISIBLE : View.GONE);
     }
 
     private void showRoleOptions(Member member, View anchor) {
+        // Nota: este menú solo se ofrece cuando MemberAdapter ya ha determinado que el
+        // usuario actual puede gestionar a este miembro (es owner, o es admin y el
+        // miembro objetivo no es admin/owner), así que aquí no hace falta repetir esa
+        // comprobación de permisos: tanto cambiar el rol como expulsar están cubiertos.
         android.widget.PopupMenu popup = new android.widget.PopupMenu(requireContext(), anchor);
-        
+
         boolean targetIsAdmin = "admin".equals(member.getRole());
-        String menuItemTitle = targetIsAdmin 
-                ? getString(com.finanzapp.app.R.string.menu_remove_admin) 
+        String roleMenuTitle = targetIsAdmin
+                ? getString(com.finanzapp.app.R.string.menu_remove_admin)
                 : getString(com.finanzapp.app.R.string.menu_make_admin);
-        
-        popup.getMenu().add(menuItemTitle);
-        
+
+        final int ID_TOGGLE_ROLE = 1;
+        final int ID_REMOVE_MEMBER = 2;
+
+        popup.getMenu().add(0, ID_TOGGLE_ROLE, 0, roleMenuTitle);
+        popup.getMenu().add(0, ID_REMOVE_MEMBER, 1, "Expulsar de la familia");
+
         popup.setOnMenuItemClickListener(item -> {
-            String newRole = targetIsAdmin ? "member" : "admin";
-            viewModel.updateMemberRole(familyId, member.getUid(), newRole);
-            return true;
+            if (item.getItemId() == ID_TOGGLE_ROLE) {
+                String newRole = targetIsAdmin ? "member" : "admin";
+                viewModel.updateMemberRole(familyId, member.getUid(), newRole);
+                return true;
+            } else if (item.getItemId() == ID_REMOVE_MEMBER) {
+                confirmRemoveMember(member);
+                return true;
+            }
+            return false;
         });
-        
+
         popup.show();
+    }
+
+    private void confirmRemoveMember(Member member) {
+        String name = member.getDisplayName() != null && !member.getDisplayName().isEmpty()
+                ? member.getDisplayName()
+                : (member.getEmail() != null ? member.getEmail() : "este miembro");
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Expulsar miembro")
+                .setMessage("¿Seguro que quieres expulsar a " + name + " de la familia? Podrá volver a unirse más adelante con el código de invitación.")
+                .setPositiveButton("Expulsar", (dialog, which) -> {
+                    if (familyId != null) {
+                        viewModel.removeMember(familyId, member.getUid());
+                    }
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
     }
 
     @Override

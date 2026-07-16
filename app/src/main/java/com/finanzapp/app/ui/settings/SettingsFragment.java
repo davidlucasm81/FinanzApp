@@ -85,6 +85,8 @@ public class SettingsFragment extends Fragment {
                 Toast.makeText(requireContext(), "Cuenta borrada con éxito", Toast.LENGTH_SHORT).show();
                 navigateToSplash();
             } else if (result instanceof Result.Error) {
+                Exception e = ((Result.Error<?>) result).getException();
+                android.util.Log.e("SettingsFragment", "Error al borrar cuenta", e);
                 Toast.makeText(requireContext(), "Error al borrar cuenta", Toast.LENGTH_SHORT).show();
             }
         });
@@ -100,7 +102,7 @@ public class SettingsFragment extends Fragment {
     private void showDeleteConfirmation() {
         EditText input = new EditText(requireContext());
         input.setHint(getString(com.finanzapp.app.R.string.delete_account_confirmation_phrase));
-        
+
         LinearLayout container = new LinearLayout(requireContext());
         container.setOrientation(LinearLayout.VERTICAL);
         int padding = (int) (16 * getResources().getDisplayMetrics().density);
@@ -109,7 +111,7 @@ public class SettingsFragment extends Fragment {
 
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
                 .setTitle(com.finanzapp.app.R.string.delete_account_title)
-                .setMessage(Html.fromHtml(getString(com.finanzapp.app.R.string.delete_account_message) + "<br><br>" + 
+                .setMessage(Html.fromHtml(getString(com.finanzapp.app.R.string.delete_account_message) + "<br><br>" +
                         getString(com.finanzapp.app.R.string.delete_account_verification_instruction), Html.FROM_HTML_MODE_LEGACY))
                 .setView(container)
                 .setPositiveButton(com.finanzapp.app.R.string.delete_button, (d, which) -> viewModel.deleteAccount(familyRepository))
@@ -119,7 +121,7 @@ public class SettingsFragment extends Fragment {
         dialog.setOnShowListener(d -> {
             Button deleteBtn = dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE);
             deleteBtn.setEnabled(false);
-            
+
             input.addTextChangedListener(new TextWatcher() {
                 @Override
                 public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -143,5 +145,3 @@ public class SettingsFragment extends Fragment {
         super.onDestroyView();
     }
 }
-
-

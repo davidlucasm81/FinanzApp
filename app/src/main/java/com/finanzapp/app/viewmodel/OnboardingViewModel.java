@@ -18,7 +18,13 @@ public class OnboardingViewModel extends ViewModel {
     private final MutableLiveData<Result<Family>> createFamilyResult = new MutableLiveData<>();
     private final MutableLiveData<Result<Boolean>> joinByCodeResult = new MutableLiveData<>();
     private final MutableLiveData<Result<Invitation>> pendingInvitation = new MutableLiveData<>();
-    private final MutableLiveData<String> pendingFamilyId = new MutableLiveData<>();
+    // Antes había un único `pendingFamilyId` compartido entre el flujo de invitación por
+    // email y el de solicitud por código. Como ambos se consultan casi a la vez desde
+    // WelcomeFragment, el que respondía último pisaba el valor del otro (normalmente el
+    // de code-request, que casi siempre no encuentra nada y sobreescribía con null el
+    // familyId correcto de la invitación por email). Separados para que no se pisen.
+    private final MutableLiveData<String> pendingInvitationFamilyId = new MutableLiveData<>();
+    private final MutableLiveData<String> pendingCodeRequestFamilyId = new MutableLiveData<>();
     private final MutableLiveData<Result<Family>> familyInfo = new MutableLiveData<>();
     private final MutableLiveData<Result<Boolean>> invitationAction = new MutableLiveData<>();
     private final MutableLiveData<Result<Invitation>> pendingCodeRequest = new MutableLiveData<>();
@@ -61,8 +67,12 @@ public class OnboardingViewModel extends ViewModel {
         return lastAction;
     }
 
-    public String getPendingFamilyIdValue() {
-        return pendingFamilyId.getValue();
+    public String getPendingInvitationFamilyIdValue() {
+        return pendingInvitationFamilyId.getValue();
+    }
+
+    public String getPendingCodeRequestFamilyIdValue() {
+        return pendingCodeRequestFamilyId.getValue();
     }
 
     public void fetchUserData() {
@@ -88,7 +98,7 @@ public class OnboardingViewModel extends ViewModel {
         pendingInvitation.setValue(new Result.Loading<>());
         familyRepository.findInvitationByEmail(email, (result, familyId) -> {
             pendingInvitation.postValue(result);
-            pendingFamilyId.postValue(familyId);
+            pendingInvitationFamilyId.postValue(familyId);
             if (result instanceof Result.Success && familyId != null) {
                 fetchFamilyInfo(familyId);
             }
@@ -100,7 +110,7 @@ public class OnboardingViewModel extends ViewModel {
         familyRepository.findPendingCodeRequest(uid, (result, familyId) -> {
             android.util.Log.d("OnboardingViewModel", "Callback received: result=" + result + ", familyId=" + familyId);
             // IMPORTANT: Use postValue (thread-safe) since this comes from Firestore background thread
-            pendingFamilyId.postValue(familyId);
+            pendingCodeRequestFamilyId.postValue(familyId);
             pendingCodeRequest.postValue(result);
             if (result instanceof Result.Success) {
                 android.util.Log.d("OnboardingViewModel", "Pending code request found for uid: " + uid + " familyId: " + familyId);
@@ -136,7 +146,7 @@ public class OnboardingViewModel extends ViewModel {
             if (result instanceof Result.Success && invitation != null && familyId != null) {
                 // Use postValue (thread-safe) since this callback comes from Firestore background thread
                 android.util.Log.d("OnboardingViewModel", "Storing familyId: " + familyId);
-                pendingFamilyId.postValue(familyId);
+                pendingCodeRequestFamilyId.postValue(familyId);
                 pendingCodeRequest.postValue(new Result.Success<>(invitation));
                 android.util.Log.d("OnboardingViewModel", "Stored pending code request and familyId for later cancellation");
             } else if (result instanceof Result.Error) {
