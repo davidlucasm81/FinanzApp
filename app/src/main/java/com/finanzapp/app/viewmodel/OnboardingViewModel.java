@@ -9,14 +9,15 @@ import com.finanzapp.app.data.model.Invitation;
 import com.finanzapp.app.data.model.User;
 import com.finanzapp.app.data.repository.FamilyRepository;
 import com.finanzapp.app.util.Result;
+import com.finanzapp.app.util.SingleLiveEvent;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.finanzapp.app.data.firebase.FirestorePaths;
 
 public class OnboardingViewModel extends ViewModel {
     private final FamilyRepository familyRepository;
-    private final MutableLiveData<Result<Family>> createFamilyResult = new MutableLiveData<>();
-    private final MutableLiveData<Result<Boolean>> joinByCodeResult = new MutableLiveData<>();
+    private final SingleLiveEvent<Result<Family>> createFamilyResult = new SingleLiveEvent<>();
+    private final SingleLiveEvent<Result<Boolean>> joinByCodeResult = new SingleLiveEvent<>();
     private final MutableLiveData<Result<Invitation>> pendingInvitation = new MutableLiveData<>();
     // Antes había un único `pendingFamilyId` compartido entre el flujo de invitación por
     // email y el de solicitud por código. Como ambos se consultan casi a la vez desde
@@ -26,7 +27,7 @@ public class OnboardingViewModel extends ViewModel {
     private final MutableLiveData<String> pendingInvitationFamilyId = new MutableLiveData<>();
     private final MutableLiveData<String> pendingCodeRequestFamilyId = new MutableLiveData<>();
     private final MutableLiveData<Result<Family>> familyInfo = new MutableLiveData<>();
-    private final MutableLiveData<Result<Boolean>> invitationAction = new MutableLiveData<>();
+    private final SingleLiveEvent<Result<Boolean>> invitationAction = new SingleLiveEvent<>();
     private final MutableLiveData<Result<Invitation>> pendingCodeRequest = new MutableLiveData<>();
     private final MutableLiveData<Result<User>> userData = new MutableLiveData<>();
     private String lastAction; // "accepted" | "rejected"

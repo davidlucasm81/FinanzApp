@@ -6,6 +6,7 @@ import com.finanzapp.app.data.model.Family;
 import com.finanzapp.app.data.model.Invitation;
 import com.finanzapp.app.data.model.Member;
 import com.finanzapp.app.data.model.User;
+import com.finanzapp.app.util.CategoryColorPalette;
 import com.finanzapp.app.util.Result;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
@@ -175,7 +176,8 @@ public class FamilyRepository {
         String[] incomeCategories = {"Nómina", "Otros ingresos", "Ingresos extra / Freelance", "Alquileres (ingreso)", "Devoluciones / Reembolsos"};
         for (String name : incomeCategories) {
             DocumentReference ref = categoriesRef.document();
-            Category cat = new Category(ref.getId(), name, "income", "ic_income", "#4CAF50", true, null);
+            String color = CategoryColorPalette.getColorForCategory(name);
+            Category cat = new Category(ref.getId(), name, "income", "ic_income", color, true, null);
             batch.set(ref, cat);
         }
 
@@ -190,7 +192,8 @@ public class FamilyRepository {
         };
         for (String name : expenseCategories) {
             DocumentReference ref = categoriesRef.document();
-            Category cat = new Category(ref.getId(), name, "expense", "ic_expense", "#F44336", true, null);
+            String color = CategoryColorPalette.getColorForCategory(name);
+            Category cat = new Category(ref.getId(), name, "expense", "ic_expense", color, true, null);
             batch.set(ref, cat);
         }
     }

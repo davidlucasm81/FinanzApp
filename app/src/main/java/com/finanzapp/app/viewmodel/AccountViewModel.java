@@ -1,21 +1,21 @@
 package com.finanzapp.app.viewmodel;
 
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.finanzapp.app.data.model.Account;
 import com.finanzapp.app.data.repository.AccountRepository;
 import com.finanzapp.app.util.Result;
+import com.finanzapp.app.util.SingleLiveEvent;
 
 import java.util.List;
 
 public class AccountViewModel extends ViewModel {
     private final AccountRepository accountRepository;
-    private final MutableLiveData<Result<Account>> createResult = new MutableLiveData<>();
-    private final MutableLiveData<Result<Account>> updateResult = new MutableLiveData<>();
-    private final MutableLiveData<Result<String>> archiveResult = new MutableLiveData<>();
-    private final MutableLiveData<Result<String>> deleteResult = new MutableLiveData<>();
+    private final SingleLiveEvent<Result<Account>> createResult = new SingleLiveEvent<>();
+    private final SingleLiveEvent<Result<Account>> updateResult = new SingleLiveEvent<>();
+    private final SingleLiveEvent<Result<String>> archiveResult = new SingleLiveEvent<>();
+    private final SingleLiveEvent<Result<String>> deleteResult = new SingleLiveEvent<>();
 
     public AccountViewModel(AccountRepository accountRepository) {
         this.accountRepository = accountRepository;

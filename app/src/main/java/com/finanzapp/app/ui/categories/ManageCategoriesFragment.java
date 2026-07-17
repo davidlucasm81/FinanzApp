@@ -90,6 +90,9 @@ public class ManageCategoriesFragment extends Fragment {
             }
         });
 
+        // Check if user is admin/owner to show management actions
+        checkAdminRole();
+
         viewModel.getOperationResult().observe(getViewLifecycleOwner(), result -> {
             if (result instanceof Result.Error) {
                 Exception e = ((Result.Error<?>) result).getException();
@@ -100,6 +103,24 @@ public class ManageCategoriesFragment extends Fragment {
                 }
             }
         });
+    }
+
+    private void checkAdminRole() {
+        String uid = FirebaseAuth.getInstance().getUid();
+        if (uid == null || familyId == null) return;
+
+        FirebaseFirestore.getInstance().collection(FirestorePaths.getMembersPath(familyId)).document(uid).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    com.finanzapp.app.data.model.Member member = documentSnapshot.toObject(com.finanzapp.app.data.model.Member.class);
+                    if (member != null) {
+                        boolean isAdmin = "admin".equals(member.getRole()) || "owner".equals(member.getRole());
+                        adapter.setAdmin(isAdmin);
+                        View fab = getView() != null ? getView().findViewById(R.id.fab_add_category) : null;
+                        if (fab != null) {
+                            fab.setVisibility(isAdmin ? View.VISIBLE : View.GONE);
+                        }
+                    }
+                });
     }
 
     private void onEditCategory(Category category) {
@@ -120,6 +141,7 @@ public class ManageCategoriesFragment extends Fragment {
         private final List<Category> categories;
         private final OnCategoryClickListener editListener;
         private final OnCategoryClickListener deleteListener;
+        private boolean isAdmin = false;
 
         interface OnCategoryClickListener {
             void onClick(Category category);
@@ -134,6 +156,11 @@ public class ManageCategoriesFragment extends Fragment {
         void updateCategories(List<Category> newCategories) {
             this.categories.clear();
             this.categories.addAll(newCategories);
+            notifyDataSetChanged();
+        }
+
+        void setAdmin(boolean admin) {
+            this.isAdmin = admin;
             notifyDataSetChanged();
         }
 
@@ -176,8 +203,8 @@ public class ManageCategoriesFragment extends Fragment {
             gd.setColor(color);
             holder.viewColor.setBackground(gd);
 
-            holder.btnDelete.setVisibility(View.VISIBLE);
-            holder.btnEdit.setVisibility(View.VISIBLE);
+            holder.btnDelete.setVisibility(isAdmin ? View.VISIBLE : View.GONE);
+            holder.btnEdit.setVisibility(isAdmin ? View.VISIBLE : View.GONE);
             holder.btnEdit.setOnClickListener(v -> editListener.onClick(category));
             holder.btnDelete.setOnClickListener(v -> deleteListener.onClick(category));
         }

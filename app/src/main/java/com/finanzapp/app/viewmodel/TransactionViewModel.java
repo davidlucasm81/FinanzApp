@@ -13,6 +13,7 @@ import com.finanzapp.app.data.repository.CategoryRepository;
 import com.finanzapp.app.data.repository.FamilyRepository;
 import com.finanzapp.app.data.repository.TransactionRepository;
 import com.finanzapp.app.util.Result;
+import com.finanzapp.app.util.SingleLiveEvent;
 
 import java.util.List;
 
@@ -22,7 +23,7 @@ public class TransactionViewModel extends ViewModel {
     private final CategoryRepository categoryRepository;
     private final FamilyRepository familyRepository;
     
-    private final MutableLiveData<Result<Boolean>> operationResult = new MutableLiveData<>();
+    private final SingleLiveEvent<Result<Boolean>> operationResult = new SingleLiveEvent<>();
     private final MutableLiveData<List<com.finanzapp.app.data.model.Member>> members = new MutableLiveData<>();
 
     public TransactionViewModel(TransactionRepository transactionRepository, 

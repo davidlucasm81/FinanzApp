@@ -25,6 +25,7 @@ Nombre de la app: **FinanzApp**.
 | Base de datos | Cloud Firestore | Tiempo real, offline-first, encaja con el modelo familiar/colaborativo |
 | Gráficos/estadísticas | MPAndroidChart | Librería Java madura, muy usada en apps de finanzas personales, gratuita |
 | Fechas/importes | `java.time` (API desugarizada) para fechas; `NumberFormat`/`Currency` de Java para importes | Evita bugs de zona horaria y de formato de moneda |
+| IA (sugerencia de categorías) | ELIMINADO | Requisito eliminado por decisión del usuario |
 
 Notas:
 - Usa siempre el Firebase BoM (Bill of Materials) más reciente en vez de fijar versiones sueltas de cada librería; comprueba la versión actual en la consola de Firebase / documentación oficial al escribir el `build.gradle`, no la des por supuesta de memoria.
@@ -36,21 +37,22 @@ Notas:
 com.finanzapp.app/
 ├── FinanzAppApplication.java          // Application class, inicializa AppContainer
 ├── data/
-│   ├── model/                    // POJOs: User, Family, Member, Invitation, Account, Transaction, Category
+│   ├── model/                    // POJOs: User, Family, Member, Invitation, Account, Transaction, Category, ImportRowResult
 │   ├── repository/               // AuthRepository, FamilyRepository, AccountRepository, TransactionRepository, CategoryRepository
-│   └── firebase/                 // Constantes de rutas Firestore, mappers documento<->POJO
+│   ├── firebase/                 // Constantes de rutas Firestore, mappers documento<->POJO
+│   └── importer/                  // CsvTransactionParser (detección de delimitador, parseo de filas), TransactionImportRepository (resuelve/crea cuentas y categorías, escribe en batch)
 ├── ui/
 │   ├── auth/                      // LoginActivity/Fragment
 │   ├── onboarding/                // WelcomeFragment, CreateFamilyFragment, InitialAccountsFragment (alta de cuentas + posición neta inicial), JoinByCodeFragment, PendingApprovalFragment, AcceptInvitationFragment
 │   ├── settings/                  // SettingsFragment, ProfileFragment
 │   ├── family/                    // FamilySettingsFragment, MemberListFragment, InviteMemberFragment
 │   ├── accounts/                  // AccountListFragment, AddEditAccountFragment
-│   ├── transactions/              // AddEditTransactionFragment, TransactionListFragment, filtros
+│   ├── transactions/              // AddEditTransactionFragment, TransactionListFragment, filtros, ImportTransactionsFragment (importación CSV)
 │   ├── categories/                // ManageCategoriesFragment
 │   ├── dashboard/                 // DashboardFragment (posición neta)
 │   └── statistics/                // StatisticsFragment + subvistas de gráficos
 ├── viewmodel/                      // Un ViewModel por pantalla (o colocado junto a cada paquete de ui/, a elección del agente)
-└── util/                           // Constants, CurrencyFormatter, DateUtils, Result<T>, InputValidators
+└── util/                           // Constants, CurrencyFormatter, DateUtils, Result<T>, InputValidators, CategoryColorPalette (paleta fija usada para categorías por defecto y para nuevas categorías creadas automáticamente)
 ```
 
 ## 4. Modelo de datos en Firestore
@@ -149,50 +151,78 @@ Si esta interpretación no es correcta, corrígela antes de que el agente empiec
 
 Basado en tu lista, organizada por tipo (nota: en tu tabla original "Hipoteca" aparecía junto a "Ingreso" y "Reformas" junto a "Gasto", pero eso era el cruce accidental de dos columnas independientes de la hoja de cálculo — Hipoteca es un gasto). Se han añadido algunas categorías de ingreso adicionales, ya que la lista original solo traía "Nómina", y unas pocas de gasto habituales en una economía familiar española que no estaban (Impuestos, Comunidad, Mascotas, Donaciones). Todas son editables/eliminables desde la app; esto es solo el set semilla.
 
+Desde el 2026-07-17, cada categoría del set semilla lleva también un `color` fijo (hex `#RRGGBB`), asignado a mano para que la primera vez que la familia abre la app las categorías ya se vean distinguibles entre sí sin que nadie tenga que personalizarlas. Estos mismos 33 colores forman la paleta `CategoryColorPalette` (`util/`), que se reutiliza para: (a) colorear cualquier categoría nueva creada automáticamente durante la importación CSV (sección "Importación de movimientos desde CSV" más abajo) — eligiendo el primer color de la paleta no usado todavía por otra categoría de la misma familia, o si ya se han agotado los 33, generando uno determinista a partir de un hash del nombre; y (b) proponer color en las sugerencias de categorías por IA (ver "Sugerencia de categorías por IA"). El color de una categoría, sea semilla o creada automáticamente, sigue siendo editable a mano por el usuario en cualquier momento (Fase 5), esto no cambia.
+
 **Ingreso**
 
-| Categoría | `appliesTo` |
-|---|---|
-| Nómina | income |
-| Otros ingresos | income |
-| Ingresos extra / Freelance | income |
-| Alquileres (ingreso) | income |
-| Devoluciones / Reembolsos | income |
+| Categoría | `appliesTo` | Color |
+|---|---|---|
+| Nómina | income | `#2E7D32` |
+| Otros ingresos | income | `#558B2F` |
+| Ingresos extra / Freelance | income | `#00897B` |
+| Alquileres (ingreso) | income | `#00695C` |
+| Devoluciones / Reembolsos | income | `#43A047` |
 
 **Gasto**
 
-| Categoría | `appliesTo` |
-|---|---|
-| Hipoteca | expense |
-| Reformas | expense |
-| Servicios | expense |
-| Internet | expense |
-| Seguros | expense |
-| Supermercado | expense |
-| Restaurantes | expense |
-| Alcohol | expense |
-| Transporte | expense |
-| Salud | expense |
-| Ropa | expense |
-| Educación | expense |
-| Ocio | expense |
-| Viajes | expense |
-| Ahorros | expense |
-| Informática | expense |
-| Libros | expense |
-| Streaming | expense |
-| Deporte | expense |
-| Bebidas | expense |
-| Peluquería | expense |
-| Regalos | expense |
-| Hogar | expense |
-| Misceláneo | expense |
-| Impuestos | expense |
-| Comunidad | expense |
-| Mascotas | expense |
-| Donaciones | expense |
+| Categoría | `appliesTo` | Color |
+|---|---|---|
+| Hipoteca | expense | `#6D4C41` |
+| Reformas | expense | `#8D6E63` |
+| Servicios | expense | `#455A64` |
+| Internet | expense | `#1E88E5` |
+| Seguros | expense | `#3949AB` |
+| Supermercado | expense | `#F4511E` |
+| Restaurantes | expense | `#FB8C00` |
+| Alcohol | expense | `#6A1B9A` |
+| Transporte | expense | `#039BE5` |
+| Salud | expense | `#E53935` |
+| Ropa | expense | `#D81B60` |
+| Educación | expense | `#5E35B1` |
+| Ocio | expense | `#F9A825` |
+| Viajes | expense | `#00ACC1` |
+| Ahorros | expense | `#7CB342` |
+| Informática | expense | `#546E7A` |
+| Libros | expense | `#8E24AA` |
+| Streaming | expense | `#C2185B` |
+| Deporte | expense | `#26A69A` |
+| Bebidas | expense | `#FFB300` |
+| Peluquería | expense | `#EC407A` |
+| Regalos | expense | `#AB47BC` |
+| Hogar | expense | `#A1887F` |
+| Misceláneo | expense | `#78909C` |
+| Impuestos | expense | `#C62828` |
+| Comunidad | expense | `#4527A0` |
+| Mascotas | expense | `#FF7043` |
+| Donaciones | expense | `#66BB6A` |
 
 Ninguna categoría usa `appliesTo: "both"` en el set semilla; si el usuario necesita una categoría mixta (por ejemplo "Ajustes") puede crearla manualmente marcándola como tal.
+
+### Importación de movimientos desde CSV
+
+Requisito nuevo (2026-07-17): permitir importar movimientos en bloque desde un fichero exportado por el usuario (por ejemplo desde una hoja de cálculo), con esta cabecera y orden de columnas:
+
+```
+Fecha	Concepto	Categoría	Valor	Tipo	Método	Cuenta
+```
+
+Reglas de importación (`data/importer/`):
+- **Delimitador**: el fichero puede venir con tabulador, coma o punto y coma; `CsvTransactionParser` detecta el delimitador a partir de la línea de cabecera (probar en ese orden) en vez de asumir uno fijo, porque distintas hojas de cálculo exportan de forma distinta. La primera línea siempre se trata como cabecera y se descarta.
+- **Fecha → `date`**: formato esperado `dd/MM/yyyy`. Si una fila no puede parsearse con ese formato, la fila se descarta y se añade al informe de errores; no se intenta adivinar otros formatos para no importar fechas incorrectas silenciosamente.
+- **Concepto → `description`**: texto libre, tal cual.
+- **Categoría → `categoryId`**: se busca una categoría existente en la familia con ese `name` (case-insensitive) y `appliesTo` compatible con el `Tipo` de la fila (`income`/`expense`, o `both`). Si no existe, se crea una categoría nueva (`isDefault: false`, `createdBy: uid` del importador, `color` tomado de `CategoryColorPalette` como se describe arriba).
+- **Valor → `amount`**: se acepta coma o punto como separador decimal. `amount` en el modelo de datos es siempre positivo (sección 4), así que se usa el valor absoluto; el signo/tipo del movimiento lo decide únicamente la columna `Tipo`, nunca el signo de `Valor` (si contradicen, gana `Tipo`, documentado aquí para que no sea un criterio inventado sobre la marcha).
+- **Tipo → `type`**: `"Ingreso"` → `income`, `"Gasto"` → `expense` (case-insensitive). Cualquier otro valor descarta la fila y se reporta como error.
+- **Método → `paymentMethod`**: se compara (case-insensitive, ignorando acentos) contra las **etiquetas visibles** de la tabla de métodos de pago de este documento (Tarjeta, Efectivo, Transferencia, Bizum, Tarjeta restaurante, Tarjeta transporte, Domiciliación bancaria). Si no hay coincidencia, la fila se descarta y se reporta como error — no se asume un método por defecto, porque en un movimiento financiero el método de pago no es un dato que el agente deba inventar (ver sección 9).
+- **Cuenta → `accountId`**: se busca una cuenta existente en la familia con ese `name` (case-insensitive). Si no existe, se crea automáticamente con `initialBalance: 0`, `active: true`, `createdBy: uid` del importador.
+- **Escritura**: usar `WriteBatch` de Firestore para las filas válidas (límite de 500 operaciones por batch, partir en varios batches si hace falta) en vez de una Firestore transaction por fila — sería demasiado lento para una importación de cientos de filas. El `currentBalance` de cada cuenta afectada se actualiza con `FieldValue.increment(deltaTotalDeLaCuenta)` (suma de los importes con signo de todas las filas válidas que apuntan a esa cuenta), aplicado en el mismo batch. Esto es una excepción documentada al patrón "una Firestore transaction por movimiento" usado en el resto de la app (Fase 6): se acepta porque la importación es una única operación lógica de alta, `increment()` sigue siendo atómico a nivel de campo, y evita cientos de round-trips secuenciales.
+- **Resultado**: al terminar, mostrar un resumen (movimientos importados, cuentas nuevas creadas, categorías nuevas creadas, filas descartadas con el número de fila y el motivo) antes de que el usuario navegue fuera de la pantalla.
+- **Permisos**: como la importación puede crear categorías, y la gestión de categorías está restringida a `admin`/`owner` (Fase 5, sección 5), la pantalla de importación (`ImportTransactionsFragment`) solo es accesible para `admin`/`owner`, igual que "Gestionar categorías".
+- **Selección de fichero**: usar Storage Access Framework (`ACTION_OPEN_DOCUMENT`) para que el usuario elija el fichero desde donde quiera (no requiere subirlo a Firebase Storage, se lee y se descarta localmente); no añade ninguna dependencia nueva.
+
+### Sugerencia de categorías por IA (ELIMINADO)
+
+Este requisito ha sido eliminado por decisión del usuario.
 
 ### Aclaración sobre la aprobación de invitaciones
 
@@ -211,6 +241,7 @@ Implementar (y testear con el Firebase Emulator Suite) algo equivalente a:
 - Al abandonar la familia, si el que sale es el `owner`, la propiedad debe traspasarse a otro miembro (priorizando `admin`).
 - Nadie escribe directamente `currentBalance` de una cuenta salvo a través de la misma transacción de Firestore que crea/edita/borra el movimiento correspondiente, o que edita el `initialBalance` de la cuenta (para que nunca se descuadre).
 - Una cuenta solo puede eliminarse físicamente si no tiene ningún movimiento asociado; si ya tiene movimientos, solo puede archivarse/desactivarse (`active: false`), nunca borrarse, para no perder el histórico.
+- La importación CSV escribe categorías nuevas, así que queda sujeta a la misma regla que ya restringe "gestionar categorías del sistema" a `admin`/`owner`; las reglas de Firestore no necesitan un caso especial nuevo, pero si `TransactionRepository`/`CategoryRepository` exponen un modo "batch" para la importación, ese modo debe seguir pasando por las mismas reglas de creación de `accounts`, `categories` y `transactions` ya definidas (nada de un camino alternativo sin reglas).
 
 Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exista el modelo de datos (Fase 2 del plan).
 
@@ -244,6 +275,8 @@ Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exi
 6. **Movimientos**: fecha, descripción, importe, tipo (gasto/ingreso), categoría, método de pago, cuenta asociada.
 7. **Posición neta**: pantalla resumen con saldo total, desglose por cuenta, por ingresos/gastos del periodo, y por categoría.
 8. **Estadísticas avanzadas (Pestaña Independiente)**: sección dedicada con evolución mensual (ingreso/gasto/neto), variación porcentual respecto al mes anterior, distribución por categoría (donut + % sobre total), ranking de categorías, gasto medio por categoría/cuenta y matriz histórica de netos. Uso de MPAndroidChart y enfoque en alta UX (filtros, estados de carga y visualización clara).
+9. **Importación de movimientos desde CSV** (solo `admin`/`owner`): dado un fichero con columnas `Fecha Concepto Categoría Valor Tipo Método Cuenta`, insertar los movimientos correspondientes; si la cuenta o la categoría de una fila no existen en la familia, crearlas automáticamente. Ver detalle en la sección 4, "Importación de movimientos desde CSV".
+10. **Sugerencia de categorías por IA** (ELIMINADO): Requisito eliminado por decisión del usuario.
 
 ## 8. Convenciones de código
 
@@ -291,4 +324,18 @@ Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exi
 - **2026-07-16**: Refuerzo de UX en el listado de cuentas (Fase 4): las acciones "Archivar" y "Eliminar" pasan a ser mutuamente excluyentes y visibles según el estado real de la cuenta, en vez de mostrarse siempre las tres acciones y descubrir la restricción al fallar el borrado. Regla aplicada: si la cuenta tiene algún movimiento asociado, solo se ofrece Archivar (además de Editar); si no tiene ninguno, solo se ofrece Eliminar (además de Editar). Para ello, `Account` incorpora un campo transitorio `hasTransactions` (no persistido, `@Exclude` en Firestore) que `AccountRepository.getAccounts()` calcula cruzando en tiempo real con la colección `transactions` de la familia. La regla de negocio en sí (no permitir el borrado físico de cuentas con movimientos) ya estaba definida y aplicada a nivel de `Repository`/reglas de seguridad desde la Fase 4 original; este cambio solo la refleja también en la interfaz para evitar que el usuario intente una acción que sabemos de antemano que será rechazada.
 - **2026-07-16**: Bugfix — un `member` normal obtenía `PERMISSION_DENIED` al intentar archivar o eliminar una cuenta, porque `AccountListFragment` mostraba esos botones a cualquier miembro sin comprobar su rol, mientras que las reglas de Firestore (sección 5) restringen ambas acciones a `admin`/`owner`. Se añade en el fragmento una comprobación en tiempo real del rol del usuario (`families/{familyId}/members/{uid}.role`) y los botones "Archivar"/"Eliminar" ahora solo se muestran si el usuario es `admin`/`owner`; un `member` normal solo ve "Editar". Queda pendiente verificar `AddEditAccountFragment` (no revisado en este cambio) para confirmar que tampoco permite a un `member` modificar `initialBalance`, ya que la regla de `update` de `accounts` solo permite a un member cambiar `name`.
 - **2026-07-16**: Ampliación de la decisión anterior — se decide que un `member` normal tampoco puede editar cuentas en absoluto (ni siquiera el nombre). `AccountListFragment` oculta también "Editar" para member (solo admin/owner ven las tres acciones; member ve la cuenta en modo lectura). `firestore.rules` se actualiza en consecuencia: la regla `update` de `accounts` deja de permitir a un member cambiar `name`. Al revisar esa regla se detectó y corrigió un bug más grave y no relacionado con lo pedido: el campo `currentBalance` tampoco estaba entre los campos permitidos para member, lo que habría impedido a cualquier member registrar movimientos (`TransactionRepository` actualiza `currentBalance` de la cuenta como parte de la misma transacción atómica que crea/edita/borra el `Transaction`). Se corrige permitiendo explícitamente que un member modifique `currentBalance` — únicamente a través de ese flujo de movimientos, nunca editando la cuenta directamente (la UI de edición de cuenta sigue oculta para member).
+- **2026-07-17**: **Bugfix — Toasts fantasmas al entrar en pantallas de listado (Cuentas, Movimientos, etc.).** Causa real: `AccountViewModel` (y otros) utilizaban `MutableLiveData` para los resultados de operaciones asíncronas. Como `LiveData` es un "state holder", al navegar de vuelta a un fragmento y re-suscribirse, el `LiveData` entregaba inmediatamente el último `Result.Success` guardado, provocando que se mostraran de nuevo los `Toast` de acciones que el usuario ya había completado. Solución:
+  - Se añade `SingleLiveEvent.java` en `util/`. Es una subclase de `MutableLiveData` que lleva un flag interno (`mPending`) para asegurar que el valor solo se entrega una vez; las suscripciones posteriores no reciben el valor anterior.
+  - Se migran todos los campos de resultados de acciones en los ViewModels (`AccountViewModel`, `TransactionViewModel`, `FamilyViewModel`, `CategoryViewModel`, `OnboardingViewModel`) de `MutableLiveData` a `SingleLiveEvent`.
+  - Con esto, los `Toast` (y cualquier otra acción de un solo uso como navegaciones tras éxito) solo ocurren exactamente una vez tras la llamada al `setValue`/`postValue`, resolviendo los avisos duplicados al navegar.
+- **2026-07-17**: Nuevo requisito: **importación de movimientos desde CSV** y **sugerencia de categorías por IA**. Ver el detalle completo de ambas en la sección 4 (subsecciones "Importación de movimientos desde CSV" y "Sugerencia de categorías por IA") y las tareas correspondientes en `PLAN_DESARROLLO.md`. Resumen de las asunciones tomadas al no estar especificadas en el enunciado original:
+  - El fichero puede venir separado por tabulador, coma o punto y coma; se detecta automáticamente en vez de asumir uno fijo.
+  - La fecha se asume en formato `dd/MM/yyyy`; una fila con fecha no parseable se descarta y se reporta, no se intenta adivinar el formato.
+  - El signo/tipo del movimiento lo decide siempre la columna `Tipo`, nunca el signo de `Valor` (que se toma en valor absoluto).
+  - El método de pago debe coincidir (case-insensitive, ignorando acentos) con una de las etiquetas ya definidas en la tabla de métodos de pago de este documento; si no coincide con ninguna, la fila se descarta y se reporta como error en vez de asumir un método por defecto.
+  - Cuentas y categorías que no existan se crean automáticamente; las categorías nuevas creadas así toman color de la paleta `CategoryColorPalette` (la misma paleta fija de las categorías semilla, ver sección 4).
+  - Por volumen, la importación escribe en `WriteBatch` (no una Firestore transaction por fila) y actualiza `currentBalance` de cada cuenta afectada con `FieldValue.increment()`, en vez del patrón "una transaction por movimiento" usado en el alta manual (Fase 6); se documenta como excepción deliberada.
+  - Al crear una familia, las categorías semilla pasan a llevar también un `color` fijo predefinido (antes no se especificaba color en la siembra); los 33 colores se listan en la tabla de categorías por defecto de la sección 4.
+  - La sugerencia de categorías por IA usa Firebase AI Logic (Gemini) en vez de llamar directamente a una API de terceros desde el cliente, para no tener que gestionar una API key nueva en la app (coherente con la sección 6). Las sugerencias nunca se guardan automáticamente: el usuario debe confirmarlas una a una mediante checklist antes de crear nada en Firestore.
+  - Tanto la importación CSV como el botón de sugerencia de categorías por IA quedan restringidos a `admin`/`owner`, igual que el resto de gestión de categorías (Fase 5), porque ambas funciones pueden crear categorías.
 - **2026-07-16**: **Decisión de negocio: todas las estadísticas "en general" de la app (saldo total, ingresos/gastos del periodo, desglose por categoría en el Dashboard y, en el futuro, toda la Fase 8 de Estadísticas avanzadas) se calculan únicamente sobre cuentas activas.** Una cuenta archivada (`active == false`) no debe aportar a ninguna métrica agregada, aunque sus movimientos históricos se conserven intactos en Firestore (no se borran, solo se excluyen de los cálculos). Esto ya se aplicaba al saldo total y al desglose por cuenta del Dashboard (Fase 7); con esta decisión se extiende explícitamente a ingresos/gastos del periodo y al desglose por categoría (bugfix del mismo día en `DashboardViewModel`, ver `PLAN_DESARROLLO.md` Fase 7) y se deja como requisito de diseño para toda la Fase 8. Única excepción prevista: si el propio usuario filtra explícitamente por una cuenta archivada (p. ej. para consultar su histórico puntual), esa vista concreta sí puede mostrar sus datos, pero nunca debe alterar los totales/agregados generales.

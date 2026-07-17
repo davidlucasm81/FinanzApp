@@ -8,17 +8,18 @@ import com.finanzapp.app.data.model.Invitation;
 import com.finanzapp.app.data.model.Member;
 import com.finanzapp.app.data.repository.FamilyRepository;
 import com.finanzapp.app.util.Result;
+import com.finanzapp.app.util.SingleLiveEvent;
 
 import java.util.List;
 
 public class FamilyViewModel extends ViewModel {
     private final FamilyRepository familyRepository;
     private final MutableLiveData<Result<List<Invitation>>> joinRequests = new MutableLiveData<>();
-    private final MutableLiveData<Result<Boolean>> approvalResult = new MutableLiveData<>();
+    private final SingleLiveEvent<Result<Boolean>> approvalResult = new SingleLiveEvent<>();
     private final MutableLiveData<Result<List<Member>>> members = new MutableLiveData<>();
     private final MutableLiveData<Result<List<Invitation>>> pendingInvitations = new MutableLiveData<>();
-    private final MutableLiveData<Result<Boolean>> leaveResult = new MutableLiveData<>();
-    private final MutableLiveData<Result<Boolean>> updateResult = new MutableLiveData<>();
+    private final SingleLiveEvent<Result<Boolean>> leaveResult = new SingleLiveEvent<>();
+    private final SingleLiveEvent<Result<Boolean>> updateResult = new SingleLiveEvent<>();
     private final MutableLiveData<Result<com.finanzapp.app.data.model.Family>> familyData = new MutableLiveData<>();
     private final MutableLiveData<Result<Member>> currentMemberData = new MutableLiveData<>();
 
