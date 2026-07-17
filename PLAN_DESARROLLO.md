@@ -134,14 +134,14 @@
 
 ## Fase 6 bis — Importación de movimientos desde CSV (solo admin/owner)
 > Requisito nuevo (2026-07-17). Ver detalle completo de las reglas de parseo/importación en `AGENTS.md` sección 4, "Importación de movimientos desde CSV". Depende de que existan ya `AccountRepository`, `CategoryRepository` y `TransactionRepository` (Fases 4, 5 y 6).
-- [ ] `CsvTransactionParser` (`data/importer/`): detecta el delimitador (tabulador, coma o punto y coma) a partir de la cabecera `Fecha Concepto Categoría Valor Tipo Método Cuenta`, descarta la línea de cabecera, y parsea cada fila a un objeto intermedio (`ImportedRow`) o a un error con el número de fila y el motivo.
-- [ ] `TransactionImportRepository` (`data/importer/`): dado un `List<ImportedRow>` válido y el `familyId`,
+- [x] `CsvTransactionParser` (`data/importer/`): detecta el delimitador (tabulador, coma o punto y coma) a partir de la cabecera `Fecha Concepto Categoría Valor Tipo Método Cuenta`, descarta la línea de cabecera, y parsea cada fila a un objeto intermedio (`ImportedRow`) o a un error con el número de fila y el motivo.
+- [x] `TransactionImportRepository` (`data/importer/`): dado un `List<ImportedRow>` válido y el `familyId`,
   - resuelve cuenta por nombre (case-insensitive) o crea una nueva (`initialBalance: 0`, `active: true`);
   - resuelve categoría por nombre + `appliesTo` compatible (case-insensitive) o crea una nueva (`isDefault: false`, `color` de `CategoryColorPalette`);
   - agrupa las filas válidas en uno o varios `WriteBatch` (máx. 500 operaciones cada uno) que crean los `Transaction` y actualizan `currentBalance` de cada cuenta afectada con `FieldValue.increment()` del delta total de esa cuenta.
-- [ ] `ImportTransactionsFragment` (`ui/transactions/`), accesible solo para `admin`/`owner` (mismo criterio que "Gestionar categorías"): selector de fichero con `ACTION_OPEN_DOCUMENT`, vista previa/confirmación antes de importar, indicador de progreso durante la escritura, y pantalla de resumen final (movimientos importados, cuentas nuevas, categorías nuevas, filas descartadas con motivo).
-- [ ] Punto de entrada a la pantalla de importación (por ejemplo, un botón en `TransactionListFragment` o en Ajustes de familia), visible solo para `admin`/`owner`.
-- [ ] Probar con un CSV de ejemplo que incluya al menos: una fila con cuenta ya existente, una con cuenta nueva, una con categoría ya existente, una con categoría nueva, una fila con fecha inválida, una con método de pago no reconocido — verificar que el resumen final refleja correctamente cada caso.
+- [x] `ImportTransactionsFragment` (`ui/transactions/`), accesible solo para `admin`/`owner` (mismo criterio que "Gestionar categorías"): selector de fichero con `ACTION_OPEN_DOCUMENT`, vista previa/confirmación antes de importar, indicador de progreso durante la escritura, y pantalla de resumen final (movimientos importados, cuentas nuevas, categorías nuevas, filas descartadas con motivo).
+- [x] Punto de entrada a la pantalla de importación (por ejemplo, un botón en `TransactionListFragment` o en Ajustes de familia), visible solo para `admin`/`owner`.
+- [x] Probar con un CSV de ejemplo que incluya al menos: una fila con cuenta ya existente, una con cuenta nueva, una con categoría ya existente, una con categoría nueva, una fila con fecha inválida, una con método de pago no reconocido — verificar que el resumen final refleja correctamente cada caso.
 
 ## Fase 7 — Posición neta / Dashboard
 - [x] Pantalla principal (home tras login): saldo total de la familia (suma de `currentBalance` de cuentas activas).

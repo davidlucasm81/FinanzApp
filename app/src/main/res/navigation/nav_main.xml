@@ -23,6 +23,19 @@
         <action
             android:id="@+id/action_transactionListFragment_to_addEditTransactionFragment"
             app:destination="@id/addEditTransactionFragment" />
+        <action
+            android:id="@+id/action_transactionListFragment_to_importTransactionsFragment"
+            app:destination="@id/importTransactionsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/importTransactionsFragment"
+        android:name="com.finanzapp.app.ui.transactions.ImportTransactionsFragment"
+        android:label="Importar CSV"
+        tools:layout="@layout/fragment_import_transactions">
+        <argument
+            android:name="familyId"
+            app:argType="string" />
     </fragment>
 
     <fragment

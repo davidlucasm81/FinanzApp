@@ -173,7 +173,7 @@ public class FamilyRepository {
         CollectionReference categoriesRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.CATEGORIES);
         
         // Income categories
-        String[] incomeCategories = {"Nómina", "Otros ingresos", "Ingresos extra / Freelance", "Alquileres (ingreso)", "Devoluciones / Reembolsos"};
+        String[] incomeCategories = {"Nómina", "Otros ingresos"};
         for (String name : incomeCategories) {
             DocumentReference ref = categoriesRef.document();
             String color = CategoryColorPalette.getColorForCategory(name);

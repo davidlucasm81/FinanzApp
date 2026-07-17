@@ -39,6 +39,17 @@
                     tools:ignore="RtlSymmetry">
 
                     <ImageButton
+                        android:id="@+id/btn_import_csv"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Importar CSV"
+                        android:src="@android:drawable/stat_sys_download"
+                        android:visibility="gone"
+                        app:tint="?attr/colorPrimary"
+                        tools:visibility="visible" />
+
+                    <ImageButton
                         android:id="@+id/btn_open_filters"
                         android:layout_width="48dp"
                         android:layout_height="48dp"

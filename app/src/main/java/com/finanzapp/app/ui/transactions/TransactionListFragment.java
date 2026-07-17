@@ -60,7 +60,7 @@ public class TransactionListFragment extends Fragment {
     private final Map<String, String> paymentMethodLabels = new HashMap<>();
 
     private Spinner spinnerFilterAccount, spinnerFilterCategory, spinnerFilterType, spinnerFilterMethod;
-    private View btnFilterDate, emptyState;
+    private View btnFilterDate, emptyState, btnImportCsv;
     private ImageButton btnClearFiltersTop;
     private View btnClearFiltersDrawer;
     private DrawerLayout drawerLayout;
@@ -105,6 +105,7 @@ public class TransactionListFragment extends Fragment {
         btnFilterDate = view.findViewById(R.id.btn_filter_date);
         btnClearFiltersTop = view.findViewById(R.id.btn_clear_filters_top);
         btnClearFiltersDrawer = view.findViewById(R.id.btn_clear_filters_drawer);
+        btnImportCsv = view.findViewById(R.id.btn_import_csv);
         emptyState = view.findViewById(R.id.ll_empty_state);
         progressBar = view.findViewById(R.id.pb_loading);
         drawerLayout = view.findViewById(R.id.drawer_layout);
@@ -145,6 +146,11 @@ public class TransactionListFragment extends Fragment {
         });
 
         setupFilters();
+        btnImportCsv.setOnClickListener(v -> {
+            Bundle args = new Bundle();
+            args.putString("familyId", familyId);
+            Navigation.findNavController(v).navigate(R.id.action_transactionListFragment_to_importTransactionsFragment, args);
+        });
         resolveFamilyId();
     }
 
@@ -265,10 +271,25 @@ public class TransactionListFragment extends Fragment {
                         User user = documentSnapshot.toObject(User.class);
                         if (user != null && user.getFamilyId() != null) {
                             familyId = user.getFamilyId();
+                            checkPermissions();
                             observeData();
                         }
                     });
         }
+    }
+
+    private void checkPermissions() {
+        String uid = FirebaseAuth.getInstance().getUid();
+        if (uid == null || familyId == null) return;
+
+        FirebaseFirestore.getInstance().collection(FirestorePaths.getMembersPath(familyId)).document(uid).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    Member member = documentSnapshot.toObject(Member.class);
+                    if (member != null) {
+                        boolean isAdmin = "admin".equals(member.getRole()) || "owner".equals(member.getRole());
+                        btnImportCsv.setVisibility(isAdmin ? View.VISIBLE : View.GONE);
+                    }
+                });
     }
 
     private void observeData() {

@@ -9,9 +9,6 @@ public class CategoryColorPalette {
     public static final String[] COLORS = {
         "#2E7D32", // Nómina
         "#558B2F", // Otros ingresos
-        "#00897B", // Ingresos extra / Freelance
-        "#00695C", // Alquileres (ingreso)
-        "#43A047", // Devoluciones / Reembolsos
         "#6D4C41", // Hipoteca
         "#8D6E63", // Reformas
         "#455A64", // Servicios
@@ -48,9 +45,6 @@ public class CategoryColorPalette {
         // Ingresos
         DEFAULT_CATEGORY_COLORS.put("Nómina", "#2E7D32");
         DEFAULT_CATEGORY_COLORS.put("Otros ingresos", "#558B2F");
-        DEFAULT_CATEGORY_COLORS.put("Ingresos extra / Freelance", "#00897B");
-        DEFAULT_CATEGORY_COLORS.put("Alquileres (ingreso)", "#00695C");
-        DEFAULT_CATEGORY_COLORS.put("Devoluciones / Reembolsos", "#43A047");
 
         // Gastos
         DEFAULT_CATEGORY_COLORS.put("Hipoteca", "#6D4C41");

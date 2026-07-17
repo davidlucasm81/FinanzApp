@@ -159,9 +159,6 @@ Desde el 2026-07-17, cada categoría del set semilla lleva también un `color` f
 |---|---|---|
 | Nómina | income | `#2E7D32` |
 | Otros ingresos | income | `#558B2F` |
-| Ingresos extra / Freelance | income | `#00897B` |
-| Alquileres (ingreso) | income | `#00695C` |
-| Devoluciones / Reembolsos | income | `#43A047` |
 
 **Gasto**
 
