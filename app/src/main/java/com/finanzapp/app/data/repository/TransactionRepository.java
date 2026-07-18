@@ -134,7 +134,8 @@ public class TransactionRepository {
         MutableLiveData<List<Transaction>> liveData = new MutableLiveData<>();
         
         Query query = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.TRANSACTIONS)
-                .orderBy("date", Query.Direction.DESCENDING);
+                .orderBy("date", Query.Direction.DESCENDING)
+                .orderBy("createdAt", Query.Direction.DESCENDING);
 
         if (accountId != null && !accountId.isEmpty()) {
             query = query.whereEqualTo("accountId", accountId);

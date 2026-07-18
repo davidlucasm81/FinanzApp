@@ -26,6 +26,14 @@ public class TransactionViewModel extends ViewModel {
     private final SingleLiveEvent<Result<Boolean>> operationResult = new SingleLiveEvent<>();
     private final MutableLiveData<List<com.finanzapp.app.data.model.Member>> members = new MutableLiveData<>();
 
+    // Filter state
+    private String filterAccountId = null;
+    private String filterCategoryId = null;
+    private String filterType = null;
+    private String filterMethod = null;
+    private com.google.firebase.Timestamp filterStartDate = null;
+    private com.google.firebase.Timestamp filterEndDate = null;
+
     public TransactionViewModel(TransactionRepository transactionRepository, 
                                 AccountRepository accountRepository, 
                                 CategoryRepository categoryRepository,
@@ -76,4 +84,23 @@ public class TransactionViewModel extends ViewModel {
     public void deleteTransaction(String familyId, Transaction transaction) {
         transactionRepository.deleteTransaction(familyId, transaction, operationResult::setValue);
     }
+
+    // Filter getters and setters
+    public String getFilterAccountId() { return filterAccountId; }
+    public void setFilterAccountId(String filterAccountId) { this.filterAccountId = filterAccountId; }
+
+    public String getFilterCategoryId() { return filterCategoryId; }
+    public void setFilterCategoryId(String filterCategoryId) { this.filterCategoryId = filterCategoryId; }
+
+    public String getFilterType() { return filterType; }
+    public void setFilterType(String filterType) { this.filterType = filterType; }
+
+    public String getFilterMethod() { return filterMethod; }
+    public void setFilterMethod(String filterMethod) { this.filterMethod = filterMethod; }
+
+    public com.google.firebase.Timestamp getFilterStartDate() { return filterStartDate; }
+    public void setFilterStartDate(com.google.firebase.Timestamp filterStartDate) { this.filterStartDate = filterStartDate; }
+
+    public com.google.firebase.Timestamp getFilterEndDate() { return filterEndDate; }
+    public void setFilterEndDate(com.google.firebase.Timestamp filterEndDate) { this.filterEndDate = filterEndDate; }
 }

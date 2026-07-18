@@ -33,6 +33,24 @@ public class MainActivity extends AppCompatActivity {
                     binding.bottomNavigation,
                     navController
             );
+
+            // "Cuando este en la lista de movimientos, si doy al boton de dashboard que vuelva al dashboard"
+            // Ensure that clicking on an already selected tab (or one that is parent in the stack)
+            // returns to its start destination.
+            binding.bottomNavigation.setOnItemSelectedListener(item -> {
+                if (item.getItemId() == R.id.dashboardFragment) {
+                    // If we are already on the dashboard or any of its children (like transaction list),
+                    // popping back stack to dashboard ensures we return there.
+                    navController.popBackStack(R.id.dashboardFragment, false);
+                }
+                return NavigationUI.onNavDestinationSelected(item, navController);
+            });
+
+            binding.bottomNavigation.setOnItemReselectedListener(item -> {
+                if (item.getItemId() == R.id.dashboardFragment) {
+                    navController.popBackStack(R.id.dashboardFragment, false);
+                }
+            });
         }
     }
 

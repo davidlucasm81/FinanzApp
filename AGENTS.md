@@ -45,7 +45,7 @@ com.finanzapp.app/
 │   ├── auth/                      // LoginActivity/Fragment
 │   ├── onboarding/                // WelcomeFragment, CreateFamilyFragment, InitialAccountsFragment (alta de cuentas + posición neta inicial), JoinByCodeFragment, PendingApprovalFragment, AcceptInvitationFragment
 │   ├── settings/                  // SettingsFragment, ProfileFragment
-│   ├── family/                    // FamilySettingsFragment, MemberListFragment, InviteMemberFragment
+│   ├── family/                    // FamilySettingsFragment, MemberListFragment, InviteMemberFragment, FamilySwitcherFragment (selector de familia activa), MyFamiliesFragment (listado de todas las familias del usuario)
 │   ├── accounts/                  // AccountListFragment, AddEditAccountFragment
 │   ├── transactions/              // AddEditTransactionFragment, TransactionListFragment, filtros, ImportTransactionsFragment (importación CSV)
 │   ├── categories/                // ManageCategoriesFragment
@@ -64,7 +64,7 @@ users/{uid}
   displayName: string
   email: string
   photoUrl: string
-  familyId: string | null        // null hasta que se une a una familia
+  activeFamilyId: string | null   // familia actualmente seleccionada en la UI; null solo si el usuario no pertenece a ninguna familia. Desde la Fase 7 bis, un usuario puede pertenecer a N familias a la vez (ver `families/{familyId}/members/{uid}` como fuente de verdad de la lista); este campo NO es la lista de familias, solo cuál está activa.
   createdAt: timestamp
 
 families/{familyId}
@@ -75,11 +75,13 @@ families/{familyId}
   createdAt: timestamp
 
 families/{familyId}/members/{uid}
+  uid: string                     // (Fase 7 bis) duplicado del id del documento; necesario porque Firestore no permite filtrar un collectionGroup query por el id del documento padre. Es lo que permite construir "a qué familias pertenece este usuario" con `collectionGroup("members").whereEqualTo("uid", uid)` en vez de mantener una lista redundante en `users/{uid}` que podría desincronizarse.
   displayName: string
   email: string
   role: "owner" | "admin" | "member"
   status: "approved"              // el doc solo se crea cuando ya está aprobado
   joinedAt: timestamp
+  familyName: string               // (Fase 7 bis) desnormalizado desde `families/{familyId}.name`, para poder pintar el selector de familias (nombre + rol) con una única lectura del collectionGroup, sin N+1 lecturas a `families/{familyId}`. Debe mantenerse sincronizado: cualquier cambio de `families/{familyId}.name` (en `FamilySettingsFragment`) debe propagarse también a `familyName` en todos sus documentos `members/*` (batch write).
 
 families/{familyId}/invitations/{invitationId}
   type: "email_invite" | "code_request"
@@ -124,6 +126,25 @@ families/{familyId}/transactions/{transactionId}
   createdBy: uid
   createdAt: timestamp
 ```
+
+### Pertenencia a varias familias (Fase 7 bis)
+
+> Requisito nuevo (2026-07-18). Hasta la Fase 7 bis, un usuario solo podía pertenecer a una familia a la vez (`users/{uid}.familyId`); esto se elimina de la lista de "fuera de alcance" (sección 10) y pasa a ser un requisito de la v1.
+
+- **Fuente de verdad de "a qué familias pertenezco"**: la colección `families/{familyId}/members/{uid}` (ya existente), consultada como `collectionGroup("members")` filtrando por el nuevo campo `uid`. No se mantiene una lista de familias en `users/{uid}`, para evitar dos fuentes de verdad que puedan desincronizarse (por ejemplo, si se expulsa a alguien y se olvida actualizar la lista).
+- **Familia activa**: `users/{uid}.activeFamilyId` sigue existiendo con el mismo propósito que antes (qué familia ve el usuario ahora mismo), pero deja de ser "la única familia del usuario" para pasar a ser "la familia seleccionada en el selector". Toda la app (Cuentas, Movimientos, Categorías, Estadísticas, Dashboard, Miembros) sigue funcionando exactamente igual que hasta ahora tomando como referencia un único `familyId` en cada pantalla — ese `familyId` pasa a alimentarse siempre de `activeFamilyId` en vez de asumir que es el único que existe.
+- **Cambiar de familia activa** es una operación explícita del usuario (selector de familias, ver más abajo) que solo escribe `users/{uid}.activeFamilyId`; no mueve datos ni afecta a otros miembros.
+- **Cambiar de familia implica limpiar la navegación**: todas las pantallas por debajo del Dashboard (Cuentas, Movimientos, Categorías, Estadísticas, Miembros) muestran datos de la familia activa; al cambiar de familia hay que volver siempre al Dashboard (`popBackStack` hasta el grafo raíz) y forzar la recarga de todos los `ViewModel` que dependan de `familyId`, para no mezclar ids de cuentas/categorías/movimientos de una familia con otra.
+- **Selector de familias**: nuevo `FamilySwitcherFragment`, accesible desde el Dashboard (tocando el nombre de la familia en la cabecera) y desde Ajustes. Lista, para el usuario actual, todas sus familias (nombre, rol, indicador de cuál es la activa) leyendo el collectionGroup descrito arriba, permite cambiar de activa, y ofrece dos accesos: "Crear otra familia" y "Unirme a otra familia por código", que reutilizan `CreateFamilyFragment`/`JoinByCodeFragment` (Fase 2) en un "modo añadir familia" en vez del modo "onboarding inicial".
+- **Onboarding**: el *routing* tras el login deja de mirar `familyId == null` y pasa a mirar si el `collectionGroup` de familias del usuario está vacío. Si está vacío → onboarding (crear/unirse a la primera familia), igual que hasta ahora. Si no está vacío pero `activeFamilyId` es `null` o ya no corresponde a ninguna de sus familias (por ejemplo, fue expulsado de la que tenía activa) → fijar automáticamente como activa la primera familia disponible y continuar a Dashboard, sin pasar por onboarding. Si no está vacío y `activeFamilyId` es válido → Dashboard directo.
+- **Crear/unirse a una familia estando ya dentro de la app** (no en onboarding): reutiliza los mismos flujos de la Fase 2, pero al terminar con éxito no se sobreescribe `activeFamilyId` automáticamente si el usuario ya tenía una familia activa — se pregunta si quiere cambiar ahora a la familia recién creada/unida o seguir donde estaba.
+- **Invitaciones por email a un usuario que ya tiene familia**: hasta ahora solo se comprobaban en `WelcomeFragment` (antes de tener familia). Con multi-familia, un usuario que ya está dentro de la app debe poder recibir y aceptar invitaciones a una familia adicional. Se añade una comprobación periódica/al abrir sesión (no solo en onboarding) de invitaciones `email_invite` pendientes para el email del usuario en cualquier familia, con un aviso in-app (badge o diálogo) en vez de solo en la pantalla de bienvenida.
+- **Abandonar una familia**: si al usuario le quedan otras familias tras salir, se cambia automáticamente `activeFamilyId` a otra de las restantes y se permanece en Dashboard (ya no se navega a onboarding). Solo si esa era su última familia se navega a onboarding, igual que el comportamiento actual.
+- **Borrado de cuenta de usuario**: debe recorrer *todas* las familias del usuario (mismo collectionGroup) y aplicar en cada una la lógica ya existente de "abandonar familia" (incluyendo traspaso de `owner` o deep-delete si es el único miembro), no solo en la familia activa.
+- **Asunciones tomadas al no estar especificado en el enunciado original** (documentadas también en la sección "Decisiones tomadas durante el desarrollo"):
+  - No se comprueba ni se avisa si un email invitado ya pertenece a otra familia: no hay forma de comprobarlo sin exponer datos de otro usuario a quien invita, así que el flujo de invitación no cambia.
+  - La pantalla "Mis familias" (listado completo, fuera del selector rápido) es de solo lectura + cambio de activa; para abandonar una familia concreta hay que cambiar primero a ella y usar el botón "Salir de la familia" ya existente en Ajustes de familia, en vez de duplicar la lógica de traspaso de `owner`/deep-delete en dos sitios distintos.
+  - El campo `uid` en `members/{uid}` no existe en los documentos creados antes de esta fase; en vez de un script de migración con Admin SDK (no hay Cloud Functions en este proyecto), se aplica "self-heal" en cliente: si un usuario abre su propio documento de member y detecta que le falta `uid` (o `familyName`), lo rellena con un `update` en ese momento.
 
 ### Aclaración sobre un requisito ambiguo del enunciado original
 
@@ -239,8 +260,11 @@ Implementar (y testear con el Firebase Emulator Suite) algo equivalente a:
 - Nadie escribe directamente `currentBalance` de una cuenta salvo a través de la misma transacción de Firestore que crea/edita/borra el movimiento correspondiente, o que edita el `initialBalance` de la cuenta (para que nunca se descuadre).
 - Una cuenta solo puede eliminarse físicamente si no tiene ningún movimiento asociado; si ya tiene movimientos, solo puede archivarse/desactivarse (`active: false`), nunca borrarse, para no perder el histórico.
 - La importación CSV escribe categorías nuevas, así que queda sujeta a la misma regla que ya restringe "gestionar categorías del sistema" a `admin`/`owner`; las reglas de Firestore no necesitan un caso especial nuevo, pero si `TransactionRepository`/`CategoryRepository` exponen un modo "batch" para la importación, ese modo debe seguir pasando por las mismas reglas de creación de `accounts`, `categories` y `transactions` ya definidas (nada de un camino alternativo sin reglas).
+- **(Fase 7 bis) Lectura del propio documento de member vía `collectionGroup("members")`**: además de la regla ya existente ("si eres miembro aprobado de esa familia, puedes leer sus subcolecciones"), se añade `allow read: if resource.data.uid == request.auth.uid`, para que un usuario pueda listar sus propios documentos de member en *cualquier* familia (necesario para el selector de familias) sin poder leer los de otros miembros de familias a las que no pertenece.
+- **(Fase 7 bis) `users/{uid}.activeFamilyId`**: el propio usuario puede escribir este campo únicamente si `request.resource.data.activeFamilyId` es `null` o corresponde a una familia donde ya existe como `members/{uid}` con `status: approved` (comprobar con `exists()` sobre `families/$(request.resource.data.activeFamilyId)/members/$(request.auth.uid)`), para que nadie pueda "activar" una familia a la que no pertenece.
+- **(Fase 7 bis) `familyName` desnormalizado en `members/{uid}`**: solo se puede escribir junto con el resto de campos del member (alta, self-heal) o como parte de la actualización de `families/{familyId}.name` por un `admin`/`owner` (mismo permiso ya exigido para cambiar el nombre de la familia); nunca de forma independiente por un miembro cualquiera.
 
-Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exista el modelo de datos (Fase 2 del plan).
+Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exista el modelo de datos (Fase 2 del plan). Las reglas de la Fase 7 bis se añaden e implementan junto con esa fase, no antes (dependen del campo `uid` en `members`).
 
 ## 6. Gestión de credenciales y api keys (requisito no negociable)
 
@@ -274,6 +298,7 @@ Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exi
 8. **Estadísticas avanzadas (Pestaña Independiente)**: sección dedicada con evolución mensual (ingreso/gasto/neto), variación porcentual respecto al mes anterior, distribución por categoría (donut + % sobre total), ranking de categorías, gasto medio por categoría/cuenta y matriz histórica de netos. Uso de MPAndroidChart y enfoque en alta UX (filtros, estados de carga y visualización clara).
 9. **Importación de movimientos desde CSV** (solo `admin`/`owner`): dado un fichero con columnas `Fecha Concepto Categoría Valor Tipo Método Cuenta`, insertar los movimientos correspondientes; si la cuenta o la categoría de una fila no existen en la familia, crearlas automáticamente. Ver detalle en la sección 4, "Importación de movimientos desde CSV".
 10. **Sugerencia de categorías por IA** (ELIMINADO): Requisito eliminado por decisión del usuario.
+11. **Pertenencia a varias familias** (Fase 7 bis): un usuario puede pertenecer a N familias a la vez, cambiar entre ellas mediante un selector de familia activa, y crear o unirse a familias adicionales sin dejar de pertenecer a las anteriores. Ver detalle en la sección 4, "Pertenencia a varias familias (Fase 7 bis)".
 
 ## 8. Convenciones de código
 
@@ -296,7 +321,7 @@ Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exi
 ## 10. Fuera de alcance en la v1 (posible trabajo futuro)
 
 - Multi-divisa con conversión automática entre cuentas de distinta moneda.
-- Un usuario perteneciendo a más de una unidad familiar a la vez.
+- ~~Un usuario perteneciendo a más de una unidad familiar a la vez.~~ Pasa a ser un requisito de la v1 desde 2026-07-18 — ver Fase 7 bis en `PLAN_DESARROLLO.md` y la sección "Pertenencia a varias familias" en el punto 4 de este documento.
 - Movimientos recurrentes/automatizados y alertas de presupuesto.
 - Exportación a Excel/PDF.
 - Notificaciones push (FCM) para solicitudes de unión pendientes.
@@ -335,4 +360,6 @@ Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exi
   - Al crear una familia, las categorías semilla pasan a llevar también un `color` fijo predefinido (antes no se especificaba color en la siembra); los 33 colores se listan en la tabla de categorías por defecto de la sección 4.
   - La sugerencia de categorías por IA usa Firebase AI Logic (Gemini) en vez de llamar directamente a una API de terceros desde el cliente, para no tener que gestionar una API key nueva en la app (coherente con la sección 6). Las sugerencias nunca se guardan automáticamente: el usuario debe confirmarlas una a una mediante checklist antes de crear nada en Firestore.
   - Tanto la importación CSV como el botón de sugerencia de categorías por IA quedan restringidos a `admin`/`owner`, igual que el resto de gestión de categorías (Fase 5), porque ambas funciones pueden crear categorías.
+- **2026-07-17**: **Nuevo requisito de UX: navegación desde el desglose por categoría del Dashboard a Movimientos.** Al pulsar una categoría en el desglose de gasto por categoría del Dashboard, la app navega a `TransactionListFragment` con el filtro de categoría preseleccionado (esa categoría) y el filtro de rango de fechas preseleccionado (el mismo rango desde/hasta que estuviera activo en ese momento en el Dashboard). Se añaden argumentos de navegación `preselectedCategoryId` (string, nullable) y `preselectedStartDateMillis`/`preselectedEndDateMillis` (long, `-1L` = sin fecha) al destino `transactionListFragment` en el nav graph. `TransactionListFragment` aplica estos valores una sola vez al recibirlos (tras cargar categorías), sin bloquear que el usuario los cambie manualmente después. Asunción tomada al no estar especificado: el filtro de cuenta no se preselecciona (queda en "todas"), ya que el click procede del desglose global, no de una cuenta concreta.
+- **2026-07-18**: **Nuevo requisito de negocio: un usuario puede pertenecer a varias familias a la vez** (hasta ahora estaba explícitamente fuera de alcance, sección 10). Se añade la Fase 7 bis a `PLAN_DESARROLLO.md`. Cambios de modelo de datos: `users/{uid}.familyId` se renombra a `activeFamilyId` (misma idea, pero ya no implica que sea la única familia); `families/{familyId}/members/{uid}` gana los campos `uid` (para poder hacer `collectionGroup("members")` filtrado por usuario) y `familyName` (desnormalizado, para pintar el selector sin N+1 lecturas). Ver el detalle completo, incluidas las asunciones tomadas al no estar especificado en el enunciado original (invitaciones a usuarios ya en otra familia, alcance de la pantalla "Mis familias", estrategia de migración del campo `uid`), en la sección 4 de este documento, "Pertenencia a varias familias (Fase 7 bis)".
 - **2026-07-16**: **Decisión de negocio: todas las estadísticas "en general" de la app (saldo total, ingresos/gastos del periodo, desglose por categoría en el Dashboard y, en el futuro, toda la Fase 8 de Estadísticas avanzadas) se calculan únicamente sobre cuentas activas.** Una cuenta archivada (`active == false`) no debe aportar a ninguna métrica agregada, aunque sus movimientos históricos se conserven intactos en Firestore (no se borran, solo se excluyen de los cálculos). Esto ya se aplicaba al saldo total y al desglose por cuenta del Dashboard (Fase 7); con esta decisión se extiende explícitamente a ingresos/gastos del periodo y al desglose por categoría (bugfix del mismo día en `DashboardViewModel`, ver `PLAN_DESARROLLO.md` Fase 7) y se deja como requisito de diseño para toda la Fase 8. Única excepción prevista: si el propio usuario filtra explícitamente por una cuenta archivada (p. ej. para consultar su histórico puntual), esa vista concreta sí puede mostrar sus datos, pero nunca debe alterar los totales/agregados generales.

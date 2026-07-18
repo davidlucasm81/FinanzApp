@@ -93,7 +93,7 @@ public class TransactionListFragment extends Fragment {
         ViewModelFactory factory = new ViewModelFactory(appContainer.getAuthRepository(), appContainer.getFamilyRepository(),
                 appContainer.getAccountRepository(), appContainer.getCategoryRepository(),
                 appContainer.getTransactionRepository());
-        viewModel = new ViewModelProvider(this, factory).get(TransactionViewModel.class);
+        viewModel = new ViewModelProvider(requireActivity(), factory).get(TransactionViewModel.class);
 
         RecyclerView rvTransactions = view.findViewById(R.id.rv_transactions);
         FloatingActionButton fabAdd = view.findViewById(R.id.fab_add_transaction);
@@ -151,7 +151,28 @@ public class TransactionListFragment extends Fragment {
             args.putString("familyId", familyId);
             Navigation.findNavController(v).navigate(R.id.action_transactionListFragment_to_importTransactionsFragment, args);
         });
+
+        restoreFiltersFromViewModel();
         resolveFamilyId();
+    }
+
+    private void restoreFiltersFromViewModel() {
+        filterAccountId = viewModel.getFilterAccountId();
+        filterCategoryId = viewModel.getFilterCategoryId();
+        filterType = viewModel.getFilterType();
+        filterMethod = viewModel.getFilterMethod();
+        
+        com.google.firebase.Timestamp start = viewModel.getFilterStartDate();
+        if (start != null) {
+            filterStartDate = Calendar.getInstance();
+            filterStartDate.setTime(start.toDate());
+        }
+        
+        com.google.firebase.Timestamp end = viewModel.getFilterEndDate();
+        if (end != null) {
+            filterEndDate = Calendar.getInstance();
+            filterEndDate.setTime(end.toDate());
+        }
     }
 
     private final String[] paymentMethods = {
@@ -173,6 +194,10 @@ public class TransactionListFragment extends Fragment {
         ArrayAdapter<String> typeAdapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, types);
         typeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerFilterType.setAdapter(typeAdapter);
+        if (filterType == null) spinnerFilterType.setSelection(0);
+        else if ("expense".equals(filterType)) spinnerFilterType.setSelection(1);
+        else if ("income".equals(filterType)) spinnerFilterType.setSelection(2);
+
         spinnerFilterType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -193,6 +218,18 @@ public class TransactionListFragment extends Fragment {
         ArrayAdapter<String> methodAdapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, methodsList);
         methodAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerFilterMethod.setAdapter(methodAdapter);
+        
+        if (filterMethod == null) {
+            spinnerFilterMethod.setSelection(0);
+        } else {
+            for (int i = 0; i < paymentMethodValues.length; i++) {
+                if (paymentMethodValues[i].equals(filterMethod)) {
+                    spinnerFilterMethod.setSelection(i + 1);
+                    break;
+                }
+            }
+        }
+
         spinnerFilterMethod.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -309,6 +346,16 @@ public class TransactionListFragment extends Fragment {
                 ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, names);
                 adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
                 spinnerFilterCategory.setAdapter(adapter);
+
+                if (filterCategoryId != null) {
+                    for (int i = 0; i < allCategories.size(); i++) {
+                        if (allCategories.get(i).getId().equals(filterCategoryId)) {
+                            spinnerFilterCategory.setSelection(i + 1);
+                            break;
+                        }
+                    }
+                }
+
                 spinnerFilterCategory.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                     @Override
                     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -347,6 +394,16 @@ public class TransactionListFragment extends Fragment {
                 ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, names);
                 adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
                 spinnerFilterAccount.setAdapter(adapter);
+
+                if (filterAccountId != null) {
+                    for (int i = 0; i < allAccounts.size(); i++) {
+                        if (allAccounts.get(i).getId().equals(filterAccountId)) {
+                            spinnerFilterAccount.setSelection(i + 1);
+                            break;
+                        }
+                    }
+                }
+
                 spinnerFilterAccount.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                     @Override
                     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -384,6 +441,14 @@ public class TransactionListFragment extends Fragment {
 
     private void updateTransactions() {
         if (familyId == null) return;
+
+        // Sync local filters to ViewModel
+        viewModel.setFilterAccountId(filterAccountId);
+        viewModel.setFilterCategoryId(filterCategoryId);
+        viewModel.setFilterType(filterType);
+        viewModel.setFilterMethod(filterMethod);
+        viewModel.setFilterStartDate(filterStartDate != null ? new com.google.firebase.Timestamp(filterStartDate.getTime()) : null);
+        viewModel.setFilterEndDate(filterEndDate != null ? new com.google.firebase.Timestamp(filterEndDate.getTime()) : null);
 
         Timestamp start = filterStartDate != null ? new Timestamp(filterStartDate.getTime()) : null;
         Timestamp end = filterEndDate != null ? new Timestamp(filterEndDate.getTime()) : null;

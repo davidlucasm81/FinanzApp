@@ -246,7 +246,8 @@ public class AddEditTransactionFragment extends Fragment {
             tilAmount.setError(getString(R.string.error_amount));
             return;
         }
-        double amount = Double.parseDouble(amountStr);
+        // Replace comma with dot for parsing
+        double amount = Double.parseDouble(amountStr.replace(',', '.'));
         String description = tilDescription.getEditText() != null ? tilDescription.getEditText().getText().toString().trim() : "";
         
         if (spinnerAccount.getSelectedItem() == null) {
