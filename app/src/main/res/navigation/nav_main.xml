@@ -20,6 +20,19 @@
         android:name="com.finanzapp.app.ui.transactions.TransactionListFragment"
         android:label="Movimientos"
         tools:layout="@layout/fragment_transaction_list">
+        <argument
+            android:name="preselectedCategoryId"
+            android:defaultValue="@null"
+            app:argType="string"
+            app:nullable="true" />
+        <argument
+            android:name="preselectedStartDateMillis"
+            android:defaultValue="-1L"
+            app:argType="long" />
+        <argument
+            android:name="preselectedEndDateMillis"
+            android:defaultValue="-1L"
+            app:argType="long" />
         <action
             android:id="@+id/action_transactionListFragment_to_addEditTransactionFragment"
             app:destination="@id/addEditTransactionFragment" />

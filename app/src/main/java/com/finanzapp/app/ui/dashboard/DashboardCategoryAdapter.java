@@ -18,8 +18,13 @@ import java.util.List;
 import java.util.Locale;
 
 public class DashboardCategoryAdapter extends RecyclerView.Adapter<DashboardCategoryAdapter.ViewHolder> {
+    public interface OnCategoryClickListener {
+        void onCategoryClick(DashboardCategorySummary summary);
+    }
+
     private final List<DashboardCategorySummary> items = new ArrayList<>();
     private String currencyCode = "EUR";
+    private OnCategoryClickListener listener;
 
     public void setItems(List<DashboardCategorySummary> newItems, String currencyCode) {
         this.items.clear();
@@ -28,11 +33,15 @@ public class DashboardCategoryAdapter extends RecyclerView.Adapter<DashboardCate
         notifyDataSetChanged();
     }
 
+    public void setOnCategoryClickListener(OnCategoryClickListener listener) {
+        this.listener = listener;
+    }
+
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         ItemDashboardCategoryBinding binding = ItemDashboardCategoryBinding.inflate(LayoutInflater.from(parent.getContext()), parent, false);
-        return new ViewHolder(binding);
+        return new ViewHolder(binding, listener);
     }
 
     @Override
@@ -47,10 +56,12 @@ public class DashboardCategoryAdapter extends RecyclerView.Adapter<DashboardCate
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         private final ItemDashboardCategoryBinding binding;
+        private final OnCategoryClickListener listener;
 
-        ViewHolder(ItemDashboardCategoryBinding binding) {
+        ViewHolder(ItemDashboardCategoryBinding binding, OnCategoryClickListener listener) {
             super(binding.getRoot());
             this.binding = binding;
+            this.listener = listener;
         }
 
         void bind(DashboardCategorySummary summary, String currencyCode) {
@@ -67,6 +78,10 @@ public class DashboardCategoryAdapter extends RecyclerView.Adapter<DashboardCate
             binding.vCategoryColor.setBackgroundTintList(ColorStateList.valueOf(color));
             binding.progressCategory.setIndicatorColor(color);
             binding.progressCategory.setProgress((int) Math.round(summary.getPercentage()));
+
+            binding.getRoot().setOnClickListener(v -> {
+                if (listener != null) listener.onCategoryClick(summary);
+            });
         }
 
         private String formatCurrency(double amount, String currencyCode) {

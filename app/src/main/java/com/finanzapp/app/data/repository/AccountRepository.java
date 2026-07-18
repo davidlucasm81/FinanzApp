@@ -156,8 +156,11 @@ public class AccountRepository {
             // Preservamos metadatos si no vienen en el objeto actualizado
             if (updatedAccount.getCreatedBy() == null) updatedAccount.setCreatedBy(oldAccount.getCreatedBy());
             if (updatedAccount.getCreatedAt() == null) updatedAccount.setCreatedAt(oldAccount.getCreatedAt());
-            // Mantener el estado activo a menos que se cambie explícitamente
-            // (updateAccount suele usarse para nombre/saldo inicial)
+            
+            // BUGFIX 2026-07-18: Asegurar que se mantiene el estado activo original.
+            // Al deserializar updatedAccount en el cliente para el diálogo de edición,
+            // 'active' puede perderse o resetearse a false si no se lee del bundle.
+            updatedAccount.setActive(oldAccount.isActive());
 
             transaction.set(accountRef, updatedAccount);
             return updatedAccount;

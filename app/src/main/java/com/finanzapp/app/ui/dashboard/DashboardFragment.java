@@ -7,6 +7,7 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.util.Pair;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.fragment.NavHostFragment;
@@ -64,6 +65,19 @@ public class DashboardFragment extends Fragment {
         binding.rvAccounts.setAdapter(accountAdapter);
 
         categoryAdapter = new DashboardCategoryAdapter();
+        categoryAdapter.setOnCategoryClickListener(summary -> {
+            Pair<Long, Long> range = viewModel.getDateRange().getValue();
+            Bundle args = new Bundle();
+            args.putString("preselectedCategoryId", summary.getCategoryId());
+            if (range != null) {
+                args.putLong("preselectedStartDateMillis", range.first);
+                args.putLong("preselectedEndDateMillis", range.second);
+            } else {
+                args.putLong("preselectedStartDateMillis", -1L);
+                args.putLong("preselectedEndDateMillis", -1L);
+            }
+            NavHostFragment.findNavController(this).navigate(com.finanzapp.app.R.id.action_dashboardFragment_to_transactionListFragment, args);
+        });
         binding.rvCategoryBreakdown.setLayoutManager(new LinearLayoutManager(requireContext()));
         binding.rvCategoryBreakdown.setAdapter(categoryAdapter);
     }

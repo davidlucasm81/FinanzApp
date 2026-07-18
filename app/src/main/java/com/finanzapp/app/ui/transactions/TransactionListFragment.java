@@ -73,6 +73,11 @@ public class TransactionListFragment extends Fragment {
     private Calendar filterStartDate = null;
     private Calendar filterEndDate = null;
 
+    private boolean isPreselectionApplied = false;
+    private String preselectedCategoryId = null;
+    private long preselectedStartMillis = -1L;
+    private long preselectedEndMillis = -1L;
+
     private List<Account> allAccounts = new ArrayList<>();
     private List<Category> allCategories = new ArrayList<>();
     // Cuentas archivadas: se excluyen del spinner de filtro y de la lista de movimientos,
@@ -88,6 +93,12 @@ public class TransactionListFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+
+        if (getArguments() != null) {
+            preselectedCategoryId = getArguments().getString("preselectedCategoryId");
+            preselectedStartMillis = getArguments().getLong("preselectedStartDateMillis", -1L);
+            preselectedEndMillis = getArguments().getLong("preselectedEndDateMillis", -1L);
+        }
 
         FinanzAppApplication.AppContainer appContainer = ((FinanzAppApplication) requireActivity().getApplication()).getAppContainer();
         ViewModelFactory factory = new ViewModelFactory(appContainer.getAuthRepository(), appContainer.getFamilyRepository(),
@@ -347,6 +358,10 @@ public class TransactionListFragment extends Fragment {
                 adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
                 spinnerFilterCategory.setAdapter(adapter);
 
+                if (!isPreselectionApplied && preselectedCategoryId != null) {
+                    filterCategoryId = preselectedCategoryId;
+                }
+
                 if (filterCategoryId != null) {
                     for (int i = 0; i < allCategories.size(); i++) {
                         if (allCategories.get(i).getId().equals(filterCategoryId)) {
@@ -365,6 +380,8 @@ public class TransactionListFragment extends Fragment {
                     @Override
                     public void onNothingSelected(AdapterView<?> parent) {}
                 });
+
+                applyPreselectionIfReady();
             }
         });
 
@@ -414,6 +431,8 @@ public class TransactionListFragment extends Fragment {
                     public void onNothingSelected(AdapterView<?> parent) {}
                 });
 
+                applyPreselectionIfReady();
+
                 // Puede que ya hubiera movimientos pintados (sin filtrar por archivadas) antes de
                 // que se resolviera esta llamada; recalculamos para aplicar el filtro correctamente.
                 updateTransactions();
@@ -437,6 +456,21 @@ public class TransactionListFragment extends Fragment {
                 Toast.makeText(requireContext(), "Error: " + ((Result.Error<?>) result).getException().getMessage(), Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    private void applyPreselectionIfReady() {
+        if (isPreselectionApplied) return;
+        if (allCategories.isEmpty() || allAccounts.isEmpty()) return;
+
+        if (preselectedStartMillis != -1L && preselectedEndMillis != -1L) {
+            filterStartDate = Calendar.getInstance();
+            filterStartDate.setTimeInMillis(preselectedStartMillis);
+            filterEndDate = Calendar.getInstance();
+            filterEndDate.setTimeInMillis(preselectedEndMillis);
+        }
+
+        isPreselectionApplied = true;
+        updateTransactions();
     }
 
     private void updateTransactions() {
