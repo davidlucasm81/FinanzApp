@@ -12,6 +12,11 @@
         android:title="Cuentas" />
 
     <item
+        android:id="@+id/statisticsFragment"
+        android:icon="@drawable/ic_statistics"
+        android:title="Estadísticas" />
+
+    <item
         android:id="@+id/memberListFragment"
         android:icon="@drawable/ic_members"
         android:title="Miembros" />

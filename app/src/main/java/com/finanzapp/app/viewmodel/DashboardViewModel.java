@@ -24,8 +24,12 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -41,7 +45,13 @@ public class DashboardViewModel extends ViewModel {
     private final TransactionRepository transactionRepository = new TransactionRepository();
     private final CategoryRepository categoryRepository = new CategoryRepository();
 
-    private final MutableLiveData<Result<Family>> familyData = new MutableLiveData<>();
+    private final MutableLiveData<String> familyIdSource = new MutableLiveData<>();
+    private final LiveData<Result<Family>> familyData;
+    private final LiveData<List<Account>> accountsSource;
+    private final LiveData<List<Category>> categoriesSource;
+    private final LiveData<List<Transaction>> transactionsSource;
+
+    private final MutableLiveData<Result<Boolean>> dataLoaded = new MutableLiveData<>(new Result.Loading<>());
     private final MutableLiveData<Result<User>> userData = new MutableLiveData<>();
     private final MutableLiveData<Pair<Long, Long>> dateRange = new MutableLiveData<>();
     private final MutableLiveData<Double> netBalance = new MutableLiveData<>(0.0);
@@ -52,10 +62,8 @@ public class DashboardViewModel extends ViewModel {
 
     private ListenerRegistration userListener;
 
-    // Último estado conocido de cada fuente async, para poder recalcular las estadísticas
-    // (ingresos/gastos/desglose por categoría) cada vez que cambia cualquiera de ellas,
-    // filtrando siempre por cuentas activas (ver sección "Decisiones tomadas" en AGENTS.md).
-    private Set<String> activeAccountIds = null; // null = todavía no ha llegado el primer snapshot de cuentas
+    // Último estado conocido de cada fuente async
+    private Set<String> activeAccountIds = null;
     private List<Transaction> latestTransactions = new ArrayList<>();
     private List<Category> latestCategories = new ArrayList<>();
 
@@ -63,22 +71,76 @@ public class DashboardViewModel extends ViewModel {
         this.authRepository = authRepository;
         this.familyRepository = familyRepository;
 
-        // Default range: current month
-        Calendar cal = Calendar.getInstance();
-        cal.set(Calendar.DAY_OF_MONTH, 1);
-        cal.set(Calendar.HOUR_OF_DAY, 0);
-        cal.set(Calendar.MINUTE, 0);
-        cal.set(Calendar.SECOND, 0);
-        long start = cal.getTimeInMillis();
+        // Default range: current month (FIXED: using java.time for precision)
+        LocalDate firstOfMonth = LocalDate.now().withDayOfMonth(1);
+        LocalDate lastOfMonth = firstOfMonth.plusMonths(1).minusDays(1);
 
-        cal.add(Calendar.MONTH, 1);
-        cal.add(Calendar.SECOND, -1);
-        long end = cal.getTimeInMillis();
+        long start = firstOfMonth.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        long end = lastOfMonth.atTime(LocalTime.MAX).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
 
         dateRange.setValue(new Pair<>(start, end));
+
+        // Reactive architecture
+        familyData = Transformations.switchMap(familyIdSource, id -> {
+            MutableLiveData<Result<Family>> live = new MutableLiveData<>();
+            familyRepository.getFamily(id, live::postValue);
+            return live;
+        });
+
+        accountsSource = Transformations.switchMap(familyIdSource, accountRepository::getAccounts);
+        categoriesSource = Transformations.switchMap(familyIdSource, categoryRepository::getCategories);
+        transactionsSource = Transformations.switchMap(familyIdSource, id -> {
+            Pair<Long, Long> range = dateRange.getValue();
+            Timestamp startTs = null;
+            Timestamp endTs = null;
+            if (range != null) {
+                startTs = new Timestamp(new Date(range.first));
+                endTs = new Timestamp(new Date(range.second));
+            }
+            return transactionRepository.getTransactions(id, null, null, null, null, startTs, endTs);
+        });
+
+        setupObservers();
+    }
+
+    private void setupObservers() {
+        accountsSource.observeForever(accounts -> {
+            if (accounts != null) {
+                accountsList.postValue(accounts);
+                double total = 0;
+                Set<String> activeIds = new HashSet<>();
+                for (Account account : accounts) {
+                    if (account.isActive()) {
+                        total += account.getCurrentBalance();
+                        if (account.getId() != null) {
+                            activeIds.add(account.getId());
+                        }
+                    }
+                }
+                netBalance.postValue(total);
+                activeAccountIds = activeIds;
+                
+                if (accounts.isEmpty()) {
+                    dataLoaded.postValue(new Result.Success<>(true));
+                }
+                
+                recomputeStatistics();
+            }
+        });
+
+        categoriesSource.observeForever(categoryList -> {
+            latestCategories = (categoryList != null) ? categoryList : new ArrayList<>();
+            recomputeStatistics();
+        });
+
+        transactionsSource.observeForever(transactions -> {
+            latestTransactions = (transactions != null) ? transactions : new ArrayList<>();
+            recomputeStatistics();
+        });
     }
 
     public LiveData<Result<Family>> getFamilyData() { return familyData; }
+    public LiveData<Result<Boolean>> getDataLoaded() { return dataLoaded; }
     public LiveData<Result<User>> getUserData() { return userData; }
     public LiveData<Pair<Long, Long>> getDateRange() { return dateRange; }
     public LiveData<Double> getNetBalance() { return netBalance; }
@@ -93,7 +155,11 @@ public class DashboardViewModel extends ViewModel {
         } else {
             dateRange.setValue(new Pair<>(start, end));
         }
-        fetchDashboardData();
+        // When range changes, we need to re-trigger the transactionsSource switchMap
+        String currentId = familyIdSource.getValue();
+        if (currentId != null) {
+            familyIdSource.setValue(currentId);
+        }
     }
 
     public void fetchDashboardData() {
@@ -117,85 +183,19 @@ public class DashboardViewModel extends ViewModel {
                         if (user != null) {
                             userData.postValue(new Result.Success<>(user));
                             if (user.getFamilyId() != null) {
-                                fetchFamilyData(user.getFamilyId());
+                                familyIdSource.postValue(user.getFamilyId());
                             }
                         }
                     });
         } else {
-            // Already listening to user, just refresh family-related data if we have familyId
-            Result<User> currentResult = userData.getValue();
-            if (currentResult instanceof Result.Success) {
-                User user = ((Result.Success<User>) currentResult).getData();
-                if (user.getFamilyId() != null) {
-                    fetchFamilyData(user.getFamilyId());
-                }
+            // Already listening to user, just refresh if familyId source is set
+            String currentId = familyIdSource.getValue();
+            if (currentId != null) {
+                familyIdSource.postValue(currentId);
             }
         }
     }
 
-    private void fetchFamilyData(String familyId) {
-        familyRepository.getFamily(familyId, familyData::postValue);
-
-        // Accounts list and net balance (always current)
-        accountRepository.getAccounts(familyId).observeForever(accounts -> {
-            if (accounts != null) {
-                accountsList.postValue(accounts);
-                double total = 0;
-                Set<String> activeIds = new HashSet<>();
-                for (Account account : accounts) {
-                    if (account.isActive()) {
-                        total += account.getCurrentBalance();
-                        if (account.getId() != null) {
-                            activeIds.add(account.getId());
-                        }
-                    }
-                }
-                netBalance.postValue(total);
-                // Guardamos el set de cuentas activas y recalculamos las estadísticas del
-                // periodo (ingresos/gastos/desglose por categoría), que deben excluir siempre
-                // los movimientos de cuentas archivadas, igual que ya se hace con el saldo total.
-                activeAccountIds = activeIds;
-                recomputeStatistics();
-            }
-        });
-
-        // Transactions and breakdown for the selected range
-        Pair<Long, Long> range = dateRange.getValue();
-        Timestamp start = null;
-        Timestamp end = null;
-
-        if (range != null) {
-            start = new Timestamp(new Date(range.first));
-            end = new Timestamp(new Date(range.second));
-        }
-
-        LiveData<List<Transaction>> transactionsRange = transactionRepository.getTransactions(familyId, null, null, null, null, start, end);
-        LiveData<List<Category>> categories = categoryRepository.getCategories(familyId);
-
-        // Cada fuente guarda su último valor conocido y dispara un recálculo; así el
-        // desglose se mantiene correcto sin importar en qué orden lleguen los snapshots
-        // de cuentas, categorías o movimientos (los tres llegan de listeners independientes).
-        categories.observeForever(categoryList -> {
-            latestCategories = (categoryList != null) ? categoryList : new ArrayList<>();
-            recomputeStatistics();
-        });
-
-        transactionsRange.observeForever(transactions -> {
-            latestTransactions = (transactions != null) ? transactions : new ArrayList<>();
-            recomputeStatistics();
-        });
-    }
-
-    /**
-     * Recalcula ingresos, gastos y desglose por categoría del periodo seleccionado a partir
-     * del último estado conocido de cuentas activas, movimientos y categorías. Se llama cada
-     * vez que cambia cualquiera de esas tres fuentes.
-     * <p>
-     * Importante: todas las estadísticas del Dashboard deben considerar únicamente cuentas
-     * activas (igual que el saldo total), por lo que los movimientos de cuentas archivadas se
-     * descartan aquí antes de sumar nada. Este mismo criterio debe aplicarse en la Fase 8
-     * (Estadísticas avanzadas) desde el principio.
-     */
     private void recomputeStatistics() {
         if (activeAccountIds == null) {
             // Aún no ha llegado el primer snapshot de cuentas; no hay forma de saber qué
@@ -251,6 +251,8 @@ public class DashboardViewModel extends ViewModel {
         // Sort by amount descending
         Collections.sort(summaries, (s1, s2) -> Double.compare(s2.getAmount(), s1.getAmount()));
         categoryBreakdown.postValue(summaries);
+        
+        dataLoaded.postValue(new Result.Success<>(true));
     }
 
     @Override

@@ -92,7 +92,7 @@
   - Ver detalle técnico en `AGENTS.md`, sección "Decisiones tomadas durante el desarrollo" (entrada 2026-07-17).
 - [x] **Decisión de negocio (2026-07-16): un `member` normal tampoco puede editar cuentas**. Se amplía el bugfix anterior: ahora "Editar" también se oculta para `member` en `AccountListFragment` (solo `admin`/`owner` ven Editar/Archivar/Eliminar; un member ve la cuenta en modo solo lectura). Se actualiza `firestore.rules` en consonancia: la regla `update` de `accounts` ya no permite a un `member` cambiar el campo `name` (antes sí podía). **Efecto colateral importante y deseado**: al revisar la regla se detectó que el campo `currentBalance` tampoco estaba en la lista de campos permitidos para `member`, lo cual habría bloqueado con `PERMISSION_DENIED` a **cualquier miembro normal que intentara registrar un ingreso/gasto** (`TransactionRepository` actualiza `currentBalance` de la cuenta dentro de la misma transacción atómica que crea/edita/borra el movimiento). Se corrige permitiendo explícitamente `currentBalance` como único campo que un member puede tocar en `accounts` (vía el flujo de movimientos, nunca editando la cuenta directamente).
 - [x] **Bugfix (2026-07-17)**: Al editar la posicion inicial de una cuenta esta se archiva automaticamente haciendo que el usuario tenga que desarchivarla. Solucionado asegurando que se preserva el estado `active` original en `AccountRepository.updateAccount`.
-- 
+
 ## Fase 5 — Categorías
 - [x] Modelo `Category` + `CategoryRepository`.
 - [x] Categorías por defecto a sembrar al crear la familia (ejemplo: Nómina, Otros ingresos, Alimentación, Vivienda, Transporte, Ocio, Salud, Educación, Otros gastos).
@@ -146,50 +146,53 @@
 ## Fase 7 — Posición neta / Dashboard
 - [x] Pantalla principal (home tras login): saldo total de la familia (suma de `currentBalance` de cuentas activas).
 - [x] Desglose por cuenta (lista/tarjetas).
-- [x] Desglose ingresos vs gastos del periodo seleccionado (selector: rango de fechas personalizado mediante un selector de fecha desde/hasta).
-- [x] Desglose por categoría del periodo seleccionado (lista ordenada de mayor a menor importe).
+- [x] (Movido a Fase 8) Desglose ingresos vs gastos del periodo seleccionado.
+- [x] (Movido a Fase 8) Desglose por categoría del periodo seleccionado.
 - [x] **Bugfix (2026-07-16): una cuenta archivada seguía apareciendo en el Dashboard**. `AccountRepository.getAccounts(familyId)` devuelve **todas** las cuentas de la familia (activas y archivadas), ya que otras pantallas (p. ej. el listado de gestión de cuentas de la Fase 4) sí necesitan poder mostrar las archivadas. El problema era que `DashboardAccountAdapter` pintaba esa lista tal cual, sin filtrar, por lo que al archivar una cuenta (`active: false`) esta seguía saliendo en el desglose por cuenta del Dashboard. Cambio: `DashboardAccountAdapter.setItems()` ahora descarta las cuentas con `active == false` antes de añadirlas a `items`, de forma que el Dashboard solo muestra cuentas activas (consistente con el saldo total, que ya sumaba solo `currentBalance` de cuentas activas). No se toca `AccountRepository` para no romper el listado de gestión de cuentas, que sigue necesitando ver también las archivadas.
-- [x] **Nuevo requisito de UX (2026-07-17): navegación desde el desglose por categoría a Movimientos, con filtros preaplicados.** Al pulsar una categoría del desglose de gasto por categoría del Dashboard, navegar a `TransactionListFragment` con el filtro de categoría preseleccionado (esa categoría) y el filtro de rango de fechas preseleccionado (el mismo rango desde/hasta activo en ese momento en el Dashboard). Ver detalle de la decisión y de las asunciones tomadas en `AGENTS.md`, sección "Decisiones tomadas durante el desarrollo" (entrada 2026-07-17).
-  - [x] Añadir argumentos de navegación al destino `transactionListFragment` en el nav graph: `preselectedCategoryId` (string, nullable) y `preselectedStartDateMillis`/`preselectedEndDateMillis` (long, `-1L` = sin fecha).
-  - [x] `DashboardFragment`: al pulsar una categoría del desglose, navegar pasando su `categoryId` y el rango desde/hasta seleccionado actualmente en el Dashboard.
-  - [x] `TransactionListFragment`: al recibir los argumentos, preseleccionar el spinner de categoría y el rango de fechas correspondientes (una sola vez, tras cargar categorías/cuentas), y relanzar la consulta filtrada. El filtro de cuenta no se preselecciona (queda en "todas").
-  - [x] Probar el caso sin rango de fechas seleccionado en el Dashboard (Dashboard con periodo por defecto) para confirmar que Movimientos no rompe si llegan `-1L`.
+- [x] (Movido a Fase 8) **Nuevo requisito de UX (2026-07-17): navegación desde el desglose por categoría a Movimientos, con filtros preaplicados.**
+- [x] **Simplificación del Dashboard (2026-07-19)**: Eliminación del selector de fechas y desgloses de ingresos/gastos y categorías, centralizando estas funciones en la pestaña de Estadísticas.
 
 ## Fase 7 bis — Pertenencia a varias familias
-> Requisito nuevo (2026-07-18): un usuario deja de estar limitado a una única familia. Ver el diseño completo (modelo de datos, reglas de seguridad y UX) en `AGENTS.md`, sección 4 "Pertenencia a varias familias (Fase 7 bis)" y sección 5 (reglas nuevas), y las asunciones tomadas en la entrada correspondiente de "Decisiones tomadas durante el desarrollo". Depende de que Fases 1-7 ya funcionen (reutiliza `CreateFamilyFragment`, `JoinByCodeFragment`, `AcceptInvitationFragment`, `FamilySettingsFragment`, y toda la lógica de abandonar familia de la Fase 3).
+> Requisito nuevo (2026-07-18): un usuario deja de estar limitado a una única familia. **Restricción explícita del propietario: no se modifica ningún campo ni colección ya existente.** `users/{uid}.familyId` conserva su nombre (solo cambia su significado, de "la única familia" a "la familia activa") y `families/{familyId}/members/{uid}` no gana ningún campo nuevo (ni `uid` ni `familyName`). La funcionalidad se construye añadiendo, sin tocar nada de lo anterior, la subcolección `users/{uid}/memberships/{familyId}`. Ver el diseño completo en `AGENTS.md`, sección 4 "Pertenencia a varias familias (Fase 7 bis)" y sección 5 (reglas nuevas), y las asunciones tomadas en la entrada correspondiente de "Decisiones tomadas durante el desarrollo" (entrada del 2026-07-18 marcada como "corrección"). Depende de que Fases 1-7 ya funcionen (reutiliza `CreateFamilyFragment`, `JoinByCodeFragment`, `AcceptInvitationFragment`, `FamilySettingsFragment`, y toda la lógica de abandonar familia de la Fase 3).
 
-### Modelo de datos y migración
-- [ ] Renombrar `users/{uid}.familyId` → `users/{uid}.activeFamilyId` en el modelo, en `UserRepository`/`User` (POJO) y en todos los puntos de la app que lo leen o escriben (login, onboarding, dashboard, salir de familia, borrado de cuenta).
-- [ ] Añadir el campo `uid` a `families/{familyId}/members/{uid}` en todos los puntos donde se crea un documento de member: creación de familia (`owner`), aceptar invitación por email, aprobar `code_request`.
-- [ ] Añadir el campo `familyName` (desnormalizado desde `families/{familyId}.name`) a `members/{uid}` en los mismos puntos de creación.
-- [ ] **Self-heal de datos antiguos**: al leer el propio documento de member (por ejemplo, al entrar en `FamilySettingsFragment` o al cargar el selector), si falta `uid` y/o `familyName`, completar el documento con un `update` en ese momento, para no depender de un script de migración por lotes.
-- [ ] Actualizar `FamilySettingsFragment`: al cambiar el nombre de una familia, propagar el nuevo nombre también a `familyName` en todos sus documentos `members/*` (batch write), para que el selector no muestre nombres desactualizados.
+### Modelo de datos (solo aditivo — nada existente cambia) y migración
+- [ ] Nuevo POJO `FamilyMembership` (`familyId`, `familyName`, `role`, `joinedAt`), que representa un documento de la nueva subcolección `users/{uid}/memberships/{familyId}`.
+- [ ] Nuevo `MembershipRepository` (o métodos nuevos en `FamilyRepository`) con las operaciones de escritura sobre esta subcolección: crear, actualizar `role`, actualizar `familyName`, borrar.
+- [ ] Instrumentar todos los puntos donde hoy se crea/actualiza/borra un `member` para que, en la misma operación (o inmediatamente después, cuando no puedan ir en el mismo `WriteBatch` por tocar subcolecciones de usuarios distintos), hagan lo mismo sobre el `membership` del usuario afectado:
+  - [ ] Creación de familia (Fase 2): crear `users/{uid}/memberships/{familyId}` (`role: owner`) junto con el `member` `owner`.
+  - [ ] Aceptar invitación por email (Fase 2): crear el `membership` del usuario junto con su `member`.
+  - [ ] Aprobar `code_request` (Fase 3): crear el `membership` del usuario junto con su `member`.
+  - [ ] Cambiar el rol de un miembro (Fase 3): actualizar `role` en el `membership` de ese usuario a la vez que en su `member`.
+  - [ ] Cambiar el nombre de la familia (`FamilySettingsFragment`): además del batch existente que actualiza `familyName` en todos los `members/*`, iterar esos mismos miembros y actualizar también `familyName` en `users/{uid}/memberships/{familyId}` de cada uno.
+  - [ ] Abandonar familia / expulsar miembro (Fase 3): borrar `users/{uid}/memberships/{familyId}` del usuario afectado a la vez que se borra su `member`.
+  - [ ] Traspaso de `owner` (Fase 3): actualizar el `role` del `membership` del nuevo `owner` (y del anterior, si sigue en la familia).
+  - [ ] Deep-delete de familia (sale el último miembro): borrar también su `membership`.
+- [ ] **Self-heal automático de usuarios ya existentes (sin script ni intervención manual)**: en la pantalla splash/loading (Fase 1), justo tras resolver el login, comprobar si `users/{uid}/memberships` está vacío; si lo está pero `familyId` no es `null`, leer el `member` del usuario en `families/{familyId}/members/{uid}` y el nombre en `families/{familyId}.name`, y crear con esos datos el `membership` correspondiente en `users/{uid}/memberships/{familyId}` (`role`, `familyName`, `joinedAt` = fecha actual, al no poder recuperar la fecha real de alta) antes de continuar la navegación. Es responsabilidad exclusiva de la app: no requiere ningún script, tarea manual del gestor de la base de datos ni acción visible por parte del usuario. Una vez creado el `membership`, esta comprobación deja de tener efecto para ese usuario.
 
 ### Repositorios
-- [ ] `FamilyRepository.getUserFamilies(uid)`: nuevo método que escucha en tiempo real `collectionGroup("members")` filtrado por `uid == uid` y devuelve una lista de un nuevo POJO `FamilyMembership` (`familyId`, `familyName`, `role`, `joinedAt`), resolviendo `familyId` a partir del padre del documento (`getReference().getParent().getParent().getId()`).
-- [ ] `FamilyRepository.switchActiveFamily(uid, familyId)`: valida (o confía en que la UI ya solo ofrece familias propias) y escribe `users/{uid}.activeFamilyId = familyId`.
-- [ ] `FamilyRepository`/lógica de "abandonar familia" (Fase 3): al salir de una familia, tras la limpieza/traspaso ya existente, comprobar si el usuario tiene otras familias (`getUserFamilies`); si tiene alguna, fijar `activeFamilyId` a la primera disponible y no navegar a onboarding; si no le queda ninguna, dejar `activeFamilyId = null` y navegar a onboarding (comportamiento actual).
-- [ ] Borrado de cuenta de usuario (Fase 3): iterar todas las familias del usuario (`getUserFamilies`) y ejecutar en cada una la misma lógica de "abandonar familia" (incluyendo traspaso de `owner` o deep-delete si es el único miembro), no solo en la familia activa.
+- [ ] `FamilyRepository.getUserFamilies(uid)` (o método equivalente en `MembershipRepository`): listener en tiempo real sobre `users/{uid}/memberships`, devuelve una lista de `FamilyMembership`. Sustituye al `collectionGroup("members")` del diseño descartado.
+- [ ] `FamilyRepository.switchActiveFamily(uid, familyId)`: sigue escribiendo en el campo `familyId` (no `activeFamilyId`) de `users/{uid}`; valida (o confía en que la UI ya solo ofrece familias del propio `memberships`) y escribe `users/{uid}.familyId = familyId`.
+- [ ] `FamilyRepository`/lógica de "abandonar familia" (Fase 3): al salir de una familia, tras la limpieza/traspaso ya existente y el borrado del `membership` correspondiente (ver tarea de arriba), comprobar si al usuario le quedan otros `memberships`; si tiene alguno, fijar `familyId` a uno de los restantes y no navegar a onboarding; si no le queda ninguno, dejar `familyId = null` y navegar a onboarding (comportamiento actual).
+- [ ] Borrado de cuenta de usuario (Fase 3): leer `users/{uid}/memberships` (colección propia del usuario, sin `collectionGroup`) y ejecutar en cada familia listada la misma lógica de "abandonar familia" (incluyendo traspaso de `owner` o deep-delete si es el único miembro), no solo en la familia activa.
 
 ### Reglas de seguridad de Firestore
-- [ ] Añadir `allow read` sobre `families/{familyId}/members/{memberId}` cuando `resource.data.uid == request.auth.uid`, para permitir el `collectionGroup` query del selector sin exponer miembros de otras familias.
-- [ ] Restringir la escritura de `users/{uid}.activeFamilyId` a valores `null` o a un `familyId` donde exista `families/{familyId}/members/{uid}` con `status: approved`.
-- [ ] Restringir la escritura de `familyName` en `members/{uid}` a los mismos casos ya cubiertos (alta de member, self-heal del propio usuario, o actualización en bloque por un `admin`/`owner` al renombrar la familia).
-- [ ] Probar las tres reglas anteriores con el Firebase Emulator Suite: un usuario no debe poder leer `members` de una familia ajena salvo su propio documento, no debe poder fijar `activeFamilyId` a una familia a la que no pertenece, y un `member` normal no debe poder reescribir `familyName` fuera de los casos permitidos.
+- [ ] `users/{uid}/memberships/{familyId}`: `allow read, write: if request.auth.uid == uid`. Al ser una subcolección privada del propio usuario, no hace falta ninguna regla nueva sobre `members` de otras familias (a diferencia del diseño con `collectionGroup`, ya descartado).
+- [ ] Restringir la escritura de `users/{uid}.familyId` a valores `null` o a un `familyId` para el que exista `users/{uid}/memberships/{familyId}`.
+- [ ] Probar ambas reglas con el Firebase Emulator Suite: un usuario no debe poder leer ni escribir `memberships` de otro usuario, y no debe poder fijar `familyId` a una familia para la que no tiene `membership`.
 
 ### Routing y sesión
-- [ ] Actualizar la lógica de la pantalla splash/loading (Fase 1) y de `WelcomeFragment`: en vez de mirar `activeFamilyId == null`, comprobar primero si `getUserFamilies(uid)` está vacío (→ onboarding). Si no está vacío pero `activeFamilyId` es `null` o no corresponde a ninguna familia propia (por ejemplo, expulsado de la que tenía activa), fijar automáticamente la primera disponible como activa y continuar a Dashboard. Si es válido, ir a Dashboard directamente.
-- [ ] Cachear `activeFamilyId` en memoria (por ejemplo en `AppContainer` o una clase de sesión) para no releerlo en cada pantalla; invalidar/refrescar la caché al cambiar de familia.
+- [ ] Actualizar la lógica de la pantalla splash/loading (Fase 1) y de `WelcomeFragment`: **tras ejecutar el self-heal automático de la tarea anterior** (que puede haber creado el primer `membership` del usuario), comprobar si `users/{uid}/memberships` está vacío (→ onboarding). Si no está vacío pero `familyId` es `null` o no corresponde a ningún `membership` (por ejemplo, expulsado de la que tenía activa), fijar automáticamente el primero disponible como activo y continuar a Dashboard. Si es válido, ir a Dashboard directamente.
+- [ ] Cachear `familyId` (familia activa) en memoria (por ejemplo en `AppContainer` o una clase de sesión) para no releerlo en cada pantalla; invalidar/refrescar la caché al cambiar de familia.
 
 ### UX — Selector de familias
-- [ ] `FamilySwitcherFragment` (bottom sheet o pantalla, en `ui/family/`): lista las familias del usuario (nombre, rol, indicador visual de cuál es la activa) usando `getUserFamilies`; tocar una familia distinta a la activa cambia `activeFamilyId` y navega al Dashboard.
+- [ ] `FamilySwitcherFragment` (bottom sheet o pantalla, en `ui/family/`): lista las familias del usuario (nombre, rol, indicador visual de cuál es la activa) leyendo `users/{uid}/memberships`; tocar una familia distinta a la activa cambia `familyId` y navega al Dashboard.
 - [ ] Botones "Crear otra familia" y "Unirme a otra familia por código" dentro del selector, que reutilizan `CreateFamilyFragment`/`JoinByCodeFragment` en modo "añadir familia" (no reemplazan la familia activa actual salvo que el usuario elija explícitamente cambiar a la nueva al terminar).
-- [ ] Punto de entrada al selector: tocar el nombre de la familia en la cabecera del Dashboard (añadir icono de desplegable) y un acceso adicional desde Ajustes de familia.
-- [ ] **Cambiar de familia limpia la navegación**: al confirmar el cambio de `activeFamilyId`, hacer `popBackStack` hasta el Dashboard (grafo raíz) antes de recargar, para no dejar en el back-stack pantallas de Cuentas/Movimientos/Categorías/Estadísticas/Miembros con datos de la familia anterior. Verificar que todos los `ViewModel` de esas pantallas recargan sus listeners de Firestore con el nuevo `familyId` en vez de reutilizar los antiguos.
-- [ ] `MyFamiliesFragment` (en Ajustes): listado de solo lectura de todas las familias del usuario con su rol en cada una, y acceso para cambiar la activa; para abandonar una familia concreta, el usuario cambia primero a ella y usa el botón "Salir de la familia" ya existente en `FamilySettingsFragment` (se decide no duplicar ahí la lógica de traspaso de `owner`/deep-delete).
+- [ ] **Único punto de entrada al selector**: botón desplegable junto al nombre de la familia en la cabecera del Dashboard, arriba a la izquierda. Cambiar de familia activa, y crear o unirse a una familia adicional, solo se puede iniciar desde ahí — no hay ningún otro acceso (ni desde Ajustes ni desde ninguna otra pantalla).
+- [ ] **Cambiar de familia limpia la navegación**: al confirmar el cambio de `familyId`, hacer `popBackStack` hasta el Dashboard (grafo raíz) antes de recargar, para no dejar en el back-stack pantallas de Cuentas/Movimientos/Categorías/Estadísticas/Miembros con datos de la familia anterior. Verificar que todos los `ViewModel` de esas pantallas recargan sus listeners de Firestore con el nuevo `familyId` en vez de reutilizar los antiguos.
+- [ ] `MyFamiliesFragment` (en Ajustes): listado **puramente de solo lectura** de `users/{uid}/memberships` con el rol en cada una (sin ninguna acción de cambiar la activa desde aquí); para cambiar de familia o para abandonar una en concreto, el usuario debe volver al Dashboard y usar el desplegable de la cabecera, y una vez esté activa la familia que quiere abandonar, usar el botón "Salir de la familia" ya existente en `FamilySettingsFragment` (se decide no duplicar ahí la lógica de traspaso de `owner`/deep-delete).
 
 ### UX — Crear/unirse a una familia adicional
-- [ ] `CreateFamilyFragment`/`JoinByCodeFragment`/`AcceptInvitationFragment`: dejar de asumir que se ejecutan siempre desde onboarding sin familia previa. Al terminar con éxito, si el usuario ya tenía una `activeFamilyId` distinta, preguntar si quiere cambiar ahora a la familia recién creada/unida o seguir donde estaba, en vez de sobrescribir `activeFamilyId` automáticamente.
+- [ ] `CreateFamilyFragment`/`JoinByCodeFragment`/`AcceptInvitationFragment`: dejar de asumir que se ejecutan siempre desde onboarding sin familia previa. Al terminar con éxito, si el usuario ya tenía un `familyId` activo distinto, preguntar si quiere cambiar ahora a la familia recién creada/unida o seguir donde estaba, en vez de sobrescribir `familyId` automáticamente.
 - [ ] Comprobación de invitaciones por email pendientes: además de en `WelcomeFragment` (onboarding sin familia), añadir una comprobación al iniciar sesión/abrir la app estando ya dentro de una familia, y mostrar un aviso in-app (badge en el selector o diálogo) en vez de limitarlo a la pantalla de bienvenida.
 
 ### Pruebas manuales de la fase
@@ -198,24 +201,22 @@
 - [ ] Abandonar una de dos familias: debe quedar en Dashboard de la familia restante, no en onboarding.
 - [ ] Abandonar la única familia restante: debe ir a onboarding, igual que el comportamiento previo a esta fase.
 - [ ] Borrado de cuenta de usuario perteneciendo a 2+ familias: verificar que se aplica el traspaso de `owner`/deep-delete en todas, no solo en la activa.
-- [ ] Con el Firebase Emulator Suite: un usuario no puede leer los `members` de una familia a la que no pertenece (salvo su propio documento) ni fijar `activeFamilyId` a una familia ajena.
+- [ ] Verificar que `families/{familyId}/members/{uid}` no ha cambiado su estructura (sigue sin campos `uid` ni `familyName`) y que `users/{uid}.familyId` sigue llamándose igual que antes de esta fase.
 
 ## Fase 8 — Estadísticas avanzadas (Pestaña Independiente)
 > **Criterio transversal de esta fase**: salvo que el usuario filtre explícitamente por una cuenta archivada, todas las estadísticas de esta pantalla (evolución mensual, variación de gasto, distribución por categorías, gasto medio, matriz histórica) se calculan solo con movimientos de cuentas activas — mismo criterio ya aplicado en el Dashboard (Fase 7, bugfix 2026-07-16). Filtrar los movimientos por `accountId` perteneciente a una cuenta con `active == true` antes de agregar nada.
-- [ ] Configurar `StatisticsFragment` como una nueva sección principal en el `BottomNavigationView`.
-- [ ] Añadir dependencia MPAndroidChart.
-- [ ] Llevar el gasto por categoria del dashboard a las estadisticas avanzadas (abajo en distribucion por categorias)
-- [ ] **Resumen y Evolución Mensual**: Gráfico de barras (Ingreso vs Gasto) y línea de Balance Neto (Ingreso - Gasto) mes a mes, con tarjetas resumen de totales del periodo.
-- [ ] **Variación del Gasto**: Mostrar el % de variación del gasto total respecto al mes anterior con indicadores visuales de tendencia (verde para ahorro, rojo para incremento).
-- [ ] **Distribución por Categorías**:
-  - [ ] Gráfico de donut interactivo con el % de gasto de cada categoría sobre el total mensual.
-  - [ ] Ranking listado de categorías por gasto acumulado en el periodo con barras de progreso visuales.
-- [ ] **Gasto Medio Mensual**: Informe de promedio de gasto por categoría y cuenta para análisis de presupuesto a largo plazo.
-- [ ] **Matriz de Histórico Neto**: Vista de tabla o mapa de calor que muestre el neto (Ingreso - Gasto) por categoría y mes para todo el historial registrado.
-- [ ] **UX y Rendimiento**: Implementar filtros de tiempo/cuenta, estados de carga con Shimmer, manejo de "Sin datos" con ilustraciones y transiciones fluidas entre gráficos.
+- [x] Configurar `StatisticsFragment` como una nueva sección principal en el `BottomNavigationView`.
+- [x] Añadir dependencia MPAndroidChart.
+- [x] Llevar el gasto por categoria del dashboard a las estadisticas avanzadas (abajo en distribucion por categorias)
+- [x] **Resumen y Evolución Mensual**: Gráfico de barras (Ingreso vs Gasto) y línea de Balance Neto (Ingreso - Gasto) mes a mes, con tarjetas resumen de totales del periodo.
+- [x] **Variación del Gasto**: Mostrar el % de variación del gasto total respecto al mes anterior con indicadores visuales de tendencia (verde para ahorro, rojo para incremento).
+- [x] **Distribución por Categorías**:
+  - [x] Gráfico de donut interactivo con el % de gasto de cada categoría sobre el total mensual y el importe en euros.
+- [x] **UX y Rendimiento**: Implementar filtros de tiempo/cuenta, estados de carga, manejo de "Sin datos" y transiciones fluidas entre gráficos. Se han simplificado las estadísticas eliminando el gasto medio mensual, el ranking de categorías y la matriz histórica de netos por decisión de UX. Se ha optimizado la carga en Dashboard y Estadísticas para evitar parpadeos y se han mejorado los gráficos con zoom, scroll y etiquetas detalladas.
 
 ## Fase 9 — Calidad, seguridad y pulido
 - [ ] Revisión completa de las reglas de seguridad de Firestore.
+- [ ] Reducir al maximo posible SIN perder funcionalidad las llamadas a firebase para no superar el limite de llamadas.
 - [ ] Manejo de estados vacíos (sin cuentas, sin movimientos, sin familia) y de errores de red.
 - [ ] Verificar que la persistencia offline de Firestore funciona razonablemente bien.
 - [ ] Revisión de accesibilidad básica (`contentDescription`, tamaños de texto, contraste).

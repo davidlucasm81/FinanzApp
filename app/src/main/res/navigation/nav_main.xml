@@ -63,6 +63,15 @@
         android:label="Cuentas"
         tools:layout="@layout/fragment_account_list" />
 
+    <fragment
+        android:id="@+id/statisticsFragment"
+        android:name="com.finanzapp.app.ui.statistics.StatisticsFragment"
+        android:label="@string/stats_title"
+        tools:layout="@layout/fragment_statistics">
+        <action
+            android:id="@+id/action_statisticsFragment_to_transactionListFragment"
+            app:destination="@id/transactionListFragment" />
+    </fragment>
 
     <fragment
         android:id="@+id/inviteMemberFragment"

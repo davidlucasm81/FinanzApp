@@ -43,7 +43,9 @@ dependencies {
     implementation libs.googleid
     implementation libs.androidx.navigation.fragment
     implementation libs.androidx.navigation.ui
+    implementation libs.androidx.lifecycle.livedata
     implementation libs.colorpicker
+    implementation libs.mpandroidchart
 
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'

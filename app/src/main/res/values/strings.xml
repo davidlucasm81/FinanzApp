@@ -59,4 +59,20 @@
     <string name="label_type">Tipo</string>
     <string name="label_method">Método</string>
     <string name="label_date_range">Rango de fechas</string>
+
+    <!-- Statistics -->
+    <string name="stats_title">Estadísticas</string>
+    <string name="stats_summary_period">Resumen del Periodo</string>
+    <string name="stats_income">Ingresos</string>
+    <string name="stats_expense">Gastos</string>
+    <string name="stats_variation">Variación</string>
+    <string name="stats_variation_vs_previous">variación gasto vs mes anterior</string>
+    <string name="stats_average_expense">Gasto Medio</string>
+    <string name="stats_monthly_evolution">Evolución Mensual</string>
+    <string name="stats_category_distribution">Distribución por Categorías</string>
+    <string name="stats_net_history">Histórico Neto</string>
+    <string name="date_filter_all">Todo el histórico</string>
+    <string name="date_filter_clear_desc">Limpiar filtro</string>
+    <string name="date_filter_select_period">Seleccionar periodo</string>
+    <string name="date_filter_this_month">Este mes</string>
 </resources>

@@ -63,6 +63,8 @@ public class ViewModelFactory implements ViewModelProvider.Factory {
         } else if (modelClass.isAssignableFrom(TransactionViewModel.class)) {
             if (transactionRepository == null) throw new IllegalArgumentException("TransactionRepository not provided to ViewModelFactory");
             return (T) new TransactionViewModel(transactionRepository, accountRepository, categoryRepository, familyRepository);
+        } else if (modelClass.isAssignableFrom(StatisticsViewModel.class)) {
+            return (T) new StatisticsViewModel(authRepository, familyRepository);
         }
         throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());
     }
