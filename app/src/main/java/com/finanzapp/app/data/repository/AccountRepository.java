@@ -52,6 +52,25 @@ public class AccountRepository {
     }
 
     /**
+     * Devuelve las cuentas de la familia (listener en tiempo real).
+     * Versión optimizada que NO comprueba si tienen movimientos asociados.
+     * Ideal para el Dashboard donde solo se necesita el saldo.
+     */
+    public LiveData<List<Account>> getAccounts(String familyId) {
+        MutableLiveData<List<Account>> live = new MutableLiveData<>();
+        db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS)
+                .addSnapshotListener((value, error) -> {
+                    if (error != null || value == null) return;
+                    List<Account> accounts = new ArrayList<>();
+                    for (com.google.firebase.firestore.QueryDocumentSnapshot doc : value) {
+                        accounts.add(doc.toObject(Account.class));
+                    }
+                    live.setValue(accounts);
+                });
+        return live;
+    }
+
+    /**
      * Devuelve las cuentas de la familia, marcando en cada una si tiene o no movimientos
      * asociados ({@link Account#isHasTransactions()}). La UI usa ese flag para decidir si
      * ofrece "Archivar" (cuenta con movimientos) o "Eliminar" (cuenta sin movimientos),
@@ -60,7 +79,7 @@ public class AccountRepository {
      * Se escuchan tanto la colección de cuentas como la de movimientos, para que el flag
      * se mantenga correcto si se añade/borra un movimiento sin que cambien las cuentas.
      */
-    public LiveData<List<Account>> getAccounts(String familyId) {
+    public LiveData<List<Account>> getAccountsWithTransactionStatus(String familyId) {
         MutableLiveData<List<Account>> live = new MutableLiveData<>();
         // Guardamos la última lista de cuentas conocida para poder recalcular el flag
         // cuando llegue un cambio en la colección de movimientos (sin esperar a que

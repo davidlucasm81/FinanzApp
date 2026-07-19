@@ -47,6 +47,6 @@ public class AccountViewModel extends ViewModel {
     }
 
     public LiveData<List<Account>> getAccounts(String familyId) {
-        return accountRepository.getAccounts(familyId);
+        return accountRepository.getAccountsWithTransactionStatus(familyId);
     }
 }
