@@ -13,6 +13,8 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.util.List;
+
 public class AuthRepository {
     private final FirebaseAuth auth;
     private final FirebaseFirestore db;
@@ -93,28 +95,34 @@ public class AuthRepository {
 
         String uid = firebaseUser.getUid();
 
-        // 1. Fetch user data to check for familyId
-        db.collection(FirestorePaths.USERS).document(uid).get()
+        // Phase 7 bis: Iterate all memberships and leave each family
+        db.collection(FirestorePaths.getMembershipsPath(uid)).get()
                 .addOnCompleteListener(task -> {
-                    if (task.isSuccessful() && task.getResult().exists()) {
-                        User user = task.getResult().toObject(User.class);
-                        if (user != null && user.getFamilyId() != null) {
-                            // 2. Leave family first
-                            familyRepository.leaveFamily(user.getFamilyId(), result -> {
-                                if (result instanceof Result.Success) {
-                                    proceedWithDeletion(firebaseUser, callback);
-                                } else {
-                                    callback.onResult(new Result.Error<>(((Result.Error<?>) result).getException()));
-                                }
-                            });
-                        } else {
+                    if (task.isSuccessful()) {
+                        List<DocumentSnapshot> memberships = task.getResult().getDocuments();
+                        if (memberships.isEmpty()) {
                             proceedWithDeletion(firebaseUser, callback);
+                        } else {
+                            leaveFamiliesSequentially(memberships, 0, familyRepository, firebaseUser, callback);
                         }
                     } else {
-                        // User doc might not exist but we should still try to delete the auth user
+                        // User doc or memberships might not exist, proceed with deletion
                         proceedWithDeletion(firebaseUser, callback);
                     }
                 });
+    }
+
+    private void leaveFamiliesSequentially(List<DocumentSnapshot> memberships, int index, FamilyRepository familyRepository, FirebaseUser firebaseUser, AuthCallback callback) {
+        if (index >= memberships.size()) {
+            proceedWithDeletion(firebaseUser, callback);
+            return;
+        }
+
+        String familyId = memberships.get(index).getId();
+        familyRepository.leaveFamily(familyId, result -> {
+            // We continue even if one fails to ensure maximum cleanup
+            leaveFamiliesSequentially(memberships, index + 1, familyRepository, firebaseUser, callback);
+        });
     }
 
     private void proceedWithDeletion(FirebaseUser firebaseUser, AuthCallback callback) {

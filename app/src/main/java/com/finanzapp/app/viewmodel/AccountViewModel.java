@@ -46,7 +46,14 @@ public class AccountViewModel extends ViewModel {
         accountRepository.deleteAccount(familyId, accountId, result -> deleteResult.postValue(result));
     }
 
+    private String lastAccountsFamilyId;
+    private LiveData<List<Account>> lastAccountsLiveData;
+
     public LiveData<List<Account>> getAccounts(String familyId) {
-        return accountRepository.getAccountsWithTransactionStatus(familyId);
+        if (lastAccountsLiveData == null || !familyId.equals(lastAccountsFamilyId)) {
+            lastAccountsFamilyId = familyId;
+            lastAccountsLiveData = accountRepository.getAccountsWithTransactionStatus(familyId);
+        }
+        return lastAccountsLiveData;
     }
 }

@@ -8,9 +8,18 @@ public class FirestorePaths {
     public static final String ACCOUNTS = "accounts";
     public static final String CATEGORIES = "categories";
     public static final String TRANSACTIONS = "transactions";
+    public static final String MEMBERSHIPS = "memberships";
 
     public static String getUserPath(String uid) {
         return USERS + "/" + uid;
+    }
+
+    public static String getMembershipsPath(String uid) {
+        return getUserPath(uid) + "/" + MEMBERSHIPS;
+    }
+
+    public static String getMembershipPath(String uid, String familyId) {
+        return getMembershipsPath(uid) + "/" + familyId;
     }
 
     public static String getFamilyPath(String familyId) {

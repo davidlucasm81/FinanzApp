@@ -3,6 +3,7 @@ package com.finanzapp.app.data.repository;
 import com.finanzapp.app.data.firebase.FirestorePaths;
 import com.finanzapp.app.data.model.Category;
 import com.finanzapp.app.data.model.Family;
+import com.finanzapp.app.data.model.FamilyMembership;
 import com.finanzapp.app.data.model.Invitation;
 import com.finanzapp.app.data.model.Member;
 import com.finanzapp.app.data.model.User;
@@ -15,11 +16,15 @@ import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.WriteBatch;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 public class FamilyRepository {
@@ -65,6 +70,11 @@ public class FamilyRepository {
         WriteBatch batch = db.batch();
         batch.set(familyRef, family);
         batch.set(db.collection(FirestorePaths.getMembersPath(familyId)).document(uid), adminMember);
+
+        // Phase 7 bis: Add membership
+        FamilyMembership membership = new FamilyMembership(familyId, name, "owner", adminMember.getJoinedAt());
+        batch.set(db.collection(FirestorePaths.getMembershipsPath(uid)).document(familyId), membership);
+
         batch.update(db.collection(FirestorePaths.USERS).document(uid), "familyId", familyId);
 
         // Seed categories
@@ -93,7 +103,7 @@ public class FamilyRepository {
                     if (task.isSuccessful() && !task.getResult().isEmpty()) {
                         QueryDocumentSnapshot familyDoc = (QueryDocumentSnapshot) task.getResult().getDocuments().get(0);
                         String familyId = familyDoc.getId();
-                        
+
                         FirebaseUser currentUser = auth.getCurrentUser();
                         String displayName = currentUser != null && currentUser.getDisplayName() != null ? currentUser.getDisplayName() : "Usuario";
                         String email = currentUser != null ? currentUser.getEmail() : "";
@@ -111,7 +121,7 @@ public class FamilyRepository {
                         );
                         invitation.setRequesterName(displayName);
                         invitation.setRequesterEmail(email);
-                        
+
                         inviteRef.set(invitation)
                                 .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(true)))
                                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
@@ -135,7 +145,7 @@ public class FamilyRepository {
                     if (task.isSuccessful() && !task.getResult().isEmpty()) {
                         QueryDocumentSnapshot familyDoc = (QueryDocumentSnapshot) task.getResult().getDocuments().get(0);
                         String familyId = familyDoc.getId();
-                        
+
                         FirebaseUser currentUser = auth.getCurrentUser();
                         String displayName = currentUser != null && currentUser.getDisplayName() != null ? currentUser.getDisplayName() : "Usuario";
                         String email = currentUser != null ? currentUser.getEmail() : "";
@@ -153,7 +163,7 @@ public class FamilyRepository {
                         );
                         invitation.setRequesterName(displayName);
                         invitation.setRequesterEmail(email);
-                        
+
                         inviteRef.set(invitation)
                                 .addOnSuccessListener(aVoid -> {
                                     android.util.Log.d("FamilyRepository", "Code request invitation created successfully. InvId: " + invitation.getId() + ", FamilyId: " + familyId);
@@ -171,7 +181,7 @@ public class FamilyRepository {
 
     private void seedDefaultCategories(WriteBatch batch, String familyId) {
         CollectionReference categoriesRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.CATEGORIES);
-        
+
         // Income categories
         String[] incomeCategories = {"Nómina", "Otros ingresos"};
         for (String name : incomeCategories) {
@@ -183,11 +193,11 @@ public class FamilyRepository {
 
         // Expense categories
         String[] expenseCategories = {
-                "Hipoteca", "Reformas", "Servicios", "Internet", "Seguros", 
-                "Supermercado", "Restaurantes", "Alcohol", "Transporte", "Salud", 
-                "Ropa", "Educación", "Ocio", "Viajes", "Ahorros", 
-                "Informática", "Libros", "Streaming", "Deporte", "Bebidas", 
-                "Peluquería", "Regalos", "Hogar", "Misceláneo", "Impuestos", 
+                "Hipoteca", "Reformas", "Servicios", "Internet", "Seguros",
+                "Supermercado", "Restaurantes", "Alcohol", "Transporte", "Salud",
+                "Ropa", "Educación", "Ocio", "Viajes", "Ahorros",
+                "Informática", "Libros", "Streaming", "Deporte", "Bebidas",
+                "Peluquería", "Regalos", "Hogar", "Misceláneo", "Impuestos",
                 "Comunidad", "Mascotas", "Donaciones"
         };
         for (String name : expenseCategories) {
@@ -277,21 +287,45 @@ public class FamilyRepository {
         );
         batch.set(db.collection(FirestorePaths.getMembersPath(familyId)).document(userUid), member);
 
-        // Also update the user's document to set familyId. The security rules were updated to
-        // allow an admin to update only the `familyId` field on a user's document, so this
-        // targeted update is permitted and keeps client `users/{uid}.familyId` in sync.
-        try {
-            batch.update(db.collection(FirestorePaths.USERS).document(userUid), "familyId", familyId);
-        } catch (Exception e) {
-            // If update fails (for example user doc does not exist), we continue and let the
-            // commit report the error back via the callback.
-        }
+        // Phase 7 bis: Add membership for the approved user
+        // We need the family name to seed the membership. The invitation doesn't have it,
+        // but this method is called by an admin who can fetch it, or we fetch it now.
+        // For simplicity and since batch must be atomic, we'll fetch family name first in the ViewModel 
+        // OR we fetch it here before starting the batch.
 
-        batch.commit().addOnCompleteListener(task -> {
-            if (task.isSuccessful()) {
-                callback.onResult(new Result.Success<>(true));
+        db.collection(FirestorePaths.FAMILIES).document(familyId).get().addOnCompleteListener(familyTask -> {
+            if (familyTask.isSuccessful() && familyTask.getResult().exists()) {
+                String familyName = familyTask.getResult().getString("name");
+                FamilyMembership membership = new FamilyMembership(familyId, familyName, "member", member.getJoinedAt());
+
+                WriteBatch finalBatch = db.batch();
+                // 1. Update invitation status
+                finalBatch.update(db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.INVITATIONS).document(invitation.getId()),
+                        "status", "approved",
+                        "resolvedAt", Timestamp.now(),
+                        "resolvedByUid", adminUid);
+
+                // 2. Create member
+                finalBatch.set(db.collection(FirestorePaths.getMembersPath(familyId)).document(userUid), member);
+
+                // 3. Create membership
+                finalBatch.set(db.collection(FirestorePaths.getMembershipsPath(userUid)).document(familyId), membership);
+
+                // 4. Update user familyId
+                try {
+                    finalBatch.update(db.collection(FirestorePaths.USERS).document(userUid), "familyId", familyId);
+                } catch (Exception e) {
+                }
+
+                finalBatch.commit().addOnCompleteListener(commitTask -> {
+                    if (commitTask.isSuccessful()) {
+                        callback.onResult(new Result.Success<>(true));
+                    } else {
+                        callback.onResult(new Result.Error<>(commitTask.getException()));
+                    }
+                });
             } else {
-                callback.onResult(new Result.Error<>(task.getException()));
+                callback.onResult(new Result.Error<>(new Exception("Could not fetch family name for membership")));
             }
         });
     }
@@ -346,43 +380,55 @@ public class FamilyRepository {
             return;
         }
 
-        // Fetch current user doc for member info
-        db.collection(FirestorePaths.USERS).document(uid).get().addOnCompleteListener(task -> {
-            if (task.isSuccessful() && task.getResult().exists()) {
-                User user = task.getResult().toObject(User.class);
+        // Fetch current user doc for member info AND family name for membership
+        db.collection(FirestorePaths.USERS).document(uid).get().addOnCompleteListener(userTask -> {
+            if (userTask.isSuccessful() && userTask.getResult().exists()) {
+                User user = userTask.getResult().toObject(User.class);
                 if (user == null) return;
 
-                WriteBatch batch = db.batch();
+                db.collection(FirestorePaths.FAMILIES).document(familyId).get().addOnCompleteListener(familyTask -> {
+                    if (familyTask.isSuccessful() && familyTask.getResult().exists()) {
+                        String familyName = familyTask.getResult().getString("name");
 
-                // 1. Update invitation status
-                batch.update(db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.INVITATIONS).document(invitation.getId()),
-                        "status", "accepted",
-                        "resolvedAt", Timestamp.now(),
-                        "resolvedByUid", uid);
+                        WriteBatch batch = db.batch();
 
-                // 2. Create member
-                Member member = new Member(
-                        uid,
-                        user.getDisplayName(),
-                        user.getEmail(),
-                        "member",
-                        "approved",
-                        Timestamp.now()
-                );
-                batch.set(db.collection(FirestorePaths.getMembersPath(familyId)).document(uid), member);
+                        // 1. Update invitation status
+                        batch.update(db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.INVITATIONS).document(invitation.getId()),
+                                "status", "accepted",
+                                "resolvedAt", Timestamp.now(),
+                                "resolvedByUid", uid);
 
-                // 3. Update user familyId
-                batch.update(db.collection(FirestorePaths.USERS).document(uid), "familyId", familyId);
+                        // 2. Create member
+                        Member member = new Member(
+                                uid,
+                                user.getDisplayName(),
+                                user.getEmail(),
+                                "member",
+                                "approved",
+                                Timestamp.now()
+                        );
+                        batch.set(db.collection(FirestorePaths.getMembersPath(familyId)).document(uid), member);
 
-                batch.commit().addOnCompleteListener(batchTask -> {
-                    if (batchTask.isSuccessful()) {
-                        callback.onResult(new Result.Success<>(true));
+                        // 3. Phase 7 bis: Add membership
+                        FamilyMembership membership = new FamilyMembership(familyId, familyName, "member", member.getJoinedAt());
+                        batch.set(db.collection(FirestorePaths.getMembershipsPath(uid)).document(familyId), membership);
+
+                        // 4. Update user familyId
+                        batch.update(db.collection(FirestorePaths.USERS).document(uid), "familyId", familyId);
+
+                        batch.commit().addOnCompleteListener(batchTask -> {
+                            if (batchTask.isSuccessful()) {
+                                callback.onResult(new Result.Success<>(true));
+                            } else {
+                                callback.onResult(new Result.Error<>(batchTask.getException()));
+                            }
+                        });
                     } else {
-                        callback.onResult(new Result.Error<>(batchTask.getException()));
+                        callback.onResult(new Result.Error<>(new Exception("Could not fetch family name")));
                     }
                 });
             } else {
-                callback.onResult(new Result.Error<>(task.getException() != null ? task.getException() : new Exception("User doc not found")));
+                callback.onResult(new Result.Error<>(userTask.getException() != null ? userTask.getException() : new Exception("User doc not found")));
             }
         });
     }
@@ -405,7 +451,7 @@ public class FamilyRepository {
     public void findInvitationByEmail(String email, InvitationByEmailCallback callback) {
         String normalizedEmail = email.toLowerCase().trim();
         android.util.Log.d("FamilyRepository", "Searching for invitation for: " + normalizedEmail);
-        
+
         db.collectionGroup(FirestorePaths.INVITATIONS)
                 .whereEqualTo("type", "email_invite")
                 .whereEqualTo("targetEmail", normalizedEmail)
@@ -485,11 +531,33 @@ public class FamilyRepository {
                 .update("name", name, "currencyCode", currencyCode)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
-                        callback.onResult(new Result.Success<>(true));
+                        // Phase 7 bis: Propagate family name change to all members' memberships
+                        propagateFamilyNameChange(familyId, name, callback);
                     } else {
                         callback.onResult(new Result.Error<>(task.getException()));
                     }
                 });
+    }
+
+    private void propagateFamilyNameChange(String familyId, String newName, ApproveCallback callback) {
+        db.collection(FirestorePaths.getMembersPath(familyId)).get().addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                WriteBatch batch = db.batch();
+                for (DocumentSnapshot memberDoc : task.getResult().getDocuments()) {
+                    String memberUid = memberDoc.getId();
+                    batch.update(db.collection(FirestorePaths.getMembershipsPath(memberUid)).document(familyId), "familyName", newName);
+                }
+                batch.commit().addOnCompleteListener(batchTask -> {
+                    if (batchTask.isSuccessful()) {
+                        callback.onResult(new Result.Success<>(true));
+                    } else {
+                        callback.onResult(new Result.Error<>(batchTask.getException()));
+                    }
+                });
+            } else {
+                callback.onResult(new Result.Error<>(task.getException()));
+            }
+        });
     }
 
     public void getFamily(String familyId, FamilyCallback callback) {
@@ -553,13 +621,17 @@ public class FamilyRepository {
         String myRole = myDoc.getString("role");
         WriteBatch batch = db.batch();
         batch.delete(db.collection(FirestorePaths.getMembersPath(familyId)).document(uid));
-        batch.update(db.collection(FirestorePaths.USERS).document(uid), "familyId", null);
+
+        // Phase 7 bis: Delete membership
+        batch.delete(db.collection(FirestorePaths.getMembershipsPath(uid)).document(familyId));
 
         if ("owner".equals(myRole)) {
             // Owner is leaving, transfer ownership
             Member successor = findSuccessor(others);
             if (successor != null) {
                 batch.update(db.collection(FirestorePaths.getMembersPath(familyId)).document(successor.getUid()), "role", "owner");
+                // Phase 7 bis: Update membership of successor
+                batch.update(db.collection(FirestorePaths.getMembershipsPath(successor.getUid())).document(familyId), "role", "owner");
             }
         } else if ("admin".equals(myRole)) {
             // If I was the only admin/owner left, promote someone? 
@@ -575,15 +647,41 @@ public class FamilyRepository {
                 Member successor = findSuccessor(others);
                 if (successor != null) {
                     batch.update(db.collection(FirestorePaths.getMembersPath(familyId)).document(successor.getUid()), "role", "admin");
+                    // Phase 7 bis: Update membership of successor
+                    batch.update(db.collection(FirestorePaths.getMembershipsPath(successor.getUid())).document(familyId), "role", "admin");
                 }
             }
         }
 
-        batch.commit().addOnCompleteListener(task -> {
-            if (task.isSuccessful()) {
-                callback.onResult(new Result.Success<>(true));
+        // Logic to decide new familyId or null
+        db.collection(FirestorePaths.getMembershipsPath(uid)).get().addOnCompleteListener(membershipTask -> {
+            if (membershipTask.isSuccessful()) {
+                String nextFamilyId = null;
+                for (DocumentSnapshot mDoc : membershipTask.getResult().getDocuments()) {
+                    if (!mDoc.getId().equals(familyId)) {
+                        nextFamilyId = mDoc.getId();
+                        break;
+                    }
+                }
+                batch.update(db.collection(FirestorePaths.USERS).document(uid), "familyId", nextFamilyId);
+
+                batch.commit().addOnCompleteListener(commitTask -> {
+                    if (commitTask.isSuccessful()) {
+                        callback.onResult(new Result.Success<>(true));
+                    } else {
+                        callback.onResult(new Result.Error<>(commitTask.getException()));
+                    }
+                });
             } else {
-                callback.onResult(new Result.Error<>(task.getException()));
+                // Fallback to null if error reading memberships
+                batch.update(db.collection(FirestorePaths.USERS).document(uid), "familyId", null);
+                batch.commit().addOnCompleteListener(commitTask -> {
+                    if (commitTask.isSuccessful()) {
+                        callback.onResult(new Result.Success<>(true));
+                    } else {
+                        callback.onResult(new Result.Error<>(commitTask.getException()));
+                    }
+                });
             }
         });
     }
@@ -601,7 +699,7 @@ public class FamilyRepository {
             // Priority 1: owner (should not be in 'others' if owner is leaving, but for robustness)
             // Priority 2: admin
             // Priority 3: member
-            
+
             int bestScore = getRoleScore(bestMatch.getRole());
             int currentScore = getRoleScore(m.getRole());
 
@@ -633,6 +731,10 @@ public class FamilyRepository {
     public void removeMember(String familyId, String memberUid, ApproveCallback callback) {
         WriteBatch batch = db.batch();
         batch.delete(db.collection(FirestorePaths.getMembersPath(familyId)).document(memberUid));
+
+        // Phase 7 bis: Delete membership
+        batch.delete(db.collection(FirestorePaths.getMembershipsPath(memberUid)).document(familyId));
+
         batch.update(db.collection(FirestorePaths.USERS).document(memberUid), "familyId", null);
 
         batch.commit().addOnCompleteListener(task -> {
@@ -645,15 +747,19 @@ public class FamilyRepository {
     }
 
     public void updateMemberRole(String familyId, String memberUid, String newRole, ApproveCallback callback) {
-        db.collection(FirestorePaths.getMembersPath(familyId)).document(memberUid)
-                .update("role", newRole)
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        callback.onResult(new Result.Success<>(true));
-                    } else {
-                        callback.onResult(new Result.Error<>(task.getException()));
-                    }
-                });
+        WriteBatch batch = db.batch();
+        batch.update(db.collection(FirestorePaths.getMembersPath(familyId)).document(memberUid), "role", newRole);
+
+        // Phase 7 bis: Update membership
+        batch.update(db.collection(FirestorePaths.getMembershipsPath(memberUid)).document(familyId), "role", newRole);
+
+        batch.commit().addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                callback.onResult(new Result.Success<>(true));
+            } else {
+                callback.onResult(new Result.Error<>(task.getException()));
+            }
+        });
     }
 
     private void deleteFamily(String familyId, ApproveCallback callback) {
@@ -666,7 +772,7 @@ public class FamilyRepository {
         // To delete a family, we must delete all its subcollections.
         // Firestore doesn't support recursive delete from client, so we fetch and delete.
         String familyPath = FirestorePaths.getFamilyPath(familyId);
-        
+
         List<String> subcollections = List.of(
                 FirestorePaths.MEMBERS,
                 FirestorePaths.INVITATIONS,
@@ -695,18 +801,90 @@ public class FamilyRepository {
 
             // Delete family doc
             batch.delete(db.collection(FirestorePaths.FAMILIES).document(familyId));
-            
-            // Update user
-            batch.update(db.collection(FirestorePaths.USERS).document(uid), "familyId", null);
 
-            batch.commit().addOnCompleteListener(commitTask -> {
-                if (commitTask.isSuccessful()) {
-                    callback.onResult(new Result.Success<>(true));
+            // Phase 7 bis: Delete membership for this user (other members' memberships deleted above in loop if they were in subcollections)
+            // Actually, we need to delete memberships for ALL members of this family.
+            // The loop over subcollections (MEMBERS) will handle deleting the `members/{uid}` docs.
+            // We should also delete `users/{uid}/memberships/{familyId}` for each member.
+
+            com.google.android.gms.tasks.Task<com.google.firebase.firestore.QuerySnapshot> memberTask = db.collection(FirestorePaths.getMembersPath(familyId)).get();
+            memberTask.addOnCompleteListener(mTask -> {
+                if (mTask.isSuccessful()) {
+                    WriteBatch finalBatch = db.batch();
+                    // Redo all deletes in one big batch if possible
+                    for (com.google.android.gms.tasks.Task<?> t : tasks) {
+                        if (t.isSuccessful()) {
+                            com.google.firebase.firestore.QuerySnapshot snapshot = (com.google.firebase.firestore.QuerySnapshot) t.getResult();
+                            for (DocumentSnapshot doc : snapshot.getDocuments()) {
+                                finalBatch.delete(doc.getReference());
+                                if (doc.getReference().getPath().contains("/members/")) {
+                                    finalBatch.delete(db.collection(FirestorePaths.getMembershipsPath(doc.getId())).document(familyId));
+                                }
+                            }
+                        }
+                    }
+                    finalBatch.delete(db.collection(FirestorePaths.FAMILIES).document(familyId));
+
+                    // Phase 7 bis: no asumir que familyId pasa a null. Si al usuario le
+                    // quedan otras memberships (distintas de la que se está borrando),
+                    // hay que activar una de ellas en vez de dejarlo sin familia activa.
+                    db.collection(FirestorePaths.getMembershipsPath(uid)).get()
+                            .addOnCompleteListener(membershipTask -> {
+                                String nextFamilyId = null;
+                                if (membershipTask.isSuccessful()) {
+                                    for (DocumentSnapshot mDoc : membershipTask.getResult().getDocuments()) {
+                                        if (!mDoc.getId().equals(familyId)) {
+                                            nextFamilyId = mDoc.getId();
+                                            break;
+                                        }
+                                    }
+                                }
+                                finalBatch.update(db.collection(FirestorePaths.USERS).document(uid), "familyId", nextFamilyId);
+
+                                finalBatch.commit().addOnCompleteListener(commitTask -> {
+                                    if (commitTask.isSuccessful()) {
+                                        callback.onResult(new Result.Success<>(true));
+                                    } else {
+                                        callback.onResult(new Result.Error<>(commitTask.getException()));
+                                    }
+                                });
+                            });
                 } else {
-                    callback.onResult(new Result.Error<>(commitTask.getException()));
+                    callback.onResult(new Result.Error<>(mTask.getException()));
                 }
             });
         });
+    }
+
+    public void getUserFamilies(String uid, MembershipsCallback callback) {
+        db.collection(FirestorePaths.getMembershipsPath(uid))
+                .addSnapshotListener((value, error) -> {
+                    if (error != null || value == null) {
+                        callback.onResult(new Result.Error<>(error));
+                        return;
+                    }
+                    List<FamilyMembership> memberships = new ArrayList<>();
+                    for (QueryDocumentSnapshot doc : value) {
+                        memberships.add(doc.toObject(FamilyMembership.class));
+                    }
+                    callback.onResult(new Result.Success<>(memberships));
+                });
+    }
+
+    public void switchActiveFamily(String uid, String familyId, ApproveCallback callback) {
+        db.collection(FirestorePaths.USERS).document(uid)
+                .update("familyId", familyId)
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        callback.onResult(new Result.Success<>(true));
+                    } else {
+                        callback.onResult(new Result.Error<>(task.getException()));
+                    }
+                });
+    }
+
+    public interface MembershipsCallback {
+        void onResult(Result<List<FamilyMembership>> result);
     }
 
     public interface FamilyCallback {

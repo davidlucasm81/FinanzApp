@@ -178,7 +178,8 @@ public class FamilySettingsFragment extends Fragment {
         viewModel.getLeaveResult().observe(getViewLifecycleOwner(), result -> {
             if (result instanceof Result.Success) {
                 Toast.makeText(requireContext(), "Has salido de la familia", Toast.LENGTH_SHORT).show();
-                navigateToOnboarding();
+                // Phase 7 bis: Decide whether to go to Dashboard or Onboarding based on remaining memberships
+                checkMembershipsAndNavigate();
             } else if (result instanceof Result.Error) {
                 Toast.makeText(requireContext(), "Error al salir de la familia", Toast.LENGTH_SHORT).show();
             }
@@ -209,6 +210,33 @@ public class FamilySettingsFragment extends Fragment {
                 .setPositiveButton("Confirmar", (dialog, which) -> viewModel.leaveFamily(familyId))
                 .setNegativeButton("Cancelar", null)
                 .show();
+    }
+
+    private void checkMembershipsAndNavigate() {
+        String uid = com.google.firebase.auth.FirebaseAuth.getInstance().getUid();
+        if (uid == null) {
+            navigateToOnboarding();
+            return;
+        }
+
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection(com.finanzapp.app.data.firebase.FirestorePaths.getMembershipsPath(uid))
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    if (querySnapshot.isEmpty()) {
+                        navigateToOnboarding();
+                    } else {
+                        navigateToMain();
+                    }
+                })
+                .addOnFailureListener(e -> navigateToOnboarding());
+    }
+
+    private void navigateToMain() {
+        Intent intent = new Intent(requireContext(), com.finanzapp.app.MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        requireActivity().finish();
     }
 
     private void navigateToOnboarding() {

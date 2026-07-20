@@ -7,18 +7,39 @@
     android:background="?attr/android:windowBackground"
     android:padding="16dp">
 
-    <TextView
-        android:id="@+id/tv_family_name"
+    <LinearLayout
+        android:id="@+id/ll_family_selector"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="@string/family_label"
-        android:textColor="?attr/colorOnSurface"
-        android:textSize="28sp"
-        android:textStyle="bold"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/selectableItemBackground"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintEnd_toStartOf="@id/iv_user_photo"
-        android:layout_marginEnd="16dp"/>
+        android:layout_marginEnd="16dp">
+
+        <TextView
+            android:id="@+id/tv_family_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/family_label"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:ellipsize="end"
+            android:maxLines="1"/>
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="4dp"
+            android:src="@drawable/ic_expand_more"
+            app:tint="?attr/colorOnSurface"
+            android:contentDescription="Select Family" />
+    </LinearLayout>
 
     <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/iv_user_photo"

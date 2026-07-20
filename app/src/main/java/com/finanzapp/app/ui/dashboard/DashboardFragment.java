@@ -17,6 +17,7 @@ import com.finanzapp.app.FinanzAppApplication;
 import com.finanzapp.app.data.model.Family;
 import com.finanzapp.app.data.model.User;
 import com.finanzapp.app.databinding.FragmentDashboardBinding;
+import com.finanzapp.app.ui.family.FamilySwitcherFragment;
 import com.finanzapp.app.util.Result;
 import com.finanzapp.app.viewmodel.DashboardViewModel;
 import com.finanzapp.app.viewmodel.ViewModelFactory;
@@ -31,6 +32,7 @@ public class DashboardFragment extends Fragment {
 
     private String currentCurrencyCode = "EUR";
     private DashboardAccountAdapter accountAdapter;
+    private String currentFamilyId;
 
     @Nullable
     @Override
@@ -68,9 +70,21 @@ public class DashboardFragment extends Fragment {
         binding.btnTransactions.setOnClickListener(v -> {
             NavHostFragment.findNavController(this).navigate(com.finanzapp.app.R.id.action_dashboardFragment_to_transactionListFragment);
         });
+
+        binding.llFamilySelector.setOnClickListener(v -> {
+            if (currentFamilyId != null) {
+                FamilySwitcherFragment.newInstance(currentFamilyId)
+                        .show(getChildFragmentManager(), "FamilySwitcher");
+            }
+        });
     }
 
     private void setupObservers() {
+        // Observe accountsLoaded to trigger the reactive chain
+        viewModel.getAccountsLoaded().observe(getViewLifecycleOwner(), loaded -> {
+            // This observer keeps the accountsSource alive
+        });
+
         viewModel.getDataLoaded().observe(getViewLifecycleOwner(), result -> {
             if (result instanceof Result.Success) {
                 binding.progressBar.setVisibility(View.GONE);
@@ -99,6 +113,7 @@ public class DashboardFragment extends Fragment {
                 Family family = ((Result.Success<Family>) result).getData();
                 binding.tvFamilyName.setText(family.getName());
                 currentCurrencyCode = family.getCurrencyCode();
+                currentFamilyId = family.getId();
             } else if (result instanceof Result.Error) {
                 binding.tvFamilyName.setText(com.finanzapp.app.R.string.family_label);
             }

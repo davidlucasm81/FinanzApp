@@ -35,6 +35,12 @@ public class DashboardViewModel extends ViewModel {
 
     private ListenerRegistration userListener;
 
+    private void setupObservers() {
+        // We use Transformations.map to link the data update to the accountsSource lifecycle
+    }
+
+    private final LiveData<Boolean> accountsLoaded;
+
     public DashboardViewModel(AuthRepository authRepository, FamilyRepository familyRepository) {
         this.authRepository = authRepository;
         this.familyRepository = familyRepository;
@@ -50,11 +56,7 @@ public class DashboardViewModel extends ViewModel {
         // Optimized account fetch for the dashboard (real value, no monthly filtering)
         accountsSource = Transformations.switchMap(familyIdSource, accountRepository::getAccounts);
 
-        setupObservers();
-    }
-
-    private void setupObservers() {
-        accountsSource.observeForever(accounts -> {
+        accountsLoaded = Transformations.map(accountsSource, accounts -> {
             if (accounts != null) {
                 accountsList.postValue(accounts);
                 double totalBalance = 0;
@@ -64,12 +66,16 @@ public class DashboardViewModel extends ViewModel {
                     }
                 }
                 netBalance.postValue(totalBalance);
-                
                 dataLoaded.postValue(new Result.Success<>(true));
+                return true;
             }
+            return false;
         });
+
+        setupObservers();
     }
 
+    public LiveData<Boolean> getAccountsLoaded() { return accountsLoaded; }
     public LiveData<Result<Family>> getFamilyData() { return familyData; }
     public LiveData<Result<Boolean>> getDataLoaded() { return dataLoaded; }
     public LiveData<Result<User>> getUserData() { return userData; }
@@ -96,8 +102,13 @@ public class DashboardViewModel extends ViewModel {
                         User user = value.toObject(User.class);
                         if (user != null) {
                             userData.postValue(new Result.Success<>(user));
-                            if (user.getFamilyId() != null) {
-                                familyIdSource.postValue(user.getFamilyId());
+                            String newFamilyId = user.getFamilyId();
+                            String currentFamilyId = familyIdSource.getValue();
+                            
+                            if (newFamilyId != null && !newFamilyId.equals(currentFamilyId)) {
+                                familyIdSource.postValue(newFamilyId);
+                            } else if (newFamilyId == null && currentFamilyId != null) {
+                                familyIdSource.postValue(null);
                             }
                         }
                     });

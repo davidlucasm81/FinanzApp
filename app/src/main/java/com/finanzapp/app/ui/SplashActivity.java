@@ -17,6 +17,10 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import com.finanzapp.app.ui.onboarding.OnboardingActivity;
+import com.google.firebase.firestore.WriteBatch;
+import com.finanzapp.app.data.model.FamilyMembership;
+import com.finanzapp.app.data.model.Member;
+import com.google.firebase.Timestamp;
 
 @SuppressLint("CustomSplashScreen")
 public class SplashActivity extends AppCompatActivity {
@@ -37,15 +41,33 @@ public class SplashActivity extends AppCompatActivity {
     }
 
     private void checkUserStatus(FirebaseUser firebaseUser) {
+        // Phase 7 bis: Self-heal migration
+        FirebaseFirestore.getInstance().collection(FirestorePaths.getMembershipsPath(firebaseUser.getUid()))
+                .get()
+                .addOnSuccessListener(memberships -> {
+                    if (memberships.isEmpty()) {
+                        // Check if user has a familyId but no memberships
+                        performSelfHeal(firebaseUser);
+                    } else {
+                        // User already has memberships, proceed normally
+                        proceedWithRouting(firebaseUser);
+                    }
+                })
+                .addOnFailureListener(e -> navigateToLogin());
+    }
+
+    private void performSelfHeal(FirebaseUser firebaseUser) {
         FirebaseFirestore.getInstance().collection(FirestorePaths.USERS)
                 .document(firebaseUser.getUid())
                 .get()
                 .addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
-                        User user = documentSnapshot.toObject(User.class);
-                        if (user != null && user.getFamilyId() != null) {
-                            navigateToMain();
+                        String familyId = documentSnapshot.getString("familyId");
+                        if (familyId != null) {
+                            // User has a familyId, migrate it to memberships
+                            migrateToMembership(firebaseUser.getUid(), familyId);
                         } else {
+                            // No familyId and no memberships, go to onboarding/invitations
                             checkPendingInvitations(firebaseUser.getEmail());
                         }
                     } else {
@@ -53,6 +75,101 @@ public class SplashActivity extends AppCompatActivity {
                     }
                 })
                 .addOnFailureListener(e -> navigateToLogin());
+    }
+
+    private void migrateToMembership(String uid, String familyId) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        
+        // Fetch family name and member role
+        db.collection(FirestorePaths.FAMILIES).document(familyId).get().addOnSuccessListener(familyDoc -> {
+            if (familyDoc.exists()) {
+                String familyName = familyDoc.getString("name");
+                db.collection(FirestorePaths.getMembersPath(familyId)).document(uid).get().addOnSuccessListener(memberDoc -> {
+                    if (memberDoc.exists()) {
+                        Member member = memberDoc.toObject(Member.class);
+                        if (member != null) {
+                            FamilyMembership membership = new FamilyMembership(
+                                    familyId,
+                                    familyName,
+                                    member.getRole(),
+                                    member.getJoinedAt() != null ? member.getJoinedAt() : Timestamp.now()
+                            );
+                            
+                            db.collection(FirestorePaths.getMembershipsPath(uid))
+                                    .document(familyId)
+                                    .set(membership)
+                                    .addOnSuccessListener(v -> navigateToMain())
+                                    .addOnFailureListener(e -> navigateToMain()); // Navigate anyway to avoid blocking
+                        } else {
+                            navigateToMain();
+                        }
+                    } else {
+                        navigateToMain();
+                    }
+                }).addOnFailureListener(e -> navigateToMain());
+            } else {
+                navigateToMain();
+            }
+        }).addOnFailureListener(e -> navigateToMain());
+    }
+
+    private void proceedWithRouting(FirebaseUser firebaseUser) {
+        FirebaseFirestore.getInstance().collection(FirestorePaths.USERS)
+                .document(firebaseUser.getUid())
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        User user = documentSnapshot.toObject(User.class);
+                        if (user != null) {
+                            String activeFamilyId = user.getFamilyId();
+                            if (activeFamilyId != null) {
+                                // Check if the active familyId is still valid (exists in memberships)
+                                validateActiveFamily(firebaseUser.getUid(), activeFamilyId);
+                            } else {
+                                // activeFamilyId is null, but we have memberships, so pick the first one
+                                setFirstFamilyActive(firebaseUser.getUid());
+                            }
+                        } else {
+                            navigateToLogin();
+                        }
+                    } else {
+                        navigateToLogin();
+                    }
+                })
+                .addOnFailureListener(e -> navigateToLogin());
+    }
+
+    private void validateActiveFamily(String uid, String activeFamilyId) {
+        FirebaseFirestore.getInstance().document(FirestorePaths.getMembershipPath(uid, activeFamilyId))
+                .get()
+                .addOnSuccessListener(doc -> {
+                    if (doc.exists()) {
+                        navigateToMain();
+                    } else {
+                        // User was expelled or the family was deleted, set another one active
+                        setFirstFamilyActive(uid);
+                    }
+                })
+                .addOnFailureListener(e -> navigateToMain());
+    }
+
+    private void setFirstFamilyActive(String uid) {
+        FirebaseFirestore.getInstance().collection(FirestorePaths.getMembershipsPath(uid))
+                .limit(1)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    if (!querySnapshot.isEmpty()) {
+                        String firstFamilyId = querySnapshot.getDocuments().get(0).getId();
+                        FirebaseFirestore.getInstance().collection(FirestorePaths.USERS).document(uid)
+                                .update("familyId", firstFamilyId)
+                                .addOnSuccessListener(v -> navigateToMain())
+                                .addOnFailureListener(e -> navigateToMain());
+                    } else {
+                        // No memberships after all? (should not happen here), go to onboarding
+                        navigateToOnboarding();
+                    }
+                })
+                .addOnFailureListener(e -> navigateToOnboarding());
     }
 
     private void checkPendingInvitations(String email) {

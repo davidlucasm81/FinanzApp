@@ -44,11 +44,22 @@ public class TransactionViewModel extends ViewModel {
         this.familyRepository = familyRepository;
     }
 
+    private String lastTransactionsFamilyId;
+    private LiveData<List<Transaction>> lastTransactionsLiveData;
+
     public LiveData<List<Transaction>> getTransactions(String familyId) {
-        return transactionRepository.getTransactions(familyId);
+        if (lastTransactionsLiveData == null || !familyId.equals(lastTransactionsFamilyId)) {
+            lastTransactionsFamilyId = familyId;
+            lastTransactionsLiveData = transactionRepository.getTransactions(familyId);
+        }
+        return lastTransactionsLiveData;
     }
 
+    private String lastFilteredFamilyId;
+    private LiveData<List<Transaction>> lastFilteredLiveData;
+
     public LiveData<List<Transaction>> getFilteredTransactions(String familyId, String accountId, String categoryId, String type, String paymentMethod, com.google.firebase.Timestamp start, com.google.firebase.Timestamp end) {
+        // For filtered transactions, we don't cache as easily since filters change
         return transactionRepository.getTransactions(familyId, accountId, categoryId, type, paymentMethod, start, end);
     }
 

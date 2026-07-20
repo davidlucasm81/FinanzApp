@@ -31,7 +31,13 @@ service cloud.firestore {
       allow delete: if request.auth != null && request.auth.uid == uid;
 
       // Allow update of own document
-      allow update: if request.auth != null && request.auth.uid == uid
+      allow update: if (request.auth != null && request.auth.uid == uid
+        && (
+          !request.resource.data.diff(resource.data).changedKeys().contains('familyId')
+          || request.resource.data.familyId == null
+          || exists(/databases/$(database)/documents/users/$(uid)/memberships/$(request.resource.data.familyId))
+          || existsAfter(/databases/$(database)/documents/users/$(uid)/memberships/$(request.resource.data.familyId))
+        ))
         // Additionally, allow an admin of a family to set *only* the `familyId` field
         // on a user's document when approving a join request. This avoids the need for
         // the admin to have full read/write access to other users' documents while
@@ -57,6 +63,11 @@ service cloud.firestore {
           && (get(/databases/$(database)/documents/families/$(resource.data.familyId)/members/$(request.auth.uid)).data.role == 'admin' ||
               get(/databases/$(database)/documents/families/$(resource.data.familyId)/members/$(request.auth.uid)).data.role == 'owner')
         );
+
+      // Memberships: A user's personal list of families they belong to
+      match /memberships/{familyId} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
     }
 
     // 2. Families and Subcollections
