@@ -98,16 +98,17 @@
 - [x] Categorías por defecto a sembrar al crear la familia (ejemplo: Nómina, Otros ingresos, Alimentación, Vivienda, Transporte, Ocio, Salud, Educación, Otros gastos).
 - [x] Pantalla de gestión de categorías: listar, añadir personalizada (nombre, tipo, icono/color), editar, eliminar (solo si no está en uso, o marcarla inactiva).
   - [x] Listado y borrado de categorías.
-  - [x] **Edición y colores**: Permitir editar categorías existentes y asociarles un color personalizado de una paleta (RGB wheel).
+  - [x] **Edición y colores**: Permitir editar categorías existentes y asociarles un color personalizado de una paleta (RGB wheel) o mediante entrada directa de código hexadecimal RGB.
+  - [x] **Selector de categoría con búsqueda**: Implementar filtrado por texto (búsqueda) en el selector de categorías al añadir/editar un movimiento, para facilitar la selección en listas largas.
   - [x] **Borrado de categorías predeterminadas**: Permitir borrar categorías por defecto.
   - [x] **Control de integridad**: Impedir borrar categorías que ya hayan sido utilizadas en movimientos. El usuario debe borrar primero el movimiento.
   - [x] **Acceso restringido**: El botón de gestionar categorías solo debe ser visible para usuarios con rol `admin` o `owner`.
-- [x] **Colores por defecto en la siembra (2026-07-17)**: al crear una familia, cada categoría semilla debe crearse ya con su campo `color` relleno (paleta fija de 33 colores, ver tabla "Categorías por defecto" en `AGENTS.md` sección 4), en vez de dejarlo vacío/por defecto del tema como hasta ahora. Añadir la paleta como constante `CategoryColorPalette` en `util/` para reutilizarla también en la importación CSV y en la sugerencia de categorías por IA (mismo color determinista si el nombre coincide con uno del set semilla).
-- [x] **Auditoría de categorías por defecto (2026-07-17)**: revisar las categorías realmente sembradas hoy en `families/{familyId}/categories` (código de siembra + alguna familia ya creada) contra la tabla "Categorías por defecto" de `AGENTS.md` sección 4 (nombre, `appliesTo` y, a partir de esta tarea, `color`); corregir cualquier categoría semilla que falte, sobre o esté mal clasificada (`appliesTo` incorrecto), y documentar en `AGENTS.md` cualquier discrepancia encontrada y cómo se resolvió.
+- [x] **Colores por defecto en la siembra (2026-07-21)**: al crear una familia, cada categoría semilla debe crearse ya con su campo `color` relleno (nueva lista de 25 categorías proporcionada por el usuario, ver `AGENTS.md` sección 4), en vez de dejarlo vacío/por defecto del tema.
+- [x] **Auditoría de categorías por defecto (2026-07-21)**: actualizar las categorías sembradas según la nueva lista (nombre, `appliesTo` y `color`).
 
 ## Fase 6 — Registro de movimientos (gasto/ingreso)
 - [x] Modelo `Transaction` + `TransactionRepository`.
-- [x] Formulario "Añadir movimiento": selector de fecha, descripción, importe (formateado según `currencyCode` de la familia), tipo (gasto/ingreso), categoría (filtrada por tipo), método de pago (tarjeta/transferencia/efectivo/bizum), cuenta asociada.
+- [/] Formulario "Añadir movimiento": selector de fecha, descripción, importe (formateado según `currencyCode` de la familia), tipo (gasto/ingreso), categoría (filtrada por tipo y con búsqueda por texto), método de pago (tarjeta/transferencia/efectivo/bizum), cuenta asociada.
 - [x] Guardar el movimiento: **obligatorio** guardar el ID del usuario que lo creó (`createdBy`).
 - [x] Actualizar `currentBalance` de la cuenta en una única Firestore transaction (atómico).
 - [x] Igual para edición y borrado: recalcular el saldo de la cuenta afectada dentro de la misma transacción atómica.

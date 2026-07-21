@@ -182,8 +182,8 @@ public class FamilyRepository {
     private void seedDefaultCategories(WriteBatch batch, String familyId) {
         CollectionReference categoriesRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.CATEGORIES);
 
-        // Income categories
-        String[] incomeCategories = {"Nómina", "Otros ingresos"};
+        // Ingreso
+        String[] incomeCategories = {"Nomina"};
         for (String name : incomeCategories) {
             DocumentReference ref = categoriesRef.document();
             String color = CategoryColorPalette.getColorForCategory(name);
@@ -191,14 +191,13 @@ public class FamilyRepository {
             batch.set(ref, cat);
         }
 
-        // Expense categories
+        // Gasto
         String[] expenseCategories = {
-                "Hipoteca", "Reformas", "Servicios", "Internet", "Seguros",
-                "Supermercado", "Restaurantes", "Alcohol", "Transporte", "Salud",
-                "Ropa", "Educación", "Ocio", "Viajes", "Ahorros",
-                "Informática", "Libros", "Streaming", "Deporte", "Bebidas",
-                "Peluquería", "Regalos", "Hogar", "Misceláneo", "Impuestos",
-                "Comunidad", "Mascotas", "Donaciones"
+                "Comunidad", "Deporte", "Desayunos / Bar", "Educacion", "Gas",
+                "Hipoteca", "Impuestos", "Informática / Telefonía", "Internet", "Luz",
+                "Misceláneo", "Mobiliario", "Ocio", "Peluqueria", "Reformas",
+                "Regalos", "Restaurantes", "Ropa", "Salud", "Seguros",
+                "Streaming", "Supermercado / Tiendas", "Transporte", "Viajes"
         };
         for (String name : expenseCategories) {
             DocumentReference ref = categoriesRef.document();

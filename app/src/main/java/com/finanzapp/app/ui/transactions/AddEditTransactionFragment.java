@@ -6,6 +6,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
@@ -45,7 +46,9 @@ public class AddEditTransactionFragment extends Fragment {
     private RadioGroup rgType;
     private RadioButton rbExpense, rbIncome;
     private Button btnDate, btnSave, btnDelete;
-    private Spinner spinnerCategory, spinnerAccount, spinnerMethod;
+    private Spinner spinnerAccount, spinnerMethod;
+    private AutoCompleteTextView autoCategory;
+    private Category selectedCategory;
     
     private Calendar selectedDate = Calendar.getInstance();
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
@@ -94,7 +97,7 @@ public class AddEditTransactionFragment extends Fragment {
         btnDate = view.findViewById(R.id.btn_date);
         btnSave = view.findViewById(R.id.btn_save);
         btnDelete = view.findViewById(R.id.btn_delete);
-        spinnerCategory = view.findViewById(R.id.spinner_category);
+        autoCategory = view.findViewById(R.id.auto_category);
         spinnerAccount = view.findViewById(R.id.spinner_account);
         spinnerMethod = view.findViewById(R.id.spinner_method);
 
@@ -140,6 +143,8 @@ public class AddEditTransactionFragment extends Fragment {
                 break;
             }
         }
+        
+        // Populate category will be handled in observer after allCategories are loaded
     }
 
     private void showDeleteConfirmation() {
@@ -165,14 +170,12 @@ public class AddEditTransactionFragment extends Fragment {
                 allCategories = categories;
                 filterCategories();
                 
-                if (existingTransaction != null) {
-                    List<Category> filtered = (List<Category>) spinnerCategory.getTag();
-                    if (filtered != null) {
-                        for (int i = 0; i < filtered.size(); i++) {
-                            if (filtered.get(i).getId().equals(existingTransaction.getCategoryId())) {
-                                spinnerCategory.setSelection(i);
-                                break;
-                            }
+                if (existingTransaction != null && selectedCategory == null) {
+                    for (Category c : allCategories) {
+                        if (c.getId().equals(existingTransaction.getCategoryId())) {
+                            selectedCategory = c;
+                            autoCategory.setText(c.getName(), false);
+                            break;
                         }
                     }
                 }
@@ -223,10 +226,33 @@ public class AddEditTransactionFragment extends Fragment {
             }
         }
         
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, names);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerCategory.setAdapter(adapter);
-        spinnerCategory.setTag(filtered);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, names);
+        autoCategory.setAdapter(adapter);
+        
+        autoCategory.setOnItemClickListener((parent, view, position, id) -> {
+            String selectedName = (String) parent.getItemAtPosition(position);
+            for (Category c : allCategories) {
+                if (c.getName().equals(selectedName)) {
+                    selectedCategory = c;
+                    break;
+                }
+            }
+        });
+
+        // Clear selection if current selectedCategory is not in filtered list
+        if (selectedCategory != null) {
+            boolean found = false;
+            for (Category c : filtered) {
+                if (c.getId().equals(selectedCategory.getId())) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                selectedCategory = null;
+                autoCategory.setText("");
+            }
+        }
     }
 
     private void showDatePicker() {
@@ -264,12 +290,22 @@ public class AddEditTransactionFragment extends Fragment {
             }
         }
 
-        List<Category> filtered = (List<Category>) spinnerCategory.getTag();
-        if (filtered == null || spinnerCategory.getSelectedItem() == null) {
+        if (selectedCategory == null) {
+            // Try to resolve by text if user typed but didn't click
+            String currentText = autoCategory.getText().toString().trim();
+            for (Category c : allCategories) {
+                if (c.getName().equalsIgnoreCase(currentText)) {
+                    selectedCategory = c;
+                    break;
+                }
+            }
+        }
+
+        if (selectedCategory == null) {
             Toast.makeText(requireContext(), getString(R.string.error_category), Toast.LENGTH_SHORT).show();
             return;
         }
-        String categoryId = filtered.get(spinnerCategory.getSelectedItemPosition()).getId();
+        String categoryId = selectedCategory.getId();
         
         String method = paymentMethodValues[spinnerMethod.getSelectedItemPosition()];
         String type = rbIncome.isChecked() ? "income" : "expense";

@@ -4,6 +4,8 @@ import android.app.Dialog;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -42,6 +44,8 @@ public class AddEditCategoryDialogFragment extends DialogFragment {
     private Category categoryToEdit;
     private String selectedColor = "#4CAF50"; // Default green
     private View viewSelectedColor;
+    private TextInputLayout tilColor;
+    private boolean isUpdatingColorFromText = false;
 
     public static AddEditCategoryDialogFragment newInstance(String familyId, Category category) {
         AddEditCategoryDialogFragment fragment = new AddEditCategoryDialogFragment();
@@ -85,6 +89,7 @@ public class AddEditCategoryDialogFragment extends DialogFragment {
 
         TextView tvTitle = view.findViewById(R.id.tv_dialog_title);
         TextInputLayout tilName = view.findViewById(R.id.til_category_name);
+        tilColor = view.findViewById(R.id.til_category_color);
         CheckBox cbExpense = view.findViewById(R.id.cb_expense);
         CheckBox cbIncome = view.findViewById(R.id.cb_income);
         viewSelectedColor = view.findViewById(R.id.view_selected_color);
@@ -93,6 +98,9 @@ public class AddEditCategoryDialogFragment extends DialogFragment {
         Button btnCancel = view.findViewById(R.id.btn_cancel);
 
         updatePreviewColor();
+        if (tilColor.getEditText() != null) {
+            tilColor.getEditText().setText(selectedColor);
+        }
 
         btnPickColor.setOnClickListener(v -> {
             new ColorPickerDialog.Builder(requireContext())
@@ -102,9 +110,38 @@ public class AddEditCategoryDialogFragment extends DialogFragment {
                     .setColorListener((color, colorHex) -> {
                         selectedColor = colorHex;
                         updatePreviewColor();
+                        if (tilColor.getEditText() != null) {
+                            isUpdatingColorFromText = true;
+                            tilColor.getEditText().setText(selectedColor);
+                            isUpdatingColorFromText = false;
+                        }
                     })
                     .show();
         });
+
+        if (tilColor.getEditText() != null) {
+            tilColor.getEditText().addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                    if (isUpdatingColorFromText) return;
+
+                    String hex = s.toString();
+                    if (hex.matches("^#([A-Fa-f0-9]{6})$")) {
+                        selectedColor = hex;
+                        tilColor.setError(null);
+                        updatePreviewColor();
+                    } else if (hex.length() == 7) {
+                        tilColor.setError("Formato inválido (Ej: #RRGGBB)");
+                    }
+                }
+            });
+        }
 
         if (categoryToEdit != null) {
             tvTitle.setText("Editar Categoría");

@@ -178,49 +178,42 @@ Si esta interpretación no es correcta, corrígela antes de que el agente empiec
 
 ### Categorías por defecto
 
-Basado en tu lista, organizada por tipo (nota: en tu tabla original "Hipoteca" aparecía junto a "Ingreso" y "Reformas" junto a "Gasto", pero eso era el cruce accidental de dos columnas independientes de la hoja de cálculo — Hipoteca es un gasto). Se han añadido algunas categorías de ingreso adicionales, ya que la lista original solo traía "Nómina", y unas pocas de gasto habituales en una economía familiar española que no estaban (Impuestos, Comunidad, Mascotas, Donaciones). Todas son editables/eliminables desde la app; esto es solo el set semilla.
-
-Desde el 2026-07-17, cada categoría del set semilla lleva también un `color` fijo (hex `#RRGGBB`), asignado a mano para que la primera vez que la familia abre la app las categorías ya se vean distinguibles entre sí sin que nadie tenga que personalizarlas. Estos mismos 33 colores forman la paleta `CategoryColorPalette` (`util/`), que se reutiliza para: (a) colorear cualquier categoría nueva creada automáticamente durante la importación CSV (sección "Importación de movimientos desde CSV" más abajo) — eligiendo el primer color de la paleta no usado todavía por otra categoría de la misma familia, o si ya se han agotado los 33, generando uno determinista a partir de un hash del nombre; y (b) proponer color en las sugerencias de categorías por IA (ver "Sugerencia de categorías por IA"). El color de una categoría, sea semilla o creada automáticamente, sigue siendo editable a mano por el usuario en cualquier momento (Fase 5), esto no cambia.
+Basado en la lista proporcionada por el usuario (2026-07-21), organizada por tipo. Todas son editables/eliminables desde la app; esto es solo el set semilla. Cada categoría lleva un `color` RGB específico.
 
 **Ingreso**
 
 | Categoría | `appliesTo` | Color |
 |---|---|---|
-| Nómina | income | `#2E7D32` |
-| Otros ingresos | income | `#558B2F` |
+| Nomina | income | `#2E7D32` |
 
 **Gasto**
 
 | Categoría | `appliesTo` | Color |
 |---|---|---|
-| Hipoteca | expense | `#6D4C41` |
-| Reformas | expense | `#8D6E63` |
-| Servicios | expense | `#455A64` |
-| Internet | expense | `#1E88E5` |
-| Seguros | expense | `#3949AB` |
-| Supermercado | expense | `#F4511E` |
-| Restaurantes | expense | `#FB8C00` |
-| Alcohol | expense | `#6A1B9A` |
-| Transporte | expense | `#039BE5` |
-| Salud | expense | `#E53935` |
-| Ropa | expense | `#D81B60` |
-| Educación | expense | `#5E35B1` |
-| Ocio | expense | `#F9A825` |
-| Viajes | expense | `#00ACC1` |
-| Ahorros | expense | `#7CB342` |
-| Informática | expense | `#546E7A` |
-| Libros | expense | `#8E24AA` |
-| Streaming | expense | `#C2185B` |
-| Deporte | expense | `#26A69A` |
-| Bebidas | expense | `#FFB300` |
-| Peluquería | expense | `#EC407A` |
-| Regalos | expense | `#AB47BC` |
-| Hogar | expense | `#A1887F` |
-| Misceláneo | expense | `#78909C` |
-| Impuestos | expense | `#C62828` |
 | Comunidad | expense | `#4527A0` |
-| Mascotas | expense | `#FF7043` |
-| Donaciones | expense | `#66BB6A` |
+| Deporte | expense | `#26A69A` |
+| Desayunos / Bar | expense | `#FFB300` |
+| Educacion | expense | `#5E35B1` |
+| Gas | expense | `#455A64` |
+| Hipoteca | expense | `#6D4C41` |
+| Impuestos | expense | `#C62828` |
+| Informática / Telefonía | expense | `#546E7A` |
+| Internet | expense | `#1E88E5` |
+| Luz | expense | `#FBC02D` |
+| Misceláneo | expense | `#78909C` |
+| Mobiliario | expense | `#A1887F` |
+| Ocio | expense | `#F9A825` |
+| Peluqueria | expense | `#EC407A` |
+| Reformas | expense | `#8D6E63` |
+| Regalos | expense | `#AB47BC` |
+| Restaurantes | expense | `#FB8C00` |
+| Ropa | expense | `#D81B60` |
+| Salud | expense | `#E53935` |
+| Seguros | expense | `#3949AB` |
+| Streaming | expense | `#C2185B` |
+| Supermercado / Tiendas | expense | `#F4511E` |
+| Transporte | expense | `#039BE5` |
+| Viajes | expense | `#00ACC1` |
 
 Ninguna categoría usa `appliesTo: "both"` en el set semilla; si el usuario necesita una categoría mixta (por ejemplo "Ajustes") puede crearla manualmente marcándola como tal.
 
@@ -395,3 +388,4 @@ Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exi
   - Se elimina por completo la Fase 8 bis (notificaciones push, FCM, Cloud Functions) de `AGENTS.md` y `PLAN_DESARROLLO.md`.
   - De la Fase 9 bis se elimina la parte de cifrado de aplicación (Cloud KMS + Cloud Functions); se mantienen la pantalla de consentimiento de la Política de Privacidad y la exportación de datos propios, por ser puramente cliente + Firestore. Se documenta que el cifrado en tránsito/reposo ya ofrecido por Firestore cubre el requisito legal básico para datos que no son de categoría especial.
   - Queda como posible ampliación futura, si el propietario decide en algún momento vincular el plan Blaze (lo cual no implica pagar mientras el uso se mantenga en las cuotas gratuitas, pero sí exige una tarjeta válida).
+- **2026-07-21**: **Nueva lista de categorías y mejoras de UX**: Se actualiza la lista de categorías semilla según la petición del usuario (25 categorías con colores RGB específicos). Se añade el requisito de permitir la entrada directa de código RGB al editar categorías y de implementar un selector de categorías con filtrado por texto (búsqueda) en el formulario de movimientos para mejorar la usabilidad con listas largas.
