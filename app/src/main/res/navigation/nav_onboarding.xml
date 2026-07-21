@@ -22,6 +22,9 @@
         <action
             android:id="@+id/action_welcomeFragment_to_waitingApprovalFragment"
             app:destination="@id/waitingApprovalFragment" />
+        <action
+            android:id="@+id/action_welcomeFragment_to_privacyConsentFragment"
+            app:destination="@id/privacyConsentFragment" />
     </fragment>
 
     <fragment
@@ -67,5 +70,11 @@
         android:name="com.finanzapp.app.ui.settings.SettingsFragment"
         android:label="Ajustes"
         tools:layout="@layout/fragment_settings" />
+
+    <fragment
+        android:id="@+id/privacyConsentFragment"
+        android:name="com.finanzapp.app.ui.onboarding.PrivacyConsentFragment"
+        android:label="Privacidad"
+        tools:layout="@layout/fragment_privacy_consent" />
 
 </navigation>

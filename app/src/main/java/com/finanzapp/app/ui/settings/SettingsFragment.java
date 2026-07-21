@@ -30,6 +30,7 @@ public class SettingsFragment extends Fragment {
     private TextView tvName;
     private TextView tvEmail;
     private Button btnSignOut;
+    private Button btnExportData;
     private Button btnDeleteAccount;
     private com.finanzapp.app.data.repository.FamilyRepository familyRepository;
     private User currentUser;
@@ -52,12 +53,18 @@ public class SettingsFragment extends Fragment {
         tvName = requireView().findViewById(com.finanzapp.app.R.id.tv_name);
         tvEmail = requireView().findViewById(com.finanzapp.app.R.id.tv_email);
         btnSignOut = requireView().findViewById(com.finanzapp.app.R.id.btn_sign_out);
+        btnExportData = requireView().findViewById(com.finanzapp.app.R.id.btn_export_data);
         btnDeleteAccount = requireView().findViewById(com.finanzapp.app.R.id.btn_delete_account);
 
         btnSignOut.setOnClickListener(v -> {
             viewModel.signOut();
             Toast.makeText(requireContext(), "Sesión cerrada", Toast.LENGTH_SHORT).show();
             navigateToSplash();
+        });
+
+        btnExportData.setOnClickListener(v -> {
+            btnExportData.setEnabled(false);
+            viewModel.exportUserData();
         });
 
         btnDeleteAccount.setOnClickListener(v -> showDeleteConfirmation());
@@ -90,6 +97,43 @@ public class SettingsFragment extends Fragment {
                 Toast.makeText(requireContext(), "Error al borrar cuenta", Toast.LENGTH_SHORT).show();
             }
         });
+
+        viewModel.getExportResult().observe(getViewLifecycleOwner(), result -> {
+            btnExportData.setEnabled(true);
+            if (result instanceof Result.Success) {
+                String json = ((Result.Success<String>) result).getData();
+                shareJsonFile(json);
+            } else if (result instanceof Result.Error) {
+                Toast.makeText(requireContext(), com.finanzapp.app.R.string.settings_export_error, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void shareJsonFile(String json) {
+        try {
+            java.io.File cachePath = new java.io.File(requireContext().getCacheDir(), "exports");
+            if (!cachePath.exists() && !cachePath.mkdirs()) {
+                throw new java.io.IOException("Could not create cache directory");
+            }
+            java.io.File newFile = new java.io.File(cachePath, "my_data.json");
+            java.io.FileOutputStream stream = new java.io.FileOutputStream(newFile);
+            stream.write(json.getBytes());
+            stream.close();
+
+            android.net.Uri contentUri = androidx.core.content.FileProvider.getUriForFile(requireContext(), "com.finanzapp.app.fileprovider", newFile);
+
+            if (contentUri != null) {
+                android.content.Intent shareIntent = new android.content.Intent();
+                shareIntent.setAction(android.content.Intent.ACTION_SEND);
+                shareIntent.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                shareIntent.setDataAndType(contentUri, "application/json");
+                shareIntent.putExtra(android.content.Intent.EXTRA_STREAM, contentUri);
+                startActivity(android.content.Intent.createChooser(shareIntent, "Descargar mis datos"));
+            }
+        } catch (java.io.IOException e) {
+            android.util.Log.e("SettingsFragment", "Error sharing file", e);
+            Toast.makeText(requireContext(), "Error al exportar archivo", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void navigateToSplash() {

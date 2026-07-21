@@ -87,6 +87,10 @@ public class ManageCategoriesFragment extends Fragment {
         viewModel.getCategories(familyId).observe(getViewLifecycleOwner(), categories -> {
             if (categories != null) {
                 adapter.updateCategories(categories);
+                View emptyState = getView() != null ? getView().findViewById(R.id.ll_empty_state) : null;
+                if (emptyState != null) {
+                    emptyState.setVisibility(categories.isEmpty() ? View.VISIBLE : View.GONE);
+                }
             }
         });
 

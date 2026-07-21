@@ -184,7 +184,16 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         viewModel.getVariationPercentage().observe(getViewLifecycleOwner(), variation -> 
             updateVariationIndicator(binding.tvExpenseVariation, binding.ivExpenseVariationIcon, variation, false));
 
-        viewModel.getMonthlyEvolution().observe(getViewLifecycleOwner(), this::updateMonthlyChart);
+        viewModel.getMonthlyEvolution().observe(getViewLifecycleOwner(), evolution -> {
+            if (evolution == null || evolution.isEmpty()) {
+                binding.scrollView.setVisibility(View.GONE);
+                binding.llEmptyState.setVisibility(View.VISIBLE);
+            } else {
+                binding.llEmptyState.setVisibility(View.GONE);
+                binding.scrollView.setVisibility(View.VISIBLE);
+                updateMonthlyChart(evolution);
+            }
+        });
         
         viewModel.getCategoryDistribution().observe(getViewLifecycleOwner(), this::updatePieChart);
         // El ranking y la matriz se han eliminado por decisión de UX

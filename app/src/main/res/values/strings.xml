@@ -75,4 +75,33 @@
     <string name="date_filter_clear_desc">Limpiar filtro</string>
     <string name="date_filter_select_period">Seleccionar periodo</string>
     <string name="date_filter_this_month">Este mes</string>
+    <string name="privacy_consent_title">Privacidad y Seguridad</string>
+    <string name="privacy_consent_checkbox">He leído y acepto la Política de Privacidad</string>
+    <string name="privacy_consent_continue">Continuar</string>
+    <string name="privacy_policy_text">&lt;b&gt;POLÍTICA DE PRIVACIDAD DE FINANZAPP&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;
+        En &lt;b&gt;FinanzApp&lt;/b&gt;, la privacidad de tu familia es nuestra prioridad. Esta aplicación ha sido diseñada bajo principios de transparencia y seguridad.&lt;br/&gt;&lt;br/&gt;
+        &lt;b&gt;1. DATOS QUE RECOPILAMOS&lt;/b&gt;&lt;br/&gt;
+        Recopilamos datos básicos de tu perfil de Google (nombre, email y foto) para identificarte en tu unidad familiar. También almacenamos los movimientos financieros y cuentas que registres de forma voluntaria.&lt;br/&gt;&lt;br/&gt;
+        &lt;b&gt;2. FINALIDAD DEL TRATAMIENTO&lt;/b&gt;&lt;br/&gt;
+        Tus datos se utilizan exclusivamente para permitir el funcionamiento de las finanzas compartidas. No vendemos ni compartimos tus datos con terceros fuera de los servicios de Google Cloud necesarios para la app.&lt;br/&gt;&lt;br/&gt;
+        &lt;b&gt;3. SEGURIDAD Y ALMACENAMIENTO&lt;/b&gt;&lt;br/&gt;
+        La información se almacena en &lt;b&gt;Google Cloud (Firestore)&lt;/b&gt;, que cuenta con avanzados protocolos de cifrado en reposo y en tránsito. El acceso está restringido únicamente a los miembros de tu familia mediante reglas de seguridad validadas en el servidor.&lt;br/&gt;&lt;br/&gt;
+        &lt;b&gt;4. TUS DERECHOS&lt;/b&gt;&lt;br/&gt;
+        Como usuario, tienes derecho a:&lt;br/&gt;
+        • &lt;b&gt;Acceso:&lt;/b&gt; Consultar tus datos en cualquier momento.&lt;br/&gt;
+        • &lt;b&gt;Portabilidad:&lt;/b&gt; Descargar tu información en formato JSON desde Ajustes.&lt;br/&gt;
+        • &lt;b&gt;Supresión:&lt;/b&gt; Eliminar tu cuenta y todos tus datos asociados de forma permanente.&lt;br/&gt;&lt;br/&gt;
+        Al continuar, confirmas que has leído y aceptas que FinanzApp procese tus datos según estos términos.</string>
+    <string name="privacy_consent_content_description">Icono de privacidad</string>
+    <string name="btn_sign_out">Cerrar sesión</string>
+    <string name="settings_export_data">Descargar mis datos (JSON)</string>
+    <string name="settings_export_success">Datos listos para descargar</string>
+    <string name="settings_export_error">Error al preparar la descarga</string>
+    <string name="stats_empty_title">Sin movimientos</string>
+    <string name="stats_empty_subtitle">No hay datos para el periodo seleccionado</string>
+    <string name="categories_empty_title">Sin categorías</string>
+    <string name="categories_empty_subtitle">Pulsa + para añadir tu primera categoría</string>
+    <string name="dashboard_my_accounts">Mis Cuentas</string>
+    <string name="dashboard_view_transactions">Ver Movimientos</string>
+    <string name="dashboard_family_selector_desc">Seleccionar familia</string>
 </resources>

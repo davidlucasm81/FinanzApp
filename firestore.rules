@@ -33,10 +33,15 @@ service cloud.firestore {
       // Allow update of own document
       allow update: if (request.auth != null && request.auth.uid == uid
         && (
-          !request.resource.data.diff(resource.data).changedKeys().contains('familyId')
-          || request.resource.data.familyId == null
-          || exists(/databases/$(database)/documents/users/$(uid)/memberships/$(request.resource.data.familyId))
-          || existsAfter(/databases/$(database)/documents/users/$(uid)/memberships/$(request.resource.data.familyId))
+          (
+            !request.resource.data.diff(resource.data).changedKeys().contains('familyId')
+            || request.resource.data.familyId == null
+            || exists(/databases/$(database)/documents/users/$(uid)/memberships/$(request.resource.data.familyId))
+            || existsAfter(/databases/$(database)/documents/users/$(uid)/memberships/$(request.resource.data.familyId))
+          ) && (
+            !request.resource.data.diff(resource.data).changedKeys().contains('privacyPolicyAcceptedAt')
+            || (resource.data.privacyPolicyAcceptedAt == null && request.resource.data.privacyPolicyAcceptedAt != null)
+          )
         ))
         // Additionally, allow an admin of a family to set *only* the `familyId` field
         // on a user's document when approving a join request. This avoids the need for
@@ -163,6 +168,12 @@ service cloud.firestore {
         request.auth.token.email == resource.data.targetEmail ||
         request.auth.uid == resource.data.requestedByUid
       );
+    }
+
+    match /{path=**}/transactions/{transactionId} {
+      // Permitir que un usuario lea sus propios movimientos en cualquier familia
+      // (necesario para la exportación de datos propios).
+      allow read: if request.auth != null && resource.data.createdBy == request.auth.uid;
     }
   }
 }

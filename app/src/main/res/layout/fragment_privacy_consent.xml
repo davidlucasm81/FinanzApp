@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="center_horizontal">
+
+    <ImageView
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_marginTop="16dp"
+        android:src="@drawable/ic_launcher_foreground"
+        app:tint="?attr/colorPrimary"
+        android:contentDescription="@string/privacy_consent_content_description" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/privacy_consent_title"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="?attr/colorOnSurface" />
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="12dp"
+        android:background="?attr/colorSurface"
+        android:elevation="1dp"
+        android:padding="12dp">
+
+        <TextView
+            android:id="@+id/tv_privacy_policy"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/privacy_policy_text"
+            android:textSize="14sp"
+            android:lineSpacingExtra="4dp"
+            android:justificationMode="inter_word"
+            android:textColor="?attr/colorOnSurface" />
+    </androidx.core.widget.NestedScrollView>
+
+    <CheckBox
+        android:id="@+id/cb_accept_privacy"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/privacy_consent_checkbox"
+        android:textSize="14sp"
+        android:layout_marginBottom="12dp" />
+
+    <Button
+        android:id="@+id/btn_continue"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/privacy_consent_continue"
+        android:enabled="false"
+        style="@style/Widget.MaterialComponents.Button" />
+
+    <Button
+        android:id="@+id/btn_sign_out"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/btn_sign_out"
+        android:layout_marginTop="8dp"
+        style="@style/Widget.MaterialComponents.Button.TextButton" />
+
+</LinearLayout>

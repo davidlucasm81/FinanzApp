@@ -17,7 +17,6 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import com.finanzapp.app.ui.onboarding.OnboardingActivity;
-import com.google.firebase.firestore.WriteBatch;
 import com.finanzapp.app.data.model.FamilyMembership;
 import com.finanzapp.app.data.model.Member;
 import com.google.firebase.Timestamp;
@@ -35,9 +34,47 @@ public class SplashActivity extends AppCompatActivity {
             if (firebaseUser == null) {
                 navigateToLogin();
             } else {
-                checkUserStatus(firebaseUser);
+                // PRIMERO: Comprobar siempre la política de privacidad, tenga familias o no
+                checkPrivacyPolicy(firebaseUser);
             }
         });
+    }
+
+    private void checkPrivacyPolicy(FirebaseUser firebaseUser) {
+        // Usamos Source.SERVER para asegurar que Splash compruebe siempre el estado más reciente
+        // y evitar loops por caché local tras aceptar la política.
+        FirebaseFirestore.getInstance().collection(FirestorePaths.USERS)
+                .document(firebaseUser.getUid())
+                .get(com.google.firebase.firestore.Source.SERVER)
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        Timestamp acceptedAt = documentSnapshot.getTimestamp("privacyPolicyAcceptedAt");
+                        if (acceptedAt == null) {
+                            navigateToPrivacyConsent();
+                        } else {
+                            // Una vez aceptada la política, comprobamos el estado de familias/memberships
+                            checkUserStatus(firebaseUser);
+                        }
+                    } else {
+                        navigateToLogin();
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    // Si falla el servidor (ej. offline), intentamos con la caché como fallback
+                    FirebaseFirestore.getInstance().collection(FirestorePaths.USERS)
+                            .document(firebaseUser.getUid())
+                            .get(com.google.firebase.firestore.Source.CACHE)
+                            .addOnSuccessListener(doc -> {
+                                if (doc.exists() && doc.getTimestamp("privacyPolicyAcceptedAt") != null) {
+                                    checkUserStatus(firebaseUser);
+                                } else {
+                                    // Si no hay rastro de la aceptación ni en caché ni en server,
+                                    // por seguridad pedimos consentimiento.
+                                    navigateToPrivacyConsent();
+                                }
+                            })
+                            .addOnFailureListener(e2 -> navigateToLogin());
+                });
     }
 
     private void checkUserStatus(FirebaseUser firebaseUser) {
@@ -217,6 +254,13 @@ public class SplashActivity extends AppCompatActivity {
 
     private void navigateToOnboarding() {
         startActivity(new Intent(this, OnboardingActivity.class));
+        finish();
+    }
+
+    private void navigateToPrivacyConsent() {
+        Intent intent = new Intent(this, OnboardingActivity.class);
+        intent.putExtra("show_privacy_consent", true);
+        startActivity(intent);
         finish();
     }
 

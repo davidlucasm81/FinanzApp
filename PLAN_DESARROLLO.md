@@ -213,11 +213,11 @@
 - [x] **UX y Rendimiento**: Implementar filtros de tiempo/cuenta, estados de carga, manejo de "Sin datos" y transiciones fluidas entre gráficos. Se han simplificado las estadísticas eliminando el gasto medio mensual, el ranking de categorías y la matriz histórica de netos por decisión de UX. Se ha optimizado la carga en Dashboard y Estadísticas para evitar parpadeos y se han mejorado los gráficos con zoom, scroll y etiquetas detalladas.
 
 ## Fase 9 — Calidad, seguridad y pulido
-- [ ] Revisión completa de las reglas de seguridad de Firestore.
-- [ ] Reducir al maximo posible SIN perder funcionalidad las llamadas a firebase para no superar el limite de llamadas.
-- [ ] Manejo de estados vacíos (sin cuentas, sin movimientos, sin familia) y de errores de red.
-- [ ] Verificar que la persistencia offline de Firestore funciona razonablemente bien.
-- [ ] Revisión de accesibilidad básica (`contentDescription`, tamaños de texto, contraste).
+- [x] Revisión completa de las reglas de seguridad de Firestore.
+- [x] Reducir al maximo posible SIN perder funcionalidad las llamadas a firebase para no superar el limite de llamadas.
+- [x] Manejo de estados vacíos (sin cuentas, sin movimientos, sin familia) y de errores de red.
+- [x] Verificar que la persistencia offline de Firestore funciona razonablemente bien.
+- [x] Revisión de accesibilidad básica (`contentDescription`, tamaños de texto, contraste).
 
 ## Fase 9 bis — Privacidad: consentimiento y exportación de datos
 > Revisado 2026-07-21: se elimina la parte de cifrado de aplicación con Cloud KMS/Cloud Functions por exigir vincular una cuenta de facturación (plan Blaze), que el propietario descarta explícitamente. Ver `AGENTS.md`, entrada 2026-07-21. El cifrado en tránsito/reposo de Firestore ya cubre el requisito legal básico.
@@ -225,13 +225,13 @@
 ### Medidas organizativas y legales (no requieren código)
 - [ ] (Acción manual del humano/legal) Redactar la Política de Privacidad y el Aviso Legal.
 - [ ] (Acción manual del humano/legal) Revisar/aceptar el DPA de Google Cloud para Firebase y confirmar la región de Firestore.
-- [ ] `PrivacyConsentFragment` (`ui/onboarding/`): checkbox obligatorio de aceptación en el primer login; al aceptar, escribe `privacyPolicyAcceptedAt`.
-- [ ] **Self-heal para usuarios ya existentes**: si `privacyPolicyAcceptedAt` no existe, mostrarlo una única vez en el splash/loading (mismo patrón que Fase 7 bis).
-- [ ] **Exportación de datos personales**: opción "Descargar mis datos" en Ajustes; genera JSON con perfil, `memberships` y movimientos propios (`createdBy == uid`); compartir vía `Intent.ACTION_SEND`.
+- [x] `PrivacyConsentFragment` (`ui/onboarding/`): checkbox obligatorio de aceptación en el primer login; al aceptar, escribe `privacyPolicyAcceptedAt`.
+- [x] **Self-heal para usuarios ya existentes**: si `privacyPolicyAcceptedAt` no existe, mostrarlo una única vez en el splash/loading (mismo patrón que Fase 7 bis).
+- [x] **Exportación de datos personales**: opción "Descargar mis datos" en Ajustes; genera JSON con perfil, `memberships` y movimientos propios (`createdBy == uid`); compartir vía `Intent.ACTION_SEND`.
 
 ### Auditoría de las reglas de seguridad ya existentes
-- [ ] Ampliar la tarea de la Fase 9 "Revisión completa de las reglas de seguridad" con una pasada LOPD/RGPD: confirmar que ningún dato de un usuario es legible fuera de sus familias, y que `users/{uid}/memberships` sigue aislada por `uid`.
-- [ ] Documentar en `AGENTS.md` que el cifrado en tránsito/reposo de Firestore cubre el Art. 32 RGPD para datos que no son de categoría especial (Art. 9), y que no se aplica cifrado de aplicación adicional.
+- [x] Ampliar la tarea de la Fase 9 "Revisión completa de las reglas de seguridad" con una pasada LOPD/RGPD: confirmar que ningún dato de un usuario es legible fuera de sus familias, y que `users/{uid}/memberships` sigue aislada por `uid`.
+- [x] Documentar en `AGENTS.md` que el cifrado en tránsito/reposo de Firestore cubre el Art. 32 RGPD para datos que no son de categoría especial (Art. 9), y que no se aplica cifrado de aplicación adicional.
 
 ### Pruebas manuales de la fase
 - [ ] Un usuario existente ve la pantalla de consentimiento una única vez en su siguiente login y no vuelve a verla después.

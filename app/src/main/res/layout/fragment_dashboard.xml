@@ -38,7 +38,7 @@
             android:layout_marginStart="4dp"
             android:src="@drawable/ic_expand_more"
             app:tint="?attr/colorOnSurface"
-            android:contentDescription="Select Family" />
+            android:contentDescription="@string/dashboard_family_selector_desc" />
     </LinearLayout>
 
     <com.google.android.material.imageview.ShapeableImageView
@@ -127,7 +127,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="Mis Cuentas"
+                android:text="@string/dashboard_my_accounts"
                 android:textSize="16sp"
                 android:textStyle="bold"
                 android:textColor="?attr/colorOnSurface"/>
@@ -145,7 +145,7 @@
         android:id="@+id/btn_transactions"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Ver Movimientos"
+        android:text="@string/dashboard_view_transactions"
         app:layout_constraintBottom_toBottomOf="parent"
         android:layout_marginBottom="16dp"/>
 

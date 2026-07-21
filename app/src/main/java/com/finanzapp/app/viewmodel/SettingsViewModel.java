@@ -16,6 +16,7 @@ public class SettingsViewModel extends ViewModel {
     private final AuthRepository authRepository;
     private final MutableLiveData<Result<User>> userData = new MutableLiveData<>();
     private final MutableLiveData<Result<Boolean>> deleteAccountResult = new MutableLiveData<>();
+    private final com.finanzapp.app.util.SingleLiveEvent<Result<String>> exportResult = new com.finanzapp.app.util.SingleLiveEvent<>();
     private ListenerRegistration userListener;
 
     public SettingsViewModel(AuthRepository authRepository) {
@@ -28,6 +29,10 @@ public class SettingsViewModel extends ViewModel {
 
     public LiveData<Result<Boolean>> getDeleteAccountResult() {
         return deleteAccountResult;
+    }
+
+    public LiveData<Result<String>> getExportResult() {
+        return exportResult;
     }
 
     public void fetchUserData() {
@@ -84,5 +89,10 @@ public class SettingsViewModel extends ViewModel {
                 deleteAccountResult.postValue(new Result.Error<>(((Result.Error<?>) result).getException()));
             }
         });
+    }
+
+    public void exportUserData() {
+        exportResult.setValue(new Result.Loading<>());
+        authRepository.exportUserData(result -> exportResult.postValue(result));
     }
 }

@@ -30,6 +30,7 @@ public class OnboardingViewModel extends ViewModel {
     private final SingleLiveEvent<Result<Boolean>> invitationAction = new SingleLiveEvent<>();
     private final MutableLiveData<Result<Invitation>> pendingCodeRequest = new MutableLiveData<>();
     private final MutableLiveData<Result<User>> userData = new MutableLiveData<>();
+    private final SingleLiveEvent<Result<Boolean>> privacyResult = new SingleLiveEvent<>();
     private String lastAction; // "accepted" | "rejected"
 
     public OnboardingViewModel(FamilyRepository familyRepository) {
@@ -62,6 +63,10 @@ public class OnboardingViewModel extends ViewModel {
 
     public LiveData<Result<User>> getUserData() {
         return userData;
+    }
+
+    public LiveData<Result<Boolean>> getPrivacyResult() {
+        return privacyResult;
     }
 
     public String getLastAction() {
@@ -177,5 +182,23 @@ public class OnboardingViewModel extends ViewModel {
             android.util.Log.d("OnboardingViewModel", "Delete invitation callback result: " + result);
             invitationAction.postValue(result);
         });
+    }
+
+    public void acceptPrivacyPolicy() {
+        String uid = FirebaseAuth.getInstance().getUid();
+        if (uid == null) {
+            privacyResult.setValue(new Result.Error<>(new Exception("User not authenticated")));
+            return;
+        }
+
+        privacyResult.setValue(new Result.Loading<>());
+        FirebaseFirestore.getInstance().collection(FirestorePaths.USERS).document(uid)
+                .update("privacyPolicyAcceptedAt", com.google.firebase.Timestamp.now())
+                .addOnSuccessListener(aVoid -> privacyResult.postValue(new Result.Success<>(true)))
+                .addOnFailureListener(e -> privacyResult.postValue(new Result.Error<>(e)));
+    }
+
+    public void signOut() {
+        FirebaseAuth.getInstance().signOut();
     }
 }

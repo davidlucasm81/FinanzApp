@@ -27,6 +27,40 @@
         app:layout_constraintTop_toBottomOf="@id/tv_title"
         tools:listitem="@layout/item_category" />
 
+    <LinearLayout
+        android:id="@+id/ll_empty_state"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_title">
+        <ImageView
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:src="@drawable/ic_dashboard"
+            app:tint="@color/gray_300"
+            android:contentDescription="@null" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/categories_empty_title"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/gray_600" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/categories_empty_subtitle"
+            android:textSize="14sp"
+            android:textColor="@color/gray_600" />
+    </LinearLayout>
+
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_add_category"
         android:layout_width="wrap_content"

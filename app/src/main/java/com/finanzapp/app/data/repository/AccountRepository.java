@@ -81,11 +81,7 @@ public class AccountRepository {
      */
     public LiveData<List<Account>> getAccountsWithTransactionStatus(String familyId) {
         MutableLiveData<List<Account>> live = new MutableLiveData<>();
-        // Guardamos la última lista de cuentas conocida para poder recalcular el flag
-        // cuando llegue un cambio en la colección de movimientos (sin esperar a que
-        // también cambien las cuentas).
-        final List<Account>[] lastAccounts = new List[]{new ArrayList<Account>()};
-
+        
         db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS)
                 .addSnapshotListener((value, error) -> {
                     if (error != null || value == null) return;
@@ -93,25 +89,17 @@ public class AccountRepository {
                     for (com.google.firebase.firestore.QueryDocumentSnapshot doc : value) {
                         accounts.add(doc.toObject(Account.class));
                     }
-                    lastAccounts[0] = accounts;
-                    refreshHasTransactionsFlag(familyId, accounts, live);
-                });
-
-        db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.TRANSACTIONS)
-                .addSnapshotListener((value, error) -> {
-                    if (error != null || value == null) return;
-                    refreshHasTransactionsFlag(familyId, lastAccounts[0], live);
+                    if (accounts.isEmpty()) {
+                        live.setValue(accounts);
+                    } else {
+                        refreshHasTransactionsFlag(familyId, accounts, live);
+                    }
                 });
 
         return live;
     }
 
     private void refreshHasTransactionsFlag(String familyId, List<Account> accounts, MutableLiveData<List<Account>> live) {
-        if (accounts.isEmpty()) {
-            live.setValue(accounts);
-            return;
-        }
-
         List<String> ids = new ArrayList<>();
         for (Account a : accounts) {
             if (a.getId() != null) ids.add(a.getId());

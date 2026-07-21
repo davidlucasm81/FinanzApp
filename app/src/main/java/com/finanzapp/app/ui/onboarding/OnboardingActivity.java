@@ -19,15 +19,17 @@ public class OnboardingActivity extends AppCompatActivity {
         setContentView(binding.getRoot());
 
         String mode = getIntent().getStringExtra("mode");
-        if (mode != null) {
-            NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment_onboarding);
-            if (navHostFragment != null) {
-                NavController navController = navHostFragment.getNavController();
-                if ("create".equals(mode)) {
-                    navController.navigate(R.id.createFamilyFragment);
-                } else if ("join".equals(mode)) {
-                    navController.navigate(R.id.joinByCodeFragment);
-                }
+        boolean showPrivacyConsent = getIntent().getBooleanExtra("show_privacy_consent", false);
+        
+        NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment_onboarding);
+        if (navHostFragment != null) {
+            NavController navController = navHostFragment.getNavController();
+            if (showPrivacyConsent) {
+                navController.navigate(R.id.privacyConsentFragment);
+            } else if ("create".equals(mode)) {
+                navController.navigate(R.id.createFamilyFragment);
+            } else if ("join".equals(mode)) {
+                navController.navigate(R.id.joinByCodeFragment);
             }
         }
     }
