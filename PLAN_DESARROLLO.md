@@ -218,8 +218,26 @@
 - [ ] Manejo de estados vacíos (sin cuentas, sin movimientos, sin familia) y de errores de red.
 - [ ] Verificar que la persistencia offline de Firestore funciona razonablemente bien.
 - [ ] Revisión de accesibilidad básica (`contentDescription`, tamaños de texto, contraste).
-- [ ] Preparar la firma de release: generar keystore fuera del repo, configurar `signingConfigs`.
 
-## Fase 10 — Publicación)
+## Fase 9 bis — Privacidad: consentimiento y exportación de datos
+> Revisado 2026-07-21: se elimina la parte de cifrado de aplicación con Cloud KMS/Cloud Functions por exigir vincular una cuenta de facturación (plan Blaze), que el propietario descarta explícitamente. Ver `AGENTS.md`, entrada 2026-07-21. El cifrado en tránsito/reposo de Firestore ya cubre el requisito legal básico.
+
+### Medidas organizativas y legales (no requieren código)
+- [ ] (Acción manual del humano/legal) Redactar la Política de Privacidad y el Aviso Legal.
+- [ ] (Acción manual del humano/legal) Revisar/aceptar el DPA de Google Cloud para Firebase y confirmar la región de Firestore.
+- [ ] `PrivacyConsentFragment` (`ui/onboarding/`): checkbox obligatorio de aceptación en el primer login; al aceptar, escribe `privacyPolicyAcceptedAt`.
+- [ ] **Self-heal para usuarios ya existentes**: si `privacyPolicyAcceptedAt` no existe, mostrarlo una única vez en el splash/loading (mismo patrón que Fase 7 bis).
+- [ ] **Exportación de datos personales**: opción "Descargar mis datos" en Ajustes; genera JSON con perfil, `memberships` y movimientos propios (`createdBy == uid`); compartir vía `Intent.ACTION_SEND`.
+
+### Auditoría de las reglas de seguridad ya existentes
+- [ ] Ampliar la tarea de la Fase 9 "Revisión completa de las reglas de seguridad" con una pasada LOPD/RGPD: confirmar que ningún dato de un usuario es legible fuera de sus familias, y que `users/{uid}/memberships` sigue aislada por `uid`.
+- [ ] Documentar en `AGENTS.md` que el cifrado en tránsito/reposo de Firestore cubre el Art. 32 RGPD para datos que no son de categoría especial (Art. 9), y que no se aplica cifrado de aplicación adicional.
+
+### Pruebas manuales de la fase
+- [ ] Un usuario existente ve la pantalla de consentimiento una única vez en su siguiente login y no vuelve a verla después.
+- [ ] "Descargar mis datos" genera un JSON solo con los datos propios del usuario, nunca de otros miembros.
+- 
+## Fase 10 — Publicación
 - [ ] Icono de la app, splash screen.
 - [ ] Ficha de Google Play, política de privacidad.
+- [ ] Preparar la firma de release: generar keystore fuera del repo, configurar `signingConfigs`.

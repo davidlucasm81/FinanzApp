@@ -22,6 +22,7 @@ public class CategoryRepository {
     public LiveData<List<Category>> getCategories(String familyId) {
         MutableLiveData<List<Category>> categoriesLiveData = new MutableLiveData<>();
         db.collection(FirestorePaths.getCategoriesPath(familyId))
+                .orderBy("name")
                 .addSnapshotListener((value, error) -> {
                     if (error != null || value == null) {
                         return;

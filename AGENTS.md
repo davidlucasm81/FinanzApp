@@ -26,6 +26,7 @@ Nombre de la app: **FinanzApp**.
 | Gráficos/estadísticas | MPAndroidChart | Librería Java madura, muy usada en apps de finanzas personales, gratuita |
 | Fechas/importes | `java.time` (API desugarizada) para fechas; `NumberFormat`/`Currency` de Java para importes | Evita bugs de zona horaria y de formato de moneda |
 | IA (sugerencia de categorías) | ELIMINADO | Requisito eliminado por decisión del usuario |
+| Notificaciones push / Backend serverless / Cifrado con Cloud KMS | ELIMINADO | Ambos requieren Cloud Functions, que exige vincular una cuenta de facturación (plan Blaze) de forma obligatoria, incluso con uso $0. Decisión del propietario: no vincular ningún medio de pago al proyecto. Ver entrada 2026-07-21 en "Decisiones tomadas durante el desarrollo". |
 
 Notas:
 - Usa siempre el Firebase BoM (Bill of Materials) más reciente en vez de fijar versiones sueltas de cada librería; comprueba la versión actual en la consola de Firebase / documentación oficial al escribir el `build.gradle`, no la des por supuesta de memoria.
@@ -35,16 +36,16 @@ Notas:
 
 ```
 com.finanzapp.app/
-├── FinanzAppApplication.java          // Application class, inicializa AppContainer
+├── FinanzAppApplication.java          // Application class, inicializa AppContainer y el NotificationChannel de FCM
 ├── data/
-│   ├── model/                    // POJOs: User, Family, Member, Invitation, Account, Transaction, Category, ImportRowResult
-│   ├── repository/               // AuthRepository, FamilyRepository, AccountRepository, TransactionRepository, CategoryRepository
+│   ├── model/                    // POJOs: User, Family, Member, Invitation, Account, Transaction, Category, ImportRowResult, FamilyMembership, FcmToken
+│   ├── repository/               // AuthRepository, FamilyRepository, AccountRepository, TransactionRepository, CategoryRepository, NotificationSettingsRepository (Fase 8 bis)
 │   ├── firebase/                 // Constantes de rutas Firestore, mappers documento<->POJO
-│   └── importer/                  // CsvTransactionParser (detección de delimitador, parseo de filas), TransactionImportRepository (resuelve/crea cuentas y categorías, escribe en batch)
+│   ├── importer/                  // CsvTransactionParser (detección de delimitador, parseo de filas), TransactionImportRepository (resuelve/crea cuentas y categorías, escribe en batch)
 ├── ui/
 │   ├── auth/                      // LoginActivity/Fragment
-│   ├── onboarding/                // WelcomeFragment, CreateFamilyFragment, InitialAccountsFragment (alta de cuentas + posición neta inicial), JoinByCodeFragment, PendingApprovalFragment, AcceptInvitationFragment
-│   ├── settings/                  // SettingsFragment, ProfileFragment
+│   ├── onboarding/                // WelcomeFragment, CreateFamilyFragment, InitialAccountsFragment (alta de cuentas + posición neta inicial), JoinByCodeFragment, PendingApprovalFragment, AcceptInvitationFragment, PrivacyConsentFragment (Fase 9 bis)
+│   ├── settings/                  // SettingsFragment, ProfileFragment (incluye el interruptor de notificaciones y "Descargar mis datos", Fase 8 bis / 9 bis)
 │   ├── family/                    // FamilySettingsFragment, MemberListFragment, InviteMemberFragment, FamilySwitcherFragment (selector de familia activa), MyFamiliesFragment (listado de todas las familias del usuario)
 │   ├── accounts/                  // AccountListFragment, AddEditAccountFragment
 │   ├── transactions/              // AddEditTransactionFragment, TransactionListFragment, filtros, ImportTransactionsFragment (importación CSV)
@@ -66,6 +67,7 @@ users/{uid}
   photoUrl: string
   familyId: string | null         // familia actualmente seleccionada en la UI ("familia activa"); null solo si el usuario no pertenece a ninguna familia. Desde la Fase 7 bis, un usuario puede pertenecer a N familias a la vez (ver `users/{uid}/memberships` como fuente de verdad de la lista); este campo NO es la lista de familias, solo cuál está activa. El nombre del campo no cambia respecto a antes de la Fase 7 bis, solo su significado.
   createdAt: timestamp
+  privacyPolicyAcceptedAt: timestamp | (ausente)  // (Fase 9 bis, 2026-07-20) momento en que el usuario aceptó la Política de Privacidad. Único campo nuevo que añade esta fase al modelo existente (ver justificación en la sección "Cifrado de datos sensibles y cumplimiento LOPD/RGPD" más abajo); los usuarios ya existentes lo tienen ausente hasta que se les muestre la pantalla de consentimiento en su próximo login (self-heal, igual que el patrón ya usado en la Fase 7 bis).
 
 users/{uid}/memberships/{familyId}  // (Fase 7 bis) una familia a la que pertenece el usuario; fuente de verdad de "a qué familias pertenezco", en vez de un collectionGroup sobre members
   familyName: string               // desnormalizado desde `families/{familyId}.name`, para pintar el selector sin N+1 lecturas. Debe mantenerse sincronizado: cualquier cambio de `families/{familyId}.name` debe propagarse también aquí.
@@ -121,7 +123,7 @@ families/{familyId}/categories/{categoryId}
 families/{familyId}/transactions/{transactionId}
   accountId: string
   date: timestamp
-  description: string
+  description: string              // texto libre
   amount: number                  // siempre positivo; el signo lo da "type"
   type: "income" | "expense"
   categoryId: string
@@ -254,7 +256,15 @@ El enunciado pide que el creador de la familia apruebe la incorporación. Para q
 - **Invitación por correo**: la inicia el admin (ya es una aprobación implícita, porque el admin elige a quién invita). Cuando el invitado la acepta, entra directamente como `member` aprobado.
 - **Unión por código**: la inicia cualquier persona que conozca el código (que puede haberse compartido fuera del control del admin), así que genera una solicitud (`code_request`) que el admin debe aprobar o rechazar explícitamente antes de que la persona pase a ser `member`.
 
-## 5. Reglas de seguridad de Firestore (esqueleto conceptual)
+### Privacidad: consentimiento y exportación de datos (Fase 9 bis)
+
+> Requisito (2026-07-20, revisado 2026-07-21): reforzar el cumplimiento LOPD/RGPD sin backend propio ni cuenta de facturación vinculada al proyecto (Cloud Functions y Cloud KMS quedan descartados por exigir el plan Blaze; ver entrada 2026-07-21 en "Decisiones tomadas durante el desarrollo").
+
+- **Cifrado ya cubierto sin cambios**: Cloud Firestore cifra todos los datos en reposo (AES-256) y en tránsito (TLS) de forma transparente, y las reglas de seguridad ya limitan el acceso a los miembros aprobados de cada familia. Esto satisface el requisito básico de cifrado y confidencialidad del Art. 32 RGPD para datos personales que no son de categoría especial (Art. 9) — que es el caso de los datos de esta app. No se añade cifrado de aplicación adicional sobre `Transaction.description`.
+- **Consentimiento explícito**: `PrivacyConsentFragment`, mostrado en el primer login, escribe `privacyPolicyAcceptedAt` en `users/{uid}`. Usuarios ya existentes lo ven una única vez en su próximo login (self-heal, igual patrón que la Fase 7 bis).
+- **Exportación de datos propios**: opción "Descargar mis datos" en Ajustes, genera un JSON con perfil, `memberships` y movimientos propios (`createdBy == uid`), compartido vía `Intent.ACTION_SEND`. No incluye datos de otros miembros.
+
+### Reglas de seguridad de Firestore (esqueleto conceptual)
 
 Implementar (y testear con el Firebase Emulator Suite) algo equivalente a:
 - Un usuario solo puede leer/escribir su propio documento en `users/{uid}`.
@@ -268,6 +278,7 @@ Implementar (y testear con el Firebase Emulator Suite) algo equivalente a:
 - La importación CSV escribe categorías nuevas, así que queda sujeta a la misma regla que ya restringe "gestionar categorías del sistema" a `admin`/`owner`; las reglas de Firestore no necesitan un caso especial nuevo, pero si `TransactionRepository`/`CategoryRepository` exponen un modo "batch" para la importación, ese modo debe seguir pasando por las mismas reglas de creación de `accounts`, `categories` y `transactions` ya definidas (nada de un camino alternativo sin reglas).
 - **(Fase 7 bis) `users/{uid}/memberships/{familyId}`**: solo el propio usuario puede leer o escribir en su subcolección — `allow read, write: if request.auth.uid == uid`. Al vivir bajo su propio documento, no hace falta ninguna regla adicional sobre `members` de otras familias (no se usa `collectionGroup`).
 - **(Fase 7 bis) `users/{uid}.familyId`**: el propio usuario puede escribir este campo únicamente si `request.resource.data.familyId` es `null` o corresponde a una familia para la que ya existe `users/{uid}/memberships/{familyId}` (comprobar con `exists()`), para que nadie pueda "activar" una familia a la que no pertenece.
+- **(Fase 9 bis) `Transaction.description`**: sigue siendo un string cualquiera, sin cifrado adicional.
 
 Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exista el modelo de datos (Fase 2 del plan). Las reglas de la Fase 7 bis se añaden e implementan junto con esa fase, no antes (dependen de que exista la subcolección `users/{uid}/memberships`).
 
@@ -304,6 +315,7 @@ Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exi
 9. **Importación de movimientos desde CSV** (solo `admin`/`owner`): dado un fichero con columnas `Fecha Concepto Categoría Valor Tipo Método Cuenta`, insertar los movimientos correspondientes; si la cuenta o la categoría de una fila no existen en la familia, crearlas automáticamente. Ver detalle en la sección 4, "Importación de movimientos desde CSV".
 10. **Sugerencia de categorías por IA** (ELIMINADO): Requisito eliminado por decisión del usuario.
 11. **Pertenencia a varias familias** (Fase 7 bis): un usuario puede pertenecer a N familias a la vez, cambiar entre ellas mediante un selector de familia activa, y crear o unirse a familias adicionales sin dejar de pertenecer a las anteriores. Ver detalle en la sección 4, "Pertenencia a varias familias (Fase 7 bis)".
+12. **Privacidad (Fase 9 bis, reducida)**: consentimiento explícito de la Política de Privacidad y exportación de los propios datos. Sin cifrado de aplicación adicional (Firestore ya cubre el requisito legal básico). Ver sección 4.
 
 ## 8. Convenciones de código
 
@@ -329,7 +341,7 @@ Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exi
 - ~~Un usuario perteneciendo a más de una unidad familiar a la vez.~~ Pasa a ser un requisito de la v1 desde 2026-07-18 — ver Fase 7 bis en `PLAN_DESARROLLO.md` y la sección "Pertenencia a varias familias" en el punto 4 de este documento.
 - Movimientos recurrentes/automatizados y alertas de presupuesto.
 - Exportación a Excel/PDF.
-- Notificaciones push (FCM) para solicitudes de unión pendientes.
+- Notificaciones push (FCM) para movimientos nuevos, solicitudes de unión pendientes, cambios de rol, etc. Requeriría Cloud Functions y, por tanto, vincular una cuenta de facturación (plan Blaze) — descartado por decisión del propietario (2026-07-21). Se podría retomar en el futuro si se acepta ese requisito.
 - Modo oscuro (fácil de añadir después, no bloquea nada).
 
 ---
@@ -372,3 +384,14 @@ Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exi
 - **2026-07-18 (tercera precisión, mismo día)**: **El propietario aclara que cambiar de familia activa, y crear o unirse a una familia adicional, solo puede iniciarse desde un único sitio: un botón desplegable junto al nombre de la familia en la cabecera del Dashboard, arriba a la izquierda.** Se elimina el acceso adicional al `FamilySwitcherFragment` que se había previsto también desde Ajustes; `MyFamiliesFragment` (en Ajustes) pasa a ser puramente de solo lectura, sin ninguna acción de cambio de familia activa.
 - **2026-07-16**: **Decisión de negocio: todas las estadísticas "en general" de la app (saldo total, ingresos/gastos del periodo, desglose por categoría y, en el futuro, toda la Fase 8 de Estadísticas avanzadas) se calculan únicamente sobre cuentas activas.** Una cuenta archivada (`active == false`) no debe aportar a ninguna métrica agregada, aunque sus movimientos históricos se conserven intactos en Firestore (no se borran, solo se excluyen de los cálculos). Esto ya se aplicaba al saldo total y al desglose por cuenta del Dashboard (Fase 7); con esta decisión se extiende explícitamente a ingresos/gastos del periodo y al desglose por categoría (bugfix del mismo día en `DashboardViewModel`, ver `PLAN_DESARROLLO.md` Fase 7) y se deja como requisito de diseño para toda la Fase 8. Única excepción prevista: si el propio usuario filtra explícitamente por una cuenta archivada (p. ej. para consultar su histórico puntual), esa vista concreta sí puede mostrar sus datos, pero nunca debe alterar los totales/agregados generales.
 - **2026-07-19**: **Simplificación del Dashboard**: Se eliminan del Dashboard el selector de rango de fechas, el resumen de ingresos/gastos del periodo y el desglose por categorías, ya que estas funcionalidades se han trasladado a la pestaña de Estadísticas para evitar duplicidad y sobrecarga visual en la pantalla principal. El Dashboard ahora se centra exclusivamente en la posición neta actual y el saldo de las cuentas activas.
+- **2026-07-20**: **Nuevo requisito: notificaciones push cuando se añade un movimiento, con opción de desactivarlas.** Se añade la Fase 8 bis a `PLAN_DESARROLLO.md` y la sección "Notificaciones push de movimientos" a este documento. Decisión clave: no se puede resolver solo en el cliente (un dispositivo no puede enviar push de forma segura al dispositivo de otro usuario), así que se introduce **Cloud Functions for Firebase** como primera pieza de backend del proyecto — única excepción documentada a "todo el proyecto en Java", porque Cloud Functions no ofrece runtime Java para triggers de Firestore. Asunciones tomadas al no estar especificado en el enunciado original: (a) el interruptor de activar/desactivar es global por usuario, no por familia, dado que el caso de uso típico no distingue entre familias; (b) el campo `users/{uid}.notificationsEnabled` se diseña para que su ausencia equivalga a `true`, de modo que ningún usuario existente necesite ninguna migración para este requisito; (c) solo se notifican altas de movimientos, no ediciones ni borrados, por ser el evento explícitamente pedido.
+- **2026-07-20**: **Nuevo requisito: mejoras de seguridad para cumplir con la LOPD (que desarrolla el RGPD de la UE) en el almacenamiento de datos sensibles, con migración 100% automática y sin cambiar el modelo de datos si es posible.** Se añade la Fase 9 bis a `PLAN_DESARROLLO.md` y la sección "Cifrado de datos sensibles y cumplimiento LOPD/RGPD" a este documento. Decisiones clave:
+  - Se documenta explícitamente que Firestore ya cifra todo en reposo (AES-256, gestionado por Google) y en tránsito (TLS), y que las reglas de seguridad ya restringen el acceso a los miembros aprobados de cada familia — estas medidas ya existentes cubren el requisito básico de "cifrado" y "confidencialidad" del Art. 32 RGPD para la generalidad de los campos.
+  - Se añade cifrado de aplicación (envelope encryption con Cloud KMS, invocado desde las mismas Cloud Functions de la Fase 8 bis) únicamente para `Transaction.description`, por ser el único campo de texto libre sin restricciones de formato. Se decide explícitamente no cifrar `email`, `displayName`, `amount` ni las fechas, porque romperían consultas de igualdad ya existentes (`targetEmail`) o el patrón atómico de `currentBalance`/gráficos de Estadísticas, y porque los datos financieros de esta app no son datos de categoría especial del Art. 9 RGPD.
+  - La clave de cifrado vive únicamente en Cloud KMS (fuera de Firestore), por lo que no se añade ningún campo ni colección al modelo de datos para guardarla; el campo `Transaction.description` conserva su nombre y tipo de siempre, solo cambia su contenido (texto cifrado con el prefijo `"ENC:v1:"` en vez de texto plano).
+  - La migración de los movimientos ya existentes (creados antes de esta fase) se resuelve con una función de Cloud Functions programada (`onSchedule`), idempotente, que se ejecuta sola tanto una vez de forma inmediata como periódicamente después como red de seguridad — ni el usuario ni quien administra la base de datos tienen que ejecutar ni revisar nada, cumpliendo la instrucción explícita del propietario.
+  - Única excepción aceptada a "no cambiar el modelo de datos": se añade el campo `users/{uid}.privacyPolicyAcceptedAt` para poder demostrar el consentimiento a la Política de Privacidad, exigido por la propia normativa; se documenta como excepción justificada, igual que ya se hizo en su momento con otras decisiones de esta lista.
+  - - **2026-07-21**: **El propietario pide no vincular ningún medio de facturación (tarjeta) al proyecto de Firebase/Google Cloud, bajo ningún concepto.** Se revisa la Fase 8 bis (notificaciones push) y la Fase 9 bis (cifrado con Cloud KMS): ambas dependen de Cloud Functions, que exige el plan Blaze (cuenta de facturación vinculada) de forma obligatoria para desplegarse, incluso si el uso real se queda en $0 — no es una limitación de cuota, es un requisito de configuración del proyecto. Cloud KMS exige además, por sí mismo, un proyecto de Google Cloud con facturación habilitada. No existe una alternativa gratuita equivalente y segura: enviar notificaciones push a otros dispositivos o gestionar claves de cifrado exige necesariamente credenciales de servidor, que no pueden vivir de forma segura en el cliente Android. En consecuencia:
+  - Se elimina por completo la Fase 8 bis (notificaciones push, FCM, Cloud Functions) de `AGENTS.md` y `PLAN_DESARROLLO.md`.
+  - De la Fase 9 bis se elimina la parte de cifrado de aplicación (Cloud KMS + Cloud Functions); se mantienen la pantalla de consentimiento de la Política de Privacidad y la exportación de datos propios, por ser puramente cliente + Firestore. Se documenta que el cifrado en tránsito/reposo ya ofrecido por Firestore cubre el requisito legal básico para datos que no son de categoría especial.
+  - Queda como posible ampliación futura, si el propietario decide en algún momento vincular el plan Blaze (lo cual no implica pagar mientras el uso se mantenga en las cuotas gratuitas, pero sí exige una tarjeta válida).
