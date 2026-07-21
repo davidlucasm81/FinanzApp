@@ -164,7 +164,7 @@ public class AddInitialAccountsFragment extends Fragment {
         binding.tilInitialBalance.setError(null);
 
         if (familyId == null) {
-            Toast.makeText(requireContext(), "Familia no encontrada", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), "Familia no encontrada", Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -203,14 +203,14 @@ public class AddInitialAccountsFragment extends Fragment {
                     String newBalanceStr = etBalance.getText().toString().trim();
 
                     if (newName.isEmpty()) {
-                        Toast.makeText(requireContext(), "El nombre es obligatorio", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(), "El nombre es obligatorio", Toast.LENGTH_LONG).show();
                         return;
                     }
                     double newBalance;
                     try {
                         newBalance = newBalanceStr.isEmpty() ? 0.0 : Double.parseDouble(newBalanceStr);
                     } catch (NumberFormatException e) {
-                        Toast.makeText(requireContext(), "Saldo inicial no válido", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(), "Saldo inicial no válido", Toast.LENGTH_LONG).show();
                         return;
                     }
 

@@ -94,7 +94,7 @@ public class FamilySwitcherFragment extends BottomSheetDialogFragment {
             if (result instanceof Result.Success) {
                 adapter.setItems(((Result.Success<List<FamilyMembership>>) result).getData());
             } else if (result instanceof Result.Error) {
-                Toast.makeText(getContext(), "Error al cargar familias", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "Error al cargar familias", Toast.LENGTH_LONG).show();
             }
         });
     }
@@ -114,7 +114,7 @@ public class FamilySwitcherFragment extends BottomSheetDialogFragment {
                 // Phase 7 bis: Clear navigation and restart MainActivity to reload all viewmodels with new familyId
                 restartApp();
             } else {
-                Toast.makeText(getContext(), "Error al cambiar de familia", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "Error al cambiar de familia", Toast.LENGTH_LONG).show();
             }
         });
     }

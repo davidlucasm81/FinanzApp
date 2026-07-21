@@ -234,9 +234,9 @@
 - [x] Documentar en `AGENTS.md` que el cifrado en tránsito/reposo de Firestore cubre el Art. 32 RGPD para datos que no son de categoría especial (Art. 9), y que no se aplica cifrado de aplicación adicional.
 
 ### Pruebas manuales de la fase
-- [ ] Un usuario existente ve la pantalla de consentimiento una única vez en su siguiente login y no vuelve a verla después.
-- [ ] "Descargar mis datos" genera un JSON solo con los datos propios del usuario, nunca de otros miembros.
-- 
+- [x] Un usuario existente ve la pantalla de consentimiento una única vez en su siguiente login y no vuelve a verla después.
+- [x] "Descargar mis datos" genera un JSON solo con los datos propios del usuario, nunca de otros miembros.
+
 ## Fase 10 — Publicación
 - [ ] Icono de la app, splash screen.
 - [ ] Ficha de Google Play, política de privacidad.

@@ -149,7 +149,7 @@ public class AccountListFragment extends Fragment {
 
     private void showAddEditDialog(@Nullable Account account) {
         if (familyId == null) {
-            Toast.makeText(requireContext(), "Error: No se pudo identificar la familia", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), "Error: No se pudo identificar la familia", Toast.LENGTH_LONG).show();
             return;
         }
         AddEditAccountFragment.newInstance(familyId, account)

@@ -103,7 +103,7 @@ public class ManageCategoriesFragment extends Fragment {
                 if (e != null && "CATEGORY_IN_USE".equals(e.getMessage())) {
                     Toast.makeText(requireContext(), "No se puede borrar: la categoría está siendo usada en movimientos", Toast.LENGTH_LONG).show();
                 } else {
-                    Toast.makeText(requireContext(), "Error en la operación", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), "Error en la operación", Toast.LENGTH_LONG).show();
                 }
             }
         });

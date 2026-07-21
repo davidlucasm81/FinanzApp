@@ -82,7 +82,7 @@ public class AcceptInvitationFragment extends Fragment {
     private void checkPendingInvitation() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null || user.getEmail() == null) {
-            Toast.makeText(requireContext(), "No se pudo verificar tu sesión", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), "No se pudo verificar tu sesión", Toast.LENGTH_LONG).show();
             Navigation.findNavController(requireView()).popBackStack();
             return;
         }
@@ -100,7 +100,7 @@ public class AcceptInvitationFragment extends Fragment {
                         familyId = queryDocumentSnapshots.getDocuments().get(0).getReference().getParent().getParent().getId();
                         setButtonsEnabled(true);
                     } else {
-                        Toast.makeText(requireContext(), "La invitación ya no está disponible", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(), "La invitación ya no está disponible", Toast.LENGTH_LONG).show();
                         Navigation.findNavController(requireView()).popBackStack();
                     }
                 })
@@ -151,14 +151,14 @@ public class AcceptInvitationFragment extends Fragment {
             } else {
                 setButtonsEnabled(true);
                 android.util.Log.e("AcceptInvitation", "Error al aceptar invitación", task.getException());
-                Toast.makeText(requireContext(), "Error al aceptar invitación", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Error al aceptar invitación", Toast.LENGTH_LONG).show();
             }
         });
     }
 
     private void rejectInvitation() {
         if (familyId == null || invitationId == null) {
-            Toast.makeText(requireContext(), "Todavía estamos comprobando tu invitación, espera un momento", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), "Todavía estamos comprobando tu invitación, espera un momento", Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -172,7 +172,7 @@ public class AcceptInvitationFragment extends Fragment {
                     } else {
                         setButtonsEnabled(true);
                         android.util.Log.e("AcceptInvitation", "Error al rechazar invitación", task.getException());
-                        Toast.makeText(requireContext(), "Error al rechazar invitación", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(), "Error al rechazar invitación", Toast.LENGTH_LONG).show();
                     }
                 });
     }

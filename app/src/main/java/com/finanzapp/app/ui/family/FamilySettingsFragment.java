@@ -171,17 +171,17 @@ public class FamilySettingsFragment extends Fragment {
                 Toast.makeText(requireContext(), "Familia actualizada", Toast.LENGTH_SHORT).show();
                 Navigation.findNavController(requireView()).popBackStack();
             } else if (result instanceof Result.Error) {
-                Toast.makeText(requireContext(), "Error al actualizar", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Error al actualizar", Toast.LENGTH_LONG).show();
             }
         });
 
         viewModel.getLeaveResult().observe(getViewLifecycleOwner(), result -> {
             if (result instanceof Result.Success) {
-                Toast.makeText(requireContext(), "Has salido de la familia", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Has salido de la familia", Toast.LENGTH_LONG).show();
                 // Phase 7 bis: Decide whether to go to Dashboard or Onboarding based on remaining memberships
                 checkMembershipsAndNavigate();
             } else if (result instanceof Result.Error) {
-                Toast.makeText(requireContext(), "Error al salir de la familia", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Error al salir de la familia", Toast.LENGTH_LONG).show();
             }
         });
 

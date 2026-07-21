@@ -65,7 +65,7 @@ public class PrivacyConsentFragment extends Fragment {
                 startActivity(intent);
                 requireActivity().finish();
             } else if (result instanceof Result.Error) {
-                Toast.makeText(requireContext(), "Error al guardar consentimiento", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Error al guardar consentimiento", Toast.LENGTH_LONG).show();
             }
         });
     }

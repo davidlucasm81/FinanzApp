@@ -203,10 +203,10 @@ public class AddEditTransactionFragment extends Fragment {
         viewModel.getOperationResult().observe(getViewLifecycleOwner(), result -> {
             if (result instanceof Result.Success) {
                 String msg = existingTransaction != null ? getString(R.string.transaction_updated) : getString(R.string.transaction_saved);
-                Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
                 Navigation.findNavController(requireView()).popBackStack();
             } else if (result instanceof Result.Error) {
-                Toast.makeText(requireContext(), "Error al guardar", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Error al guardar", Toast.LENGTH_LONG).show();
             }
         });
     }

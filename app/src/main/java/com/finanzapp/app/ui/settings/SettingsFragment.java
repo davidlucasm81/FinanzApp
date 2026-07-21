@@ -82,7 +82,7 @@ public class SettingsFragment extends Fragment {
             } else if (result instanceof Result.Error) {
                 // Only show error if we are not signing out
                 if (getActivity() != null && !getActivity().isFinishing()) {
-                    Toast.makeText(requireContext(), "Error al cargar datos de usuario", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), "Error al cargar datos de usuario", Toast.LENGTH_LONG).show();
                 }
             }
         });
@@ -132,7 +132,7 @@ public class SettingsFragment extends Fragment {
             }
         } catch (java.io.IOException e) {
             android.util.Log.e("SettingsFragment", "Error sharing file", e);
-            Toast.makeText(requireContext(), "Error al exportar archivo", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), "Error al exportar archivo", Toast.LENGTH_LONG).show();
         }
     }
 

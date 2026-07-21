@@ -61,7 +61,7 @@ public class WelcomeFragment extends Fragment {
                 viewModel.acceptInvitation(currentInvitation, pendingFamilyId);
             } else {
                 android.util.Log.w("WelcomeFragment", "No se pudo aceptar: currentInvitation=" + currentInvitation + ", pendingInvitationFamilyId=" + pendingFamilyId);
-                android.widget.Toast.makeText(requireContext(), "No se pudo procesar la invitación, inténtalo de nuevo", android.widget.Toast.LENGTH_SHORT).show();
+                android.widget.Toast.makeText(requireContext(), "No se pudo procesar la invitación, inténtalo de nuevo", android.widget.Toast.LENGTH_LONG).show();
             }
         });
 
@@ -71,7 +71,7 @@ public class WelcomeFragment extends Fragment {
                 viewModel.rejectInvitation(pendingFamilyId, currentInvitation.getId());
             } else {
                 android.util.Log.w("WelcomeFragment", "No se pudo rechazar: currentInvitation=" + currentInvitation + ", pendingInvitationFamilyId=" + pendingFamilyId);
-                android.widget.Toast.makeText(requireContext(), "No se pudo procesar la invitación, inténtalo de nuevo", android.widget.Toast.LENGTH_SHORT).show();
+                android.widget.Toast.makeText(requireContext(), "No se pudo procesar la invitación, inténtalo de nuevo", android.widget.Toast.LENGTH_LONG).show();
             }
         });
 

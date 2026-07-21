@@ -152,7 +152,7 @@ public class MemberListFragment extends Fragment {
                 currentMembers = ((Result.Success<List<Member>>) result).getData();
                 updateList();
             } else if (result instanceof Result.Error) {
-                Toast.makeText(requireContext(), "Error al cargar miembros", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Error al cargar miembros", Toast.LENGTH_LONG).show();
             }
         });
 
@@ -175,7 +175,7 @@ public class MemberListFragment extends Fragment {
                 Toast.makeText(requireContext(), "Acción realizada con éxito", Toast.LENGTH_SHORT).show();
                 fetchData(); // Refresh all
             } else if (result instanceof Result.Error) {
-                Toast.makeText(requireContext(), "Error al procesar solicitud", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Error al procesar solicitud", Toast.LENGTH_LONG).show();
             }
         });
     }
