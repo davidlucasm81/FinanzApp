@@ -3,6 +3,18 @@ plugins {
     alias(libs.plugins.google.services)
 }
 
+import java.util.Properties
+
+// Carga de las credenciales de firma desde un fichero fuera del repo.
+// keystore.properties NUNCA se sube a git (ver .gitignore); en su lugar se
+// versiona keystore.properties.example con la estructura sin valores reales.
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+def hasKeystoreProperties = keystorePropertiesFile.exists()
+if (hasKeystoreProperties) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace 'com.finanzapp.app'
     compileSdk 35
@@ -17,9 +29,29 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        release {
+            if (hasKeystoreProperties) {
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
-            minifyEnabled false
+            // Sin keystore.properties (p. ej. en CI de un fork, o en un
+            // checkout limpio sin el fichero local) el build de release
+            // sigue configurando el bloque para no romper la sincronización,
+            // pero fallará al firmar/empaquetar hasta que exista el fichero;
+            // es el comportamiento deseado: nunca firmar con una config vacía.
+            if (hasKeystoreProperties) {
+                signingConfig signingConfigs.release
+            }
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
@@ -44,6 +76,7 @@ dependencies {
     implementation libs.androidx.navigation.fragment
     implementation libs.androidx.navigation.ui
     implementation libs.androidx.lifecycle.livedata
+    implementation libs.androidx.core.splashscreen
     implementation libs.colorpicker
     implementation libs.mpandroidchart
 

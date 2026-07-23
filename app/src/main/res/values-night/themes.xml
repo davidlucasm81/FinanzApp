@@ -33,4 +33,11 @@
         <!-- Button Styles -->
         <item name="materialButtonStyle">@style/Widget.FinanzApp.Button</item>
     </style>
+
+    <!-- Splash Screen Theme (Night) -->
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenBackground">@color/background_dark</item>
+        <item name="postSplashScreenTheme">@style/Theme.FinanzApp</item>
+    </style>
 </resources>

@@ -25,3 +25,7 @@ google-services.json
 .artifacts/
 
 app/release/*
+
+keystore.properties
+   *.jks
+   *.keystore

@@ -239,6 +239,8 @@
 - [x] "Descargar mis datos" genera un JSON solo con los datos propios del usuario, nunca de otros miembros.
 
 ## Fase 10 — Publicación
-- [ ] Icono de la app, splash screen.
-- [ ] Ficha de Google Play, política de privacidad.
-- [ ] Preparar la firma de release: generar keystore fuera del repo, configurar `signingConfigs`.
+- [x] Icono de la app, splash screen. El icono sera una Casa + moneda (familia+finanzas)
+- [X] Ficha de Google Play, política de privacidad.
+  - [x] Finaliza ficha de Google Play y dejar indicado en el plan de desarrollo lo que debe rellenar el humano. Ver el nuevo bloque "✅ Checklist" al principio de `FICHA_GOOGLE_PLAY.md`: textos, icono 512×512 y feature graphic 1024×500 ya cerrados (`icon_assets/play_store_icon_512.png`, `icon_assets/feature_graphic_1024x500.png`); quedan pendientes de humano el email de contacto, la URL pública de la política de privacidad, las capturas de pantalla reales, el cuestionario IARC y el alta de cuenta de desarrollador de Google Play.
+  - [x] Sincronizar markdown de politica de privacidad con la politica mostrada al usuario en la aplicacion. Se han actualizado `POLITICA_PRIVACIDAD.md`, `FICHA_GOOGLE_PLAY.md` y `strings.xml` con los datos del desarrollador (David) y el email de contacto davidlucasmora81@gmail.com.
+- [X] Preparar la firma de release: generar keystore fuera del repo, configurar `signingConfigs`.

@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.finanzapp.app.FinanzAppApplication;
 import com.finanzapp.app.MainActivity;
+import com.finanzapp.app.R;
 import com.finanzapp.app.data.firebase.FirestorePaths;
 import com.finanzapp.app.data.model.User;
 import com.finanzapp.app.data.repository.AuthRepository;
@@ -26,7 +27,9 @@ public class SplashActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        androidx.core.splashscreen.SplashScreen.installSplashScreen(this);
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_splash);
         
         AuthRepository authRepository = ((FinanzAppApplication) getApplication()).getAppContainer().getAuthRepository();
         

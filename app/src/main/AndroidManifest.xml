@@ -11,7 +11,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.FinanzApp">
+        android:theme="@style/Theme.App.Starting">
 
         <activity
             android:name=".ui.SplashActivity"
@@ -24,15 +24,18 @@
 
         <activity
             android:name=".ui.auth.LoginActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/Theme.FinanzApp" />
 
         <activity
             android:name=".ui.onboarding.OnboardingActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/Theme.FinanzApp" />
 
         <activity
             android:name=".MainActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/Theme.FinanzApp" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

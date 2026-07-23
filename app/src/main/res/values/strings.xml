@@ -87,10 +87,13 @@
         &lt;b&gt;3. SEGURIDAD Y ALMACENAMIENTO&lt;/b&gt;&lt;br/&gt;
         La información se almacena en &lt;b&gt;Google Cloud (Firestore)&lt;/b&gt;, que cuenta con avanzados protocolos de cifrado en reposo y en tránsito. El acceso está restringido únicamente a los miembros de tu familia mediante reglas de seguridad validadas en el servidor.&lt;br/&gt;&lt;br/&gt;
         &lt;b&gt;4. TUS DERECHOS&lt;/b&gt;&lt;br/&gt;
-        Como usuario, tienes derecho a:&lt;br/&gt;
+        Como usuario, tienes derecho a acceso, rectificación, supresión, portabilidad, limitación y oposición sobre tus datos. En concreto, desde la propia app puedes:&lt;br/&gt;
         • &lt;b&gt;Acceso:&lt;/b&gt; Consultar tus datos en cualquier momento.&lt;br/&gt;
+        • &lt;b&gt;Rectificación:&lt;/b&gt; Corregir tu nombre o foto desde tu perfil de Google.&lt;br/&gt;
         • &lt;b&gt;Portabilidad:&lt;/b&gt; Descargar tu información en formato JSON desde Ajustes.&lt;br/&gt;
-        • &lt;b&gt;Supresión:&lt;/b&gt; Eliminar tu cuenta y todos tus datos asociados de forma permanente.&lt;br/&gt;&lt;br/&gt;
+        • &lt;b&gt;Supresión:&lt;/b&gt; Eliminar tu cuenta y todos tus datos asociados de forma permanente.&lt;br/&gt;
+        Para ejercer la limitación u oposición del tratamiento, o cualquier otra solicitud, escríbenos a: davidlucasmora81@gmail.com.&lt;br/&gt;&lt;br/&gt;
+        Puedes consultar la política completa, con la identidad del responsable del tratamiento y todos los detalles legales, en: &lt;b&gt;[URL pública de la Política de Privacidad una vez publicada]&lt;/b&gt;.&lt;br/&gt;&lt;br/&gt;
         Al continuar, confirmas que has leído y aceptas que FinanzApp procese tus datos según estos términos.</string>
     <string name="privacy_consent_content_description">Icono de privacidad</string>
     <string name="btn_sign_out">Cerrar sesión</string>
