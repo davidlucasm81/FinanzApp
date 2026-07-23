@@ -12,7 +12,9 @@ import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.finanzapp.app.FinanzAppApplication;
+import com.finanzapp.app.R;
 import com.finanzapp.app.data.model.Account;
+
 import com.finanzapp.app.databinding.DialogAddEditAccountBinding;
 import com.finanzapp.app.viewmodel.AccountViewModel;
 import com.finanzapp.app.viewmodel.ViewModelFactory;
@@ -63,10 +65,10 @@ public class AddEditAccountFragment extends DialogFragment {
         }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext())
-                .setTitle(accountToEdit == null ? "Añadir cuenta" : "Editar cuenta")
+                .setTitle(accountToEdit == null ? R.string.label_add_account_title : R.string.dialog_edit_account)
                 .setView(binding.getRoot())
-                .setPositiveButton("Guardar", null)
-                .setNegativeButton("Cancelar", (dialog, which) -> dismiss());
+                .setPositiveButton(R.string.label_save_btn, null)
+                .setNegativeButton(R.string.cancel_button, (dialog, which) -> dismiss());
 
         AlertDialog dialog = builder.create();
         dialog.setOnShowListener(d -> {
@@ -89,7 +91,7 @@ public class AddEditAccountFragment extends DialogFragment {
         try {
             if (!balanceStr.isEmpty()) balance = Double.parseDouble(balanceStr);
         } catch (NumberFormatException e) {
-            binding.tilInitialBalance.setError("Formato inválido");
+            binding.tilInitialBalance.setError(getString(R.string.error_invalid_format));
             return;
         }
 

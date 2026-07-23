@@ -14,6 +14,9 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.finanzapp.app.R;
+
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -55,14 +58,22 @@ public class AddEditTransactionFragment extends Fragment {
     
     private List<Category> allCategories = new ArrayList<>();
     private List<Account> allAccounts = new ArrayList<>();
-    private final String[] paymentMethods = {
-            "Tarjeta", "Efectivo", "Transferencia", "Bizum", 
-            "Tarjeta restaurante", "Tarjeta transporte", "Domiciliación bancaria"
-    };
     private final String[] paymentMethodValues = {
             "tarjeta", "efectivo", "transferencia", "bizum", 
             "tarjeta_restaurante", "tarjeta_transporte", "domiciliacion_bancaria"
     };
+
+    private String[] getPaymentMethodLabels() {
+        return new String[]{
+                getString(R.string.method_card),
+                getString(R.string.method_cash),
+                getString(R.string.method_transfer),
+                getString(R.string.method_bizum),
+                getString(R.string.method_restaurant_card),
+                getString(R.string.method_transport_card),
+                getString(R.string.method_direct_debit)
+        };
+    }
 
     @Nullable
     @Override
@@ -103,7 +114,7 @@ public class AddEditTransactionFragment extends Fragment {
 
         com.google.android.material.appbar.MaterialToolbar toolbar = view.findViewById(R.id.toolbar);
         if (existingTransaction != null) {
-            toolbar.setTitle("Editar Movimiento");
+            toolbar.setTitle(getString(R.string.dialog_edit_transaction));
         }
         toolbar.setNavigationOnClickListener(v -> Navigation.findNavController(v).popBackStack());
 
@@ -159,7 +170,7 @@ public class AddEditTransactionFragment extends Fragment {
     }
 
     private void setupMethodSpinner() {
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, paymentMethods);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, getPaymentMethodLabels());
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerMethod.setAdapter(adapter);
     }
@@ -209,7 +220,7 @@ public class AddEditTransactionFragment extends Fragment {
                 Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
                 Navigation.findNavController(requireView()).popBackStack();
             } else if (result instanceof Result.Error) {
-                Toast.makeText(requireContext(), "Error al guardar", Toast.LENGTH_LONG).show();
+                Toast.makeText(requireContext(), R.string.error_save_transaction, Toast.LENGTH_LONG).show();
             }
         });
     }

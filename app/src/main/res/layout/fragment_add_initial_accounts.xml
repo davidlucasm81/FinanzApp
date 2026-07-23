@@ -28,7 +28,7 @@
                     android:id="@+id/tv_title"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Cuentas iniciales"
+                    android:text="@string/label_initial_accounts_title"
                     android:textSize="24sp"
                     android:textStyle="bold" />
 
@@ -37,7 +37,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="Da de alta las cuentas de tu familia para fijar su posición neta inicial. Podrás añadir, editar o eliminar cuentas cuando quieras desde Ajustes." />
+                    android:text="@string/label_initial_accounts_desc" />
 
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/cv_initial_net_position"
@@ -54,7 +54,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Posición neta inicial" />
+                            android:text="@string/label_net_position_initial" />
 
                         <TextView
                             android:id="@+id/tv_initial_net_position_value"
@@ -70,7 +70,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="Aún no has añadido ninguna cuenta" />
+                            android:text="@string/label_no_accounts_added" />
 
                     </LinearLayout>
 
@@ -90,7 +90,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Nueva cuenta"
+                            android:text="@string/label_new_account"
                             android:textStyle="bold" />
 
                         <com.google.android.material.textfield.TextInputLayout
@@ -98,7 +98,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="16dp"
-                            android:hint="Nombre de la cuenta">
+                            android:hint="@string/label_account_name">
 
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/et_account_name"
@@ -112,7 +112,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="12dp"
-                            android:hint="Saldo inicial">
+                            android:hint="@string/label_initial_balance">
 
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/et_initial_balance"
@@ -127,7 +127,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="16dp"
-                            android:text="+ Añadir cuenta" />
+                            android:text="@string/label_add_account_btn" />
 
                     </LinearLayout>
 
@@ -142,7 +142,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="CUENTAS AÑADIDAS" />
+            android:text="@string/label_added_accounts_header" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rv_accounts"
@@ -157,7 +157,7 @@
             android:layout_height="wrap_content"
             android:gravity="center"
             android:padding="24dp"
-            android:text="Todavía no hay cuentas en la lista.\nAñade la primera con el formulario de arriba." />
+            android:text="@string/label_empty_list_hint" />
 
     </LinearLayout>
 
@@ -175,7 +175,7 @@
             android:id="@+id/btn_continue"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Continuar" />
+            android:text="@string/label_continue" />
 
     </LinearLayout>
 

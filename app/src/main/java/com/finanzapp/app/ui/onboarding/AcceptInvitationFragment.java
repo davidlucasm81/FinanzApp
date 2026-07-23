@@ -7,6 +7,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import com.finanzapp.app.R;
+
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -82,7 +85,7 @@ public class AcceptInvitationFragment extends Fragment {
     private void checkPendingInvitation() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null || user.getEmail() == null) {
-            Toast.makeText(requireContext(), "No se pudo verificar tu sesión", Toast.LENGTH_LONG).show();
+            Toast.makeText(requireContext(), R.string.error_verify_session, Toast.LENGTH_LONG).show();
             Navigation.findNavController(requireView()).popBackStack();
             return;
         }
@@ -100,7 +103,7 @@ public class AcceptInvitationFragment extends Fragment {
                         familyId = queryDocumentSnapshots.getDocuments().get(0).getReference().getParent().getParent().getId();
                         setButtonsEnabled(true);
                     } else {
-                        Toast.makeText(requireContext(), "La invitación ya no está disponible", Toast.LENGTH_LONG).show();
+                        Toast.makeText(requireContext(), R.string.error_invitation_unavailable, Toast.LENGTH_LONG).show();
                         Navigation.findNavController(requireView()).popBackStack();
                     }
                 })
@@ -108,13 +111,13 @@ public class AcceptInvitationFragment extends Fragment {
                     // Antes este fallo era silencioso: familyId/invitationId se quedaban a null
                     // para siempre y pulsar "Aceptar" no hacía nada. Ahora lo mostramos.
                     android.util.Log.e("AcceptInvitation", "Error buscando invitación pendiente", e);
-                    Toast.makeText(requireContext(), "No se pudo comprobar tu invitación. Inténtalo de nuevo.", Toast.LENGTH_LONG).show();
+                    Toast.makeText(requireContext(), R.string.error_check_invitation, Toast.LENGTH_LONG).show();
                 });
     }
 
     private void acceptInvitation() {
         if (familyId == null || invitationId == null) {
-            Toast.makeText(requireContext(), "Todavía estamos comprobando tu invitación, espera un momento", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), R.string.msg_checking_invitation, Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -151,14 +154,14 @@ public class AcceptInvitationFragment extends Fragment {
             } else {
                 setButtonsEnabled(true);
                 android.util.Log.e("AcceptInvitation", "Error al aceptar invitación", task.getException());
-                Toast.makeText(requireContext(), "Error al aceptar invitación", Toast.LENGTH_LONG).show();
+                Toast.makeText(requireContext(), R.string.error_accept_invitation, Toast.LENGTH_LONG).show();
             }
         });
     }
 
     private void rejectInvitation() {
         if (familyId == null || invitationId == null) {
-            Toast.makeText(requireContext(), "Todavía estamos comprobando tu invitación, espera un momento", Toast.LENGTH_LONG).show();
+            Toast.makeText(requireContext(), R.string.msg_checking_invitation, Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -172,7 +175,7 @@ public class AcceptInvitationFragment extends Fragment {
                     } else {
                         setButtonsEnabled(true);
                         android.util.Log.e("AcceptInvitation", "Error al rechazar invitación", task.getException());
-                        Toast.makeText(requireContext(), "Error al rechazar invitación", Toast.LENGTH_LONG).show();
+                        Toast.makeText(requireContext(), R.string.error_reject_invitation, Toast.LENGTH_LONG).show();
                     }
                 });
     }

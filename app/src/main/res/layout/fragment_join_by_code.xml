@@ -10,7 +10,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="32dp"
-        android:text="Unirse a Familia"
+        android:text="@string/label_join_family_title"
         android:textSize="24sp"
         android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
@@ -21,7 +21,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="32dp"
-        android:hint="Código de invitación"
+        android:hint="@string/invite_code_label"
         app:layout_constraintTop_toBottomOf="@id/tv_title">
 
         <com.google.android.material.textfield.TextInputEditText
@@ -36,7 +36,7 @@
         android:layout_width="match_parent"
         android:layout_height="60dp"
         android:layout_marginTop="48dp"
-        android:text="Solicitar unión"
+        android:text="@string/label_request_join"
         app:layout_constraintTop_toBottomOf="@id/til_code" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

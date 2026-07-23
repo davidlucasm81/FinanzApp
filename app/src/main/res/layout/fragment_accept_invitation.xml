@@ -10,7 +10,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="64dp"
-        android:text="¡Te han invitado!"
+        android:text="@string/label_invited_title"
         android:textSize="24sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
@@ -22,7 +22,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="Te han invitado a unirte a una unidad familiar en FinanzApp."
+        android:text="@string/label_invited_desc"
         android:textAlignment="center"
         android:textSize="16sp"
         app:layout_constraintEnd_toEndOf="parent"
@@ -34,7 +34,7 @@
         android:layout_width="match_parent"
         android:layout_height="60dp"
         android:layout_marginTop="48dp"
-        android:text="Aceptar invitación"
+        android:text="@string/label_accept_invitation_btn"
         app:layout_constraintTop_toBottomOf="@id/tv_invite_desc" />
 
     <com.google.android.material.button.MaterialButton
@@ -43,7 +43,7 @@
         android:layout_width="match_parent"
         android:layout_height="60dp"
         android:layout_marginTop="8dp"
-        android:text="Rechazar"
+        android:text="@string/label_reject"
         android:textColor="@color/design_default_color_error"
         app:layout_constraintTop_toBottomOf="@id/btn_accept" />
 

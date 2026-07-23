@@ -13,7 +13,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Cuentas"
+            android:text="@string/label_accounts_title"
             android:textSize="24sp"
             android:textStyle="bold" />
 
@@ -21,7 +21,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Gestiona las cuentas bancarias de tu unidad familiar." />
+            android:text="@string/label_accounts_desc" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rv_accounts"
@@ -37,7 +37,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="center"
-            android:text="No hay cuentas registradas."
+            android:text="@string/label_no_accounts"
             android:visibility="gone" />
 
     </LinearLayout>

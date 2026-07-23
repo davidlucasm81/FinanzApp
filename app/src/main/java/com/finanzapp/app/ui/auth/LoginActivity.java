@@ -6,6 +6,9 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
+import com.finanzapp.app.R;
+
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.credentials.Credential;
@@ -61,7 +64,7 @@ public class LoginActivity extends AppCompatActivity {
                 showLoading(false);
                 Exception e = ((Result.Error<?>) result).getException();
                 Log.e(TAG, "Auth error", e);
-                Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                Toast.makeText(this, getString(R.string.error_with_message, e.getMessage()), Toast.LENGTH_LONG).show();
             }
         });
     }
@@ -113,7 +116,7 @@ public class LoginActivity extends AppCompatActivity {
                     viewModel.loginWithCredential(firebaseCredential);
                 } else {
                     Log.w(TAG, "Credential is NOT a valid Google ID Token. Type: " + credential.getType());
-                    Toast.makeText(LoginActivity.this, "Error: No se pudo obtener el token de Google", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(LoginActivity.this, R.string.error_google_token, Toast.LENGTH_SHORT).show();
                 }
             }
 
@@ -121,7 +124,7 @@ public class LoginActivity extends AppCompatActivity {
             public void onError(GetCredentialException e) {
                 Log.e(TAG, "Credential Manager error", e);
                 if (!(e instanceof androidx.credentials.exceptions.GetCredentialCancellationException)) {
-                    Toast.makeText(LoginActivity.this, "Error de Google: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(LoginActivity.this, getString(R.string.error_google_specific, e.getMessage()), Toast.LENGTH_SHORT).show();
                 }
             }
         });

@@ -127,9 +127,7 @@ public class TransactionListFragment extends Fragment {
 
         btnOpenFilters.setOnClickListener(v -> drawerLayout.openDrawer(androidx.core.view.GravityCompat.END));
 
-        for (int i = 0; i < paymentMethods.length; i++) {
-            paymentMethodLabels.put(paymentMethodValues[i], paymentMethods[i]);
-        }
+        paymentMethodLabels.putAll(getPaymentMethodLabels());
 
         adapter = new TransactionAdapter(new ArrayList<>(), categoryNames, categoryColors, accountNames, memberNames, paymentMethodLabels, new TransactionAdapter.OnTransactionClickListener() {
             @Override
@@ -186,14 +184,22 @@ public class TransactionListFragment extends Fragment {
         }
     }
 
-    private final String[] paymentMethods = {
-            "Tarjeta", "Efectivo", "Transferencia", "Bizum",
-            "Tarjeta restaurante", "Tarjeta transporte", "Domiciliación bancaria"
-    };
     private final String[] paymentMethodValues = {
             "tarjeta", "efectivo", "transferencia", "bizum",
             "tarjeta_restaurante", "tarjeta_transporte", "domiciliacion_bancaria"
     };
+
+    private Map<String, String> getPaymentMethodLabels() {
+        Map<String, String> labels = new HashMap<>();
+        labels.put("tarjeta", getString(R.string.method_card));
+        labels.put("efectivo", getString(R.string.method_cash));
+        labels.put("transferencia", getString(R.string.method_transfer));
+        labels.put("bizum", getString(R.string.method_bizum));
+        labels.put("tarjeta_restaurante", getString(R.string.method_restaurant_card));
+        labels.put("tarjeta_transporte", getString(R.string.method_transport_card));
+        labels.put("domiciliacion_bancaria", getString(R.string.method_direct_debit));
+        return labels;
+    }
 
     private void setupFilters() {
         // Type Filter
@@ -224,7 +230,11 @@ public class TransactionListFragment extends Fragment {
         // Method Filter
         List<String> methodsList = new ArrayList<>();
         methodsList.add(getString(R.string.filter_all_methods));
-        for (String m : paymentMethods) methodsList.add(m);
+        
+        Map<String, String> labels = getPaymentMethodLabels();
+        for (String val : paymentMethodValues) {
+            methodsList.add(labels.get(val));
+        }
 
         ArrayAdapter<String> methodAdapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, methodsList);
         methodAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -270,7 +280,7 @@ public class TransactionListFragment extends Fragment {
                 endCal.set(Calendar.MILLISECOND, 999);
 
                 if (endCal.before(startCal)) {
-                    Toast.makeText(requireContext(), "La fecha de fin debe ser posterior a la de inicio", Toast.LENGTH_LONG).show();
+                    Toast.makeText(requireContext(), R.string.error_invalid_date_range, Toast.LENGTH_LONG).show();
                     return;
                 }
 
@@ -279,14 +289,14 @@ public class TransactionListFragment extends Fragment {
                 updateTransactions();
             }, year, month, day);
 
-            endPicker.setTitle("Selecciona fecha de fin");
+            endPicker.setTitle(getString(R.string.dialog_select_end_date));
             endPicker.show();
 
         }, filterStartDate != null ? filterStartDate.get(Calendar.YEAR) : now.get(Calendar.YEAR),
                 filterStartDate != null ? filterStartDate.get(Calendar.MONTH) : now.get(Calendar.MONTH),
                 filterStartDate != null ? filterStartDate.get(Calendar.DAY_OF_MONTH) : now.get(Calendar.DAY_OF_MONTH));
 
-        startPicker.setTitle("Selecciona fecha de inicio");
+        startPicker.setTitle(getString(R.string.dialog_select_start_date));
         startPicker.show();
     }
 
@@ -453,7 +463,9 @@ public class TransactionListFragment extends Fragment {
             if (result instanceof Result.Success) {
                 Toast.makeText(requireContext(), getString(R.string.operation_success), Toast.LENGTH_SHORT).show();
             } else if (result instanceof Result.Error) {
-                Toast.makeText(requireContext(), "Error: " + ((Result.Error<?>) result).getException().getMessage(), Toast.LENGTH_LONG).show();
+                Exception e = ((Result.Error<?>) result).getException();
+            String msg = e != null ? e.getMessage() : "";
+            Toast.makeText(requireContext(), getString(R.string.error_with_message, msg), Toast.LENGTH_LONG).show();
             }
         });
     }
@@ -568,9 +580,9 @@ public class TransactionListFragment extends Fragment {
             Transaction t = transactions.get(position);
 
             holder.tvDate.setText(t.getDate() != null ? dateFormat.format(t.getDate().toDate()) : "");
-            holder.tvCategory.setText(categoryNames.getOrDefault(t.getCategoryId(), "Categoría"));
+            holder.tvCategory.setText(categoryNames.getOrDefault(t.getCategoryId(), holder.itemView.getContext().getString(R.string.label_category)));
             holder.tvDescription.setText(t.getDescription());
-            holder.tvAccount.setText(accountNames.getOrDefault(t.getAccountId(), "Cuenta"));
+            holder.tvAccount.setText(accountNames.getOrDefault(t.getAccountId(), holder.itemView.getContext().getString(R.string.label_account)));
 
             int defaultCategoryColor = resolveColorPrimary(holder.itemView.getContext());
             int categoryColor = parseColorSafe(categoryColors.get(t.getCategoryId()), defaultCategoryColor);

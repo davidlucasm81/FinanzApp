@@ -8,6 +8,9 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Toast;
 
+import com.finanzapp.app.R;
+
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -69,7 +72,7 @@ public class CreateFamilyFragment extends Fragment {
             if (result instanceof Result.Loading) {
                 binding.btnConfirm.setEnabled(false);
             } else if (result instanceof Result.Success) {
-                Toast.makeText(requireContext(), "Familia creada con éxito", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), R.string.msg_family_created, Toast.LENGTH_SHORT).show();
                 // Navigate to onboarding step to add initial accounts, passing the new familyId
                 com.finanzapp.app.data.model.Family family = ((Result.Success<com.finanzapp.app.data.model.Family>) result).getData();
                 if (family != null) {
@@ -84,7 +87,7 @@ public class CreateFamilyFragment extends Fragment {
             } else if (result instanceof Result.Error) {
                 binding.btnConfirm.setEnabled(true);
                 Exception e = ((Result.Error<?>) result).getException();
-                Toast.makeText(requireContext(), "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                Toast.makeText(requireContext(), getString(R.string.error_with_message, e.getMessage()), Toast.LENGTH_LONG).show();
             }
         });
     }

@@ -15,6 +15,9 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.finanzapp.app.R;
+
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -168,20 +171,20 @@ public class FamilySettingsFragment extends Fragment {
 
         viewModel.getUpdateResult().observe(getViewLifecycleOwner(), result -> {
             if (result instanceof Result.Success) {
-                Toast.makeText(requireContext(), "Familia actualizada", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), R.string.msg_family_updated, Toast.LENGTH_SHORT).show();
                 Navigation.findNavController(requireView()).popBackStack();
             } else if (result instanceof Result.Error) {
-                Toast.makeText(requireContext(), "Error al actualizar", Toast.LENGTH_LONG).show();
+                Toast.makeText(requireContext(), R.string.error_update_family, Toast.LENGTH_LONG).show();
             }
         });
 
         viewModel.getLeaveResult().observe(getViewLifecycleOwner(), result -> {
             if (result instanceof Result.Success) {
-                Toast.makeText(requireContext(), "Has salido de la familia", Toast.LENGTH_LONG).show();
+                Toast.makeText(requireContext(), R.string.msg_leave_family_success, Toast.LENGTH_LONG).show();
                 // Phase 7 bis: Decide whether to go to Dashboard or Onboarding based on remaining memberships
                 checkMembershipsAndNavigate();
             } else if (result instanceof Result.Error) {
-                Toast.makeText(requireContext(), "Error al salir de la familia", Toast.LENGTH_LONG).show();
+                Toast.makeText(requireContext(), R.string.error_leave_family, Toast.LENGTH_LONG).show();
             }
         });
 
@@ -205,10 +208,10 @@ public class FamilySettingsFragment extends Fragment {
 
     private void showLeaveConfirmation() {
         new AlertDialog.Builder(requireContext())
-                .setTitle("Abandonar familia")
-                .setMessage("¿Estás seguro de que quieres salir de esta familia? Si eres el último miembro, se borrarán todos los datos.")
-                .setPositiveButton("Confirmar", (dialog, which) -> viewModel.leaveFamily(familyId))
-                .setNegativeButton("Cancelar", null)
+                .setTitle(getString(R.string.dialog_abandon_family))
+                .setMessage(getString(R.string.dialog_abandon_family_msg))
+                .setPositiveButton(R.string.label_confirm, (dialog, which) -> viewModel.leaveFamily(familyId))
+                .setNegativeButton(R.string.cancel_button, null)
                 .show();
     }
 

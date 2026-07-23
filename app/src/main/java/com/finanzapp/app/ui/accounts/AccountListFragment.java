@@ -6,6 +6,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import com.finanzapp.app.R;
+
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -143,13 +146,14 @@ public class AccountListFragment extends Fragment {
             Toast.makeText(requireContext(), successMsg, Toast.LENGTH_SHORT).show();
         } else if (result instanceof Result.Error) {
             Exception e = ((Result.Error<?>) result).getException();
-            Toast.makeText(requireContext(), "Error: " + (e != null ? e.getMessage() : "Desconocido"), Toast.LENGTH_LONG).show();
+            String errorMsg = e != null ? e.getMessage() : getString(R.string.error_unknown);
+            Toast.makeText(requireContext(), getString(R.string.error_with_message, errorMsg), Toast.LENGTH_LONG).show();
         }
     }
 
     private void showAddEditDialog(@Nullable Account account) {
         if (familyId == null) {
-            Toast.makeText(requireContext(), "Error: No se pudo identificar la familia", Toast.LENGTH_LONG).show();
+            Toast.makeText(requireContext(), R.string.error_identify_family, Toast.LENGTH_LONG).show();
             return;
         }
         AddEditAccountFragment.newInstance(familyId, account)
@@ -168,10 +172,10 @@ public class AccountListFragment extends Fragment {
     private void onDelete(Account account) {
         if (familyId == null) return;
         new AlertDialog.Builder(requireContext())
-                .setTitle("Eliminar cuenta")
-                .setMessage("¿Seguro que quieres eliminar \"" + account.getName() + "\"?")
-                .setPositiveButton("Eliminar", (dialog, which) -> viewModel.deleteAccount(familyId, account.getId()))
-                .setNegativeButton("Cancelar", null)
+                .setTitle(getString(R.string.dialog_delete_account))
+                .setMessage(getString(R.string.msg_confirm_delete_account, account.getName()))
+                .setPositiveButton(R.string.label_borrar, (dialog, which) -> viewModel.deleteAccount(familyId, account.getId()))
+                .setNegativeButton(R.string.cancel_button, null)
                 .show();
     }
 

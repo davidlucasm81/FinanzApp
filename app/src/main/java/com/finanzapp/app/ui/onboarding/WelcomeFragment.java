@@ -13,6 +13,10 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.Navigation;
 
 import com.bumptech.glide.Glide;
+
+import com.finanzapp.app.R;
+import android.widget.Toast;
+
 import com.finanzapp.app.FinanzAppApplication;
 import com.finanzapp.app.R;
 import com.finanzapp.app.data.model.Family;
@@ -61,7 +65,7 @@ public class WelcomeFragment extends Fragment {
                 viewModel.acceptInvitation(currentInvitation, pendingFamilyId);
             } else {
                 android.util.Log.w("WelcomeFragment", "No se pudo aceptar: currentInvitation=" + currentInvitation + ", pendingInvitationFamilyId=" + pendingFamilyId);
-                android.widget.Toast.makeText(requireContext(), "No se pudo procesar la invitación, inténtalo de nuevo", android.widget.Toast.LENGTH_LONG).show();
+                Toast.makeText(requireContext(), R.string.msg_invitation_error, Toast.LENGTH_LONG).show();
             }
         });
 
@@ -71,7 +75,7 @@ public class WelcomeFragment extends Fragment {
                 viewModel.rejectInvitation(pendingFamilyId, currentInvitation.getId());
             } else {
                 android.util.Log.w("WelcomeFragment", "No se pudo rechazar: currentInvitation=" + currentInvitation + ", pendingInvitationFamilyId=" + pendingFamilyId);
-                android.widget.Toast.makeText(requireContext(), "No se pudo procesar la invitación, inténtalo de nuevo", android.widget.Toast.LENGTH_LONG).show();
+                Toast.makeText(requireContext(), R.string.msg_invitation_error, Toast.LENGTH_LONG).show();
             }
         });
 

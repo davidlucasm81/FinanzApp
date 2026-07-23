@@ -24,6 +24,9 @@ import com.finanzapp.app.viewmodel.ViewModelFactory;
 import com.google.firebase.auth.FirebaseAuth;
 import android.widget.Toast;
 
+import com.finanzapp.app.R;
+
+
 public class WaitingApprovalFragment extends Fragment {
     private FragmentWaitingApprovalBinding binding;
     private OnboardingViewModel viewModel;
@@ -123,7 +126,7 @@ public class WaitingApprovalFragment extends Fragment {
             } else if (result instanceof Result.Success) {
                 // Successfully cancelled the pending request; navigate back to welcome
                 android.util.Log.d("WaitingApprovalFragment", "Success! Navigating back");
-                Toast.makeText(requireContext(), "Solicitud cancelada", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), R.string.msg_request_cancelled, Toast.LENGTH_SHORT).show();
                 Navigation.findNavController(requireView()).popBackStack(R.id.welcomeFragment, false);
             } else if (result instanceof Result.Error) {
                 android.util.Log.d("WaitingApprovalFragment", "Error occurred");
@@ -131,7 +134,7 @@ public class WaitingApprovalFragment extends Fragment {
                 Exception e = ((Result.Error<?>) result).getException();
                 String errorMsg = e != null ? e.getMessage() : "Unknown error";
                 android.util.Log.e("WaitingApprovalFragment", "Error: " + errorMsg, e);
-                Toast.makeText(requireContext(), "Error al cancelar: " + errorMsg, Toast.LENGTH_LONG).show();
+                Toast.makeText(requireContext(), getString(R.string.error_cancelling_specific, errorMsg), Toast.LENGTH_LONG).show();
             }
         });
 

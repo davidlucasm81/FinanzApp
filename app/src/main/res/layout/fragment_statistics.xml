@@ -156,7 +156,7 @@
                                 android:id="@+id/tvTotalIncome"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="0,00 €"
+                                android:text="@string/dashboard_placeholder"
                                 android:textSize="20sp"
                                 android:textStyle="bold"
                                 android:textColor="@color/success"/>
@@ -221,7 +221,7 @@
                                 android:id="@+id/tvTotalExpense"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="0,00 €"
+                                android:text="@string/dashboard_placeholder"
                                 android:textSize="20sp"
                                 android:textStyle="bold"
                                 android:textColor="@color/error"/>
@@ -260,7 +260,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Distribución por Categorías"
+                android:text="@string/stats_category_distribution"
                 android:textSize="16sp"
                 android:textStyle="bold"
                 android:textColor="?attr/colorOnSurface"

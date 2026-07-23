@@ -46,7 +46,7 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Instrucciones de importación"
+                        android:text="@string/label_import_instructions_title"
                         android:textAppearance="?attr/textAppearanceSubtitle1"
                         android:textStyle="bold" />
 
@@ -54,14 +54,14 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="El archivo CSV debe tener la siguiente cabecera:\nFecha;Concepto;Categoría;Valor;Tipo;Método;Cuenta"
+                        android:text="@string/label_import_header_format"
                         android:textAppearance="?attr/textAppearanceBody2" />
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="• Formato fecha: dd/MM/yyyy\n• Delimitador: tabulador, coma o punto y coma\n• Tipo: Ingreso o Gasto"
+                        android:text="@string/label_import_format_rules"
                         android:textAppearance="?attr/textAppearanceBody2" />
 
                     <com.google.android.material.button.MaterialButton
@@ -69,7 +69,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="16dp"
-                        android:text="Seleccionar archivo CSV" />
+                        android:text="@string/label_select_csv" />
 
                 </LinearLayout>
 
@@ -87,7 +87,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="Resultado de la importación"
+                    android:text="@string/label_import_result_title"
                     android:textAppearance="?attr/textAppearanceSubtitle1"
                     android:textStyle="bold" />
 
@@ -108,21 +108,21 @@
                             android:id="@+id/txtImportedCount"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Movimientos importados: 0" />
+                            android:text="@string/label_imported_count" />
 
                         <TextView
                             android:id="@+id/txtNewAccountsCount"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="Cuentas nuevas creadas: 0" />
+                            android:text="@string/label_new_accounts_count" />
 
                         <TextView
                             android:id="@+id/txtNewCategoriesCount"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="Categorías nuevas creadas: 0" />
+                            android:text="@string/label_new_categories_count" />
 
                     </LinearLayout>
 
@@ -133,7 +133,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="Errores encontrados"
+                    android:text="@string/label_import_errors_title"
                     android:textAppearance="?attr/textAppearanceSubtitle2"
                     android:textColor="?attr/colorError"
                     android:textStyle="bold"

@@ -15,6 +15,9 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.finanzapp.app.R;
+
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -104,7 +107,7 @@ public class AddEditCategoryDialogFragment extends DialogFragment {
 
         btnPickColor.setOnClickListener(v -> {
             new ColorPickerDialog.Builder(requireContext())
-                    .setTitle("Color de la categoría")
+                    .setTitle(getString(R.string.dialog_category_color))
                     .setColorShape(ColorShape.CIRCLE)
                     .setDefaultColor(selectedColor)
                     .setColorListener((color, colorHex) -> {
@@ -137,14 +140,14 @@ public class AddEditCategoryDialogFragment extends DialogFragment {
                         tilColor.setError(null);
                         updatePreviewColor();
                     } else if (hex.length() == 7) {
-                        tilColor.setError("Formato inválido (Ej: #RRGGBB)");
+                        tilColor.setError(getString(R.string.error_invalid_color_format));
                     }
                 }
             });
         }
 
         if (categoryToEdit != null) {
-            tvTitle.setText("Editar Categoría");
+            tvTitle.setText(R.string.label_edit_category);
             if (tilName.getEditText() != null) {
                 tilName.getEditText().setText(categoryToEdit.getName());
             }
@@ -226,7 +229,7 @@ public class AddEditCategoryDialogFragment extends DialogFragment {
             if (result instanceof Result.Success) {
                 dismiss();
             } else if (result instanceof Result.Error) {
-                Toast.makeText(requireContext(), "Error al guardar", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), R.string.error_save_transaction, Toast.LENGTH_SHORT).show();
             }
         });
 

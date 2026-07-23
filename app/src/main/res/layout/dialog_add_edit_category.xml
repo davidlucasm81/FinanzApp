@@ -10,7 +10,7 @@
         android:id="@+id/tv_dialog_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Añadir Categoría"
+        android:text="@string/label_add_category_title"
         android:textSize="20sp"
         android:textStyle="bold"
         android:layout_marginBottom="16dp"/>
@@ -19,7 +19,7 @@
         android:id="@+id/til_category_name"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Nombre de la categoría"
+        android:hint="@string/label_category_name"
         android:layout_marginBottom="16dp">
 
         <com.google.android.material.textfield.TextInputEditText
@@ -31,7 +31,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Tipo de movimiento"
+        android:text="@string/label_transaction_type"
         android:textSize="14sp"
         android:layout_marginBottom="8dp"/>
 
@@ -46,21 +46,21 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Gasto"/>
+            android:text="@string/label_expense"/>
 
         <CheckBox
             android:id="@+id/cb_income"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Ingreso"/>
+            android:text="@string/label_income"/>
 
     </LinearLayout>
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Color de la categoría"
+        android:text="@string/label_category_color"
         android:textSize="14sp"
         android:layout_marginBottom="8dp"/>
 
@@ -68,7 +68,7 @@
         android:id="@+id/til_category_color"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Código RGB (Ej: #RRGGBB)"
+        android:hint="@string/label_rgb_code"
         android:layout_marginBottom="16dp"
         app:helperText="Formato: #RRGGBB">
 
@@ -98,7 +98,7 @@
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Seleccionar Color" />
+            android:text="@string/label_select_color_btn" />
     </LinearLayout>
 
     <LinearLayout
@@ -112,14 +112,14 @@
             style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Cancelar"
+            android:text="@string/cancel_button"
             android:layout_marginEnd="8dp"/>
 
         <Button
             android:id="@+id/btn_save"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Guardar"/>
+            android:text="@string/label_save_btn"/>
     </LinearLayout>
 
 </LinearLayout>

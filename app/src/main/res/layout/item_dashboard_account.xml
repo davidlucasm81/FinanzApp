@@ -22,7 +22,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Nombre de cuenta"
+            android:text="@string/label_account_name_hint"
             android:textSize="16sp"
             android:textStyle="bold"
             android:textColor="?attr/colorOnSurface"/>
@@ -31,7 +31,7 @@
             android:id="@+id/tv_account_balance"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="0,00 €"
+            android:text="@string/dashboard_placeholder"
             android:textSize="16sp"
             android:textColor="?attr/colorOnSurface"/>
 

@@ -224,10 +224,10 @@
 ## Fase 9 — Calidad, seguridad y pulido
 - [x] Revisión completa de las reglas de seguridad de Firestore.
 - [x] Reducir al maximo posible SIN perder funcionalidad las llamadas a firebase para no superar el limite de llamadas.
-- [ ] **Soporte Multiidioma**:
-  - [ ] Extraer todos los strings hardcodeados a `strings.xml`.
-  - [ ] Crear `values-en/strings.xml` y traducir todos los recursos al inglés.
-  - [ ] Verificar que la UI se adapta correctamente a textos de distinta longitud.
+- [x] **Soporte Multiidioma**:
+  - [x] Extraer todos los strings hardcodeados a `strings.xml`.
+  - [x] Crear `values-en/strings.xml` y traducir todos los recursos al inglés.
+  - [x] Verificar que la UI se adapta correctamente a textos de distinta longitud.
 - [x] Manejo de estados vacíos (sin cuentas, sin movimientos, sin familia) y de errores de red.
 - [x] Verificar que la persistencia offline de Firestore funciona razonablemente bien.
 - [x] Revisión de accesibilidad básica (`contentDescription`, tamaños de texto, contraste).
@@ -241,7 +241,6 @@
 - [x] `PrivacyConsentFragment` (`ui/onboarding/`): checkbox obligatorio de aceptación en el primer login; al aceptar, escribe `privacyPolicyAcceptedAt`.
 - [x] **Self-heal para usuarios ya existentes**: si `privacyPolicyAcceptedAt` no existe, mostrarlo una única vez en el splash/loading (mismo patrón que Fase 7 bis).
 - [x] **Exportación de datos personales (Derecho de Acceso)**: opción "Descargar mis datos" en Ajustes; genera JSON con perfil, `memberships` y movimientos propios; compartir vía `Intent.ACTION_SEND`.
-- [ ] **Borrado de cuenta (Derecho al Olvido/Supresión)**: Asegurar que el borrado de cuenta en Ajustes realiza la limpieza completa ya definida en la Fase 3 bis (salir de familias, traspaso de owner, etc.) y elimina el documento `users/{uid}`.
 
 ### Auditoría de las reglas de seguridad ya existentes
 - [x] Ampliar la tarea de la Fase 9 "Revisión completa de las reglas de seguridad" con una pasada LOPD/RGPD: confirmar que ningún dato de un usuario es legible fuera de sus familias, y que `users/{uid}/memberships` sigue aislada por `uid`.

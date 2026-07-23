@@ -9,6 +9,9 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.finanzapp.app.R;
+
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -101,9 +104,9 @@ public class ManageCategoriesFragment extends Fragment {
             if (result instanceof Result.Error) {
                 Exception e = ((Result.Error<?>) result).getException();
                 if (e != null && "CATEGORY_IN_USE".equals(e.getMessage())) {
-                    Toast.makeText(requireContext(), "No se puede borrar: la categoría está siendo usada en movimientos", Toast.LENGTH_LONG).show();
+                    Toast.makeText(requireContext(), R.string.error_delete_category_in_use, Toast.LENGTH_LONG).show();
                 } else {
-                    Toast.makeText(requireContext(), "Error en la operación", Toast.LENGTH_LONG).show();
+                    Toast.makeText(requireContext(), R.string.error_generic, Toast.LENGTH_LONG).show();
                 }
             }
         });
@@ -134,10 +137,10 @@ public class ManageCategoriesFragment extends Fragment {
 
     private void onDeleteCategory(Category category) {
         new AlertDialog.Builder(requireContext())
-                .setTitle("Borrar categoría")
-                .setMessage("¿Estás seguro de que quieres borrar la categoría '" + category.getName() + "'?")
-                .setPositiveButton("Borrar", (dialog, which) -> viewModel.deleteCategory(familyId, category.getId()))
-                .setNegativeButton("Cancelar", null)
+                .setTitle(getString(R.string.dialog_delete_category))
+                .setMessage(getString(R.string.msg_confirm_delete_category, category.getName()))
+                .setPositiveButton(R.string.label_borrar, (dialog, which) -> viewModel.deleteCategory(familyId, category.getId()))
+                .setNegativeButton(R.string.cancel_button, null)
                 .show();
     }
 
@@ -182,15 +185,15 @@ public class ManageCategoriesFragment extends Fragment {
             String typeText;
             switch (category.getAppliesTo()) {
                 case "income":
-                    typeText = "Ingreso";
+                    typeText = holder.itemView.getContext().getString(R.string.label_income);
                     break;
 
                 case "expense":
-                    typeText = "Gasto";
+                    typeText = holder.itemView.getContext().getString(R.string.label_expense);
                     break;
 
                 case "both":
-                    typeText = "Ingreso / Gasto";
+                    typeText = holder.itemView.getContext().getString(R.string.label_income_expense);
                     break;
 
                 default:

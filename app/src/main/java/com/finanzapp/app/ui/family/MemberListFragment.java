@@ -8,6 +8,9 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.finanzapp.app.R;
+
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -152,7 +155,7 @@ public class MemberListFragment extends Fragment {
                 currentMembers = ((Result.Success<List<Member>>) result).getData();
                 updateList();
             } else if (result instanceof Result.Error) {
-                Toast.makeText(requireContext(), "Error al cargar miembros", Toast.LENGTH_LONG).show();
+                Toast.makeText(requireContext(), R.string.error_load_members, Toast.LENGTH_LONG).show();
             }
         });
 
@@ -172,10 +175,10 @@ public class MemberListFragment extends Fragment {
 
         viewModel.getApprovalResult().observe(getViewLifecycleOwner(), result -> {
             if (result instanceof Result.Success) {
-                Toast.makeText(requireContext(), "Acción realizada con éxito", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), R.string.msg_action_success, Toast.LENGTH_SHORT).show();
                 fetchData(); // Refresh all
             } else if (result instanceof Result.Error) {
-                Toast.makeText(requireContext(), "Error al procesar solicitud", Toast.LENGTH_LONG).show();
+                Toast.makeText(requireContext(), R.string.error_process_request, Toast.LENGTH_LONG).show();
             }
         });
     }
@@ -245,14 +248,14 @@ public class MemberListFragment extends Fragment {
                 : (member.getEmail() != null ? member.getEmail() : "este miembro");
 
         new AlertDialog.Builder(requireContext())
-                .setTitle("Expulsar miembro")
-                .setMessage("¿Seguro que quieres expulsar a " + name + " de la familia? Podrá volver a unirse más adelante con el código de invitación.")
-                .setPositiveButton("Expulsar", (dialog, which) -> {
+                .setTitle(getString(R.string.dialog_expel_member))
+                .setMessage(getString(R.string.msg_confirm_expel_member, name))
+                .setPositiveButton(R.string.label_expulsar, (dialog, which) -> {
                     if (familyId != null) {
                         viewModel.removeMember(familyId, member.getUid());
                     }
                 })
-                .setNegativeButton("Cancelar", null)
+                .setNegativeButton(R.string.cancel_button, null)
                 .show();
     }
 

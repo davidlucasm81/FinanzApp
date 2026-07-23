@@ -4,28 +4,26 @@
     <item
         android:id="@+id/dashboardFragment"
         android:icon="@drawable/ic_dashboard"
-        android:title="Dashboard" />
+        android:title="@string/nav_dashboard" />
 
     <item
         android:id="@+id/accountListFragment"
         android:icon="@drawable/ic_accounts"
-        android:title="Cuentas" />
+        android:title="@string/nav_accounts" />
 
     <item
         android:id="@+id/statisticsFragment"
         android:icon="@drawable/ic_statistics"
-        android:title="Estadísticas" />
+        android:title="@string/nav_statistics" />
 
     <item
         android:id="@+id/memberListFragment"
         android:icon="@drawable/ic_members"
-        android:title="Miembros" />
+        android:title="@string/nav_members" />
 
     <item
         android:id="@+id/familySettingsFragment"
         android:icon="@drawable/ic_settings"
-        android:title="Familia" />
+        android:title="@string/nav_family" />
 
 </menu>
-
-

@@ -6,6 +6,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import com.finanzapp.app.R;
+
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -95,11 +98,11 @@ public class InviteMemberFragment extends Fragment {
             if (result instanceof Result.Loading) {
                 binding.btnSendInvite.setEnabled(false);
             } else if (result instanceof Result.Success) {
-                Toast.makeText(requireContext(), "Invitación enviada", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), R.string.msg_invitation_sent, Toast.LENGTH_SHORT).show();
                 Navigation.findNavController(requireView()).popBackStack();
             } else if (result instanceof Result.Error) {
                 binding.btnSendInvite.setEnabled(true);
-                Toast.makeText(requireContext(), "Error al enviar invitación", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), R.string.error_send_invitation, Toast.LENGTH_SHORT).show();
             }
         });
     }

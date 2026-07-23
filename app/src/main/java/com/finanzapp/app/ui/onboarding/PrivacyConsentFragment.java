@@ -7,6 +7,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import com.finanzapp.app.R;
+
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -65,7 +68,7 @@ public class PrivacyConsentFragment extends Fragment {
                 startActivity(intent);
                 requireActivity().finish();
             } else if (result instanceof Result.Error) {
-                Toast.makeText(requireContext(), "Error al guardar consentimiento", Toast.LENGTH_LONG).show();
+                Toast.makeText(requireContext(), R.string.error_save_consent, Toast.LENGTH_LONG).show();
             }
         });
     }

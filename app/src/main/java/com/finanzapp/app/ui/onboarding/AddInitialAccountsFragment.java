@@ -10,6 +10,9 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
+import com.finanzapp.app.R;
+
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -84,29 +87,32 @@ public class AddInitialAccountsFragment extends Fragment {
                 binding.btnAddAccount.setEnabled(true);
                 binding.etAccountName.setText("");
                 binding.etInitialBalance.setText("");
-                Toast.makeText(requireContext(), "Cuenta añadida", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), R.string.msg_account_added, Toast.LENGTH_SHORT).show();
             } else if (result instanceof Result.Error) {
                 binding.btnAddAccount.setEnabled(true);
                 Exception e = ((Result.Error<?>) result).getException();
-                Toast.makeText(requireContext(), "Error: " + (e != null ? e.getMessage() : ""), Toast.LENGTH_LONG).show();
+                String msg = e != null ? e.getMessage() : "";
+            Toast.makeText(requireContext(), getString(R.string.error_with_message, msg), Toast.LENGTH_LONG).show();
             }
         });
 
         viewModel.getUpdateResult().observe(getViewLifecycleOwner(), result -> {
             if (result instanceof Result.Success) {
-                Toast.makeText(requireContext(), "Cuenta actualizada", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), R.string.msg_account_updated, Toast.LENGTH_SHORT).show();
             } else if (result instanceof Result.Error) {
                 Exception e = ((Result.Error<?>) result).getException();
-                Toast.makeText(requireContext(), "Error al actualizar: " + (e != null ? e.getMessage() : ""), Toast.LENGTH_LONG).show();
+                String msg = e != null ? e.getMessage() : "";
+            Toast.makeText(requireContext(), getString(R.string.error_updating_specific, msg), Toast.LENGTH_LONG).show();
             }
         });
 
         viewModel.getDeleteResult().observe(getViewLifecycleOwner(), result -> {
             if (result instanceof Result.Success) {
-                Toast.makeText(requireContext(), "Cuenta eliminada", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), R.string.msg_account_deleted, Toast.LENGTH_SHORT).show();
             } else if (result instanceof Result.Error) {
                 Exception e = ((Result.Error<?>) result).getException();
-                Toast.makeText(requireContext(), "Error al eliminar: " + (e != null ? e.getMessage() : ""), Toast.LENGTH_LONG).show();
+                String msg = e != null ? e.getMessage() : "";
+            Toast.makeText(requireContext(), getString(R.string.error_deleting_specific, msg), Toast.LENGTH_LONG).show();
             }
         });
 
@@ -130,11 +136,11 @@ public class AddInitialAccountsFragment extends Fragment {
 
         int count = accounts.size();
         if (count == 0) {
-            binding.tvAccountsCount.setText("Aún no has añadido ninguna cuenta");
+            binding.tvAccountsCount.setText(R.string.label_no_accounts_added);
         } else if (count == 1) {
-            binding.tvAccountsCount.setText("1 cuenta añadida");
+            binding.tvAccountsCount.setText(R.string.label_account_added);
         } else {
-            binding.tvAccountsCount.setText(count + " cuentas añadidas");
+            binding.tvAccountsCount.setText(getString(R.string.label_accounts_added, count));
         }
     }
 
@@ -158,13 +164,13 @@ public class AddInitialAccountsFragment extends Fragment {
         try {
             if (!initialStr.isEmpty()) initial = Double.parseDouble(initialStr);
         } catch (NumberFormatException e) {
-            binding.tilInitialBalance.setError("Formato inválido");
+            binding.tilInitialBalance.setError(getString(R.string.error_invalid_format));
             return;
         }
         binding.tilInitialBalance.setError(null);
 
         if (familyId == null) {
-            Toast.makeText(requireContext(), "Familia no encontrada", Toast.LENGTH_LONG).show();
+            Toast.makeText(requireContext(), R.string.error_family_not_found, Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -185,32 +191,32 @@ public class AddInitialAccountsFragment extends Fragment {
         container.setPadding(padding, padding, padding, padding);
 
         EditText etName = new EditText(requireContext());
-        etName.setHint("Nombre de la cuenta");
+        etName.setHint(R.string.label_account_name);
         etName.setText(account.getName());
         container.addView(etName);
 
         EditText etBalance = new EditText(requireContext());
-        etBalance.setHint("Saldo inicial");
+        etBalance.setHint(R.string.label_initial_balance);
         etBalance.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL | InputType.TYPE_NUMBER_FLAG_SIGNED);
         etBalance.setText(String.format(Locale.getDefault(), "%.2f", account.getInitialBalance()));
         container.addView(etBalance);
 
         new AlertDialog.Builder(requireContext())
-                .setTitle("Editar cuenta")
+                .setTitle(getString(R.string.dialog_edit_account))
                 .setView(container)
-                .setPositiveButton("Guardar", (dialog, which) -> {
+                .setPositiveButton(R.string.label_save_btn, (dialog, which) -> {
                     String newName = etName.getText().toString().trim();
                     String newBalanceStr = etBalance.getText().toString().trim();
 
                     if (newName.isEmpty()) {
-                        Toast.makeText(requireContext(), "El nombre es obligatorio", Toast.LENGTH_LONG).show();
+                        Toast.makeText(requireContext(), R.string.label_name_required, Toast.LENGTH_LONG).show();
                         return;
                     }
                     double newBalance;
                     try {
                         newBalance = newBalanceStr.isEmpty() ? 0.0 : Double.parseDouble(newBalanceStr);
                     } catch (NumberFormatException e) {
-                        Toast.makeText(requireContext(), "Saldo inicial no válido", Toast.LENGTH_LONG).show();
+                        Toast.makeText(requireContext(), R.string.label_initial_balance_error, Toast.LENGTH_LONG).show();
                         return;
                     }
 
@@ -218,7 +224,7 @@ public class AddInitialAccountsFragment extends Fragment {
                     account.setInitialBalance(newBalance);
                     viewModel.updateAccount(familyId, account);
                 })
-                .setNegativeButton("Cancelar", null)
+                .setNegativeButton(R.string.cancel_button, null)
                 .show();
     }
 
@@ -226,10 +232,10 @@ public class AddInitialAccountsFragment extends Fragment {
         if (familyId == null || account.getId() == null) return;
 
         new AlertDialog.Builder(requireContext())
-                .setTitle("Eliminar cuenta")
-                .setMessage("¿Seguro que quieres eliminar \"" + account.getName() + "\"?")
-                .setPositiveButton("Eliminar", (dialog, which) -> viewModel.deleteAccount(familyId, account.getId()))
-                .setNegativeButton("Cancelar", null)
+                .setTitle(getString(R.string.dialog_delete_account))
+                .setMessage(getString(R.string.msg_confirm_delete_account, account.getName()))
+                .setPositiveButton(R.string.label_borrar, (dialog, which) -> viewModel.deleteAccount(familyId, account.getId()))
+                .setNegativeButton(R.string.cancel_button, null)
                 .show();
     }
 

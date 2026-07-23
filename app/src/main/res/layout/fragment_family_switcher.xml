@@ -9,7 +9,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Mis Familias"
+        android:text="@string/label_my_families"
         android:textSize="20sp"
         android:textStyle="bold"
         android:textColor="?attr/colorOnSurface"
@@ -34,7 +34,7 @@
         style="@style/Widget.MaterialComponents.Button.TextButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Crear otra familia"
+        android:text="@string/label_create_family"
         android:textAlignment="viewStart"
         app:icon="@android:drawable/ic_input_add"/>
 
@@ -43,7 +43,7 @@
         style="@style/Widget.MaterialComponents.Button.TextButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Unirme a otra familia por código"
+        android:text="@string/label_join_family_code"
         android:textAlignment="viewStart"
         app:icon="@drawable/ic_family_invite"/>
 

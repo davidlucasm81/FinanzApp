@@ -13,6 +13,9 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.finanzapp.app.R;
+
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -58,7 +61,7 @@ public class SettingsFragment extends Fragment {
 
         btnSignOut.setOnClickListener(v -> {
             viewModel.signOut();
-            Toast.makeText(requireContext(), "Sesión cerrada", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), R.string.msg_sign_out_success, Toast.LENGTH_SHORT).show();
             navigateToSplash();
         });
 
@@ -82,19 +85,19 @@ public class SettingsFragment extends Fragment {
             } else if (result instanceof Result.Error) {
                 // Only show error if we are not signing out
                 if (getActivity() != null && !getActivity().isFinishing()) {
-                    Toast.makeText(requireContext(), "Error al cargar datos de usuario", Toast.LENGTH_LONG).show();
+                    Toast.makeText(requireContext(), R.string.error_load_user, Toast.LENGTH_LONG).show();
                 }
             }
         });
 
         viewModel.getDeleteAccountResult().observe(getViewLifecycleOwner(), result -> {
             if (result instanceof Result.Success) {
-                Toast.makeText(requireContext(), "Cuenta borrada con éxito", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), R.string.msg_account_deleted, Toast.LENGTH_SHORT).show();
                 navigateToSplash();
             } else if (result instanceof Result.Error) {
                 Exception e = ((Result.Error<?>) result).getException();
                 android.util.Log.e("SettingsFragment", "Error al borrar cuenta", e);
-                Toast.makeText(requireContext(), "Error al borrar cuenta", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), R.string.error_delete_account, Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -132,7 +135,7 @@ public class SettingsFragment extends Fragment {
             }
         } catch (java.io.IOException e) {
             android.util.Log.e("SettingsFragment", "Error sharing file", e);
-            Toast.makeText(requireContext(), "Error al exportar archivo", Toast.LENGTH_LONG).show();
+            Toast.makeText(requireContext(), R.string.error_export_file, Toast.LENGTH_LONG).show();
         }
     }
 

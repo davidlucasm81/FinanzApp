@@ -10,7 +10,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="32dp"
-        android:text="Nueva Familia"
+        android:text="@string/label_new_family"
         android:textSize="24sp"
         android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
@@ -21,7 +21,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="32dp"
-        android:hint="Nombre de la familia"
+        android:hint="@string/label_family_name"
         app:layout_constraintTop_toBottomOf="@id/tv_title">
 
         <com.google.android.material.textfield.TextInputEditText
@@ -36,7 +36,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:hint="Moneda"
+        android:hint="@string/label_currency"
         app:layout_constraintTop_toBottomOf="@id/til_family_name">
 
         <AutoCompleteTextView
@@ -51,7 +51,7 @@
         android:layout_width="match_parent"
         android:layout_height="60dp"
         android:layout_marginTop="48dp"
-        android:text="Confirmar"
+        android:text="@string/label_confirm"
         app:layout_constraintTop_toBottomOf="@id/til_currency" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

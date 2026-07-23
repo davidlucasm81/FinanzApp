@@ -16,7 +16,7 @@
             android:id="@+id/tv_name"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Nombre"
+            android:text="@string/label_name"
             android:textSize="16sp"
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
@@ -77,7 +77,7 @@
             android:layout_height="wrap_content"
             android:paddingHorizontal="16dp"
             android:paddingVertical="8dp"
-            android:text="Cancelar"
+            android:text="@string/cancel_button"
             android:textSize="12sp"
             android:visibility="gone"
             android:layout_marginTop="12dp"
@@ -103,7 +103,7 @@
                 android:layout_height="wrap_content"
                 android:paddingHorizontal="16dp"
                 android:paddingVertical="8dp"
-                android:text="Rechazar"
+                android:text="@string/label_reject"
                 android:textSize="12sp"
                 android:layout_marginEnd="8dp" />
 
@@ -113,7 +113,7 @@
                 android:layout_height="wrap_content"
                 android:paddingHorizontal="16dp"
                 android:paddingVertical="8dp"
-                android:text="Aprobar"
+                android:text="@string/label_approve"
                 android:textSize="12sp" />
         </LinearLayout>
 

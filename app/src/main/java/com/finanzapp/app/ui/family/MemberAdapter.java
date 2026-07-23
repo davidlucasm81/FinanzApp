@@ -8,7 +8,9 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.finanzapp.app.data.model.Invitation;
+import com.finanzapp.app.R;
 import com.finanzapp.app.data.model.Member;
+
 import com.finanzapp.app.databinding.ItemMemberBinding;
 
 import java.util.ArrayList;
@@ -86,7 +88,7 @@ public class MemberAdapter extends RecyclerView.Adapter<MemberAdapter.ViewHolder
 
             // Para invitaciones por email, mostrar el email como nombre principal
             holder.binding.tvName.setText(i.getTargetEmail() != null ? i.getTargetEmail() : "-");
-            holder.binding.tvEmail.setText("Invitación enviada");
+            holder.binding.tvEmail.setText(R.string.label_invitation_sent);
             holder.binding.tvRole.setVisibility(View.GONE);
             
             holder.binding.tvPendingTag.setVisibility(View.VISIBLE);

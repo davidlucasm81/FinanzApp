@@ -22,7 +22,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="32dp"
-        android:text="FinanzApp"
+        android:text="@string/app_name"
         android:textColor="?attr/colorPrimary"
         android:textSize="36sp"
         android:textStyle="bold"

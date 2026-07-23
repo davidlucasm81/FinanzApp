@@ -8,7 +8,7 @@
     <fragment
         android:id="@+id/welcomeFragment"
         android:name="com.finanzapp.app.ui.onboarding.WelcomeFragment"
-        android:label="Welcome"
+        android:label="@string/nav_welcome"
         tools:layout="@layout/fragment_welcome">
         <action
             android:id="@+id/action_welcomeFragment_to_createFamilyFragment"
@@ -30,13 +30,13 @@
     <fragment
         android:id="@+id/acceptInvitationFragment"
         android:name="com.finanzapp.app.ui.onboarding.AcceptInvitationFragment"
-        android:label="Accept Invitation"
+        android:label="@string/nav_accept_invitation"
         tools:layout="@layout/fragment_accept_invitation" />
 
     <fragment
         android:id="@+id/createFamilyFragment"
         android:name="com.finanzapp.app.ui.onboarding.CreateFamilyFragment"
-        android:label="Create Family"
+        android:label="@string/nav_create_family"
         tools:layout="@layout/fragment_create_family">
         <action
             android:id="@+id/action_createFamilyFragment_to_addInitialAccountsFragment"
@@ -46,13 +46,13 @@
     <fragment
         android:id="@+id/addInitialAccountsFragment"
         android:name="com.finanzapp.app.ui.onboarding.AddInitialAccountsFragment"
-        android:label="Cuentas iniciales"
+        android:label="@string/label_initial_accounts_title"
         tools:layout="@layout/fragment_add_initial_accounts" />
 
     <fragment
         android:id="@+id/joinByCodeFragment"
         android:name="com.finanzapp.app.ui.onboarding.JoinByCodeFragment"
-        android:label="Join by Code"
+        android:label="@string/nav_join_by_code"
         tools:layout="@layout/fragment_join_by_code">
         <action
             android:id="@+id/action_joinByCodeFragment_to_waitingApprovalFragment"
@@ -62,19 +62,19 @@
     <fragment
         android:id="@+id/waitingApprovalFragment"
         android:name="com.finanzapp.app.ui.onboarding.WaitingApprovalFragment"
-        android:label="Waiting Approval"
+        android:label="@string/nav_waiting_approval"
         tools:layout="@layout/fragment_waiting_approval" />
 
     <fragment
         android:id="@+id/settingsFragment"
         android:name="com.finanzapp.app.ui.settings.SettingsFragment"
-        android:label="Ajustes"
+        android:label="@string/nav_settings"
         tools:layout="@layout/fragment_settings" />
 
     <fragment
         android:id="@+id/privacyConsentFragment"
         android:name="com.finanzapp.app.ui.onboarding.PrivacyConsentFragment"
-        android:label="Privacidad"
+        android:label="@string/nav_privacy"
         tools:layout="@layout/fragment_privacy_consent" />
 
 </navigation>

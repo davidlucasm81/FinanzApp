@@ -9,6 +9,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import com.finanzapp.app.R;
+
+
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
@@ -90,9 +93,9 @@ public class ImportTransactionsFragment extends Fragment {
         viewModel.getImportResult().observe(getViewLifecycleOwner(), result -> {
             if (result != null) {
                 binding.layoutResults.setVisibility(View.VISIBLE);
-                binding.txtImportedCount.setText("Movimientos importados: " + result.getImportedCount());
-                binding.txtNewAccountsCount.setText("Cuentas nuevas creadas: " + result.getNewAccountsCount());
-                binding.txtNewCategoriesCount.setText("Categorías nuevas creadas: " + result.getNewCategoriesCount());
+                binding.txtImportedCount.setText(getString(R.string.label_imported_count, result.getImportedCount()));
+                binding.txtNewAccountsCount.setText(getString(R.string.label_new_accounts_count, result.getNewAccountsCount()));
+                binding.txtNewCategoriesCount.setText(getString(R.string.label_new_categories_count, result.getNewCategoriesCount()));
 
                 if (!result.getErrors().isEmpty()) {
                     binding.labelErrors.setVisibility(View.VISIBLE);
@@ -105,7 +108,7 @@ public class ImportTransactionsFragment extends Fragment {
                 } else {
                     binding.labelErrors.setVisibility(View.GONE);
                     binding.txtErrors.setVisibility(View.GONE);
-                    Toast.makeText(requireContext(), "Importación completada con éxito", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), R.string.msg_import_success, Toast.LENGTH_SHORT).show();
                 }
             }
         });

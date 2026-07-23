@@ -8,7 +8,7 @@
     <fragment
         android:id="@+id/dashboardFragment"
         android:name="com.finanzapp.app.ui.dashboard.DashboardFragment"
-        android:label="Dashboard"
+        android:label="@string/nav_dashboard"
         tools:layout="@layout/fragment_dashboard">
         <action
             android:id="@+id/action_dashboardFragment_to_transactionListFragment"
@@ -18,7 +18,7 @@
     <fragment
         android:id="@+id/transactionListFragment"
         android:name="com.finanzapp.app.ui.transactions.TransactionListFragment"
-        android:label="Movimientos"
+        android:label="@string/transactions_title"
         tools:layout="@layout/fragment_transaction_list">
         <argument
             android:name="preselectedCategoryId"
@@ -44,7 +44,7 @@
     <fragment
         android:id="@+id/importTransactionsFragment"
         android:name="com.finanzapp.app.ui.transactions.ImportTransactionsFragment"
-        android:label="Importar CSV"
+        android:label="@string/label_import_result_title"
         tools:layout="@layout/fragment_import_transactions">
         <argument
             android:name="familyId"
@@ -54,13 +54,13 @@
     <fragment
         android:id="@+id/addEditTransactionFragment"
         android:name="com.finanzapp.app.ui.transactions.AddEditTransactionFragment"
-        android:label="Añadir Movimiento"
+        android:label="@string/add_transaction"
         tools:layout="@layout/fragment_add_edit_transaction" />
 
     <fragment
         android:id="@+id/accountListFragment"
         android:name="com.finanzapp.app.ui.accounts.AccountListFragment"
-        android:label="Cuentas"
+        android:label="@string/nav_accounts"
         tools:layout="@layout/fragment_account_list" />
 
     <fragment
@@ -76,19 +76,19 @@
     <fragment
         android:id="@+id/inviteMemberFragment"
         android:name="com.finanzapp.app.ui.family.InviteMemberFragment"
-        android:label="Invitar"
+        android:label="@string/nav_invite"
         tools:layout="@layout/fragment_invite_member" />
 
     <fragment
         android:id="@+id/memberListFragment"
         android:name="com.finanzapp.app.ui.family.MemberListFragment"
-        android:label="Miembros"
+        android:label="@string/nav_members"
         tools:layout="@layout/fragment_member_list" />
 
     <fragment
         android:id="@+id/familySettingsFragment"
         android:name="com.finanzapp.app.ui.family.FamilySettingsFragment"
-        android:label="Ajustes Familia"
+        android:label="@string/nav_family_settings"
         tools:layout="@layout/fragment_family_settings">
         <action
             android:id="@+id/action_familySettingsFragment_to_manageCategoriesFragment"
@@ -98,12 +98,12 @@
     <fragment
         android:id="@+id/settingsFragment"
         android:name="com.finanzapp.app.ui.settings.SettingsFragment"
-        android:label="Ajustes"
+        android:label="@string/nav_settings"
         tools:layout="@layout/fragment_settings" />
 
     <fragment
         android:id="@+id/manageCategoriesFragment"
         android:name="com.finanzapp.app.ui.categories.ManageCategoriesFragment"
-        android:label="Gestionar Categorías"
+        android:label="@string/nav_manage_categories"
         tools:layout="@layout/fragment_manage_categories" />
 </navigation>
