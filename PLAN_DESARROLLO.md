@@ -213,22 +213,35 @@
   - [x] Gráfico de donut interactivo con el % de gasto de cada categoría sobre el total mensual y el importe en euros.
 - [x] **UX y Rendimiento**: Implementar filtros de tiempo/cuenta, estados de carga, manejo de "Sin datos" y transiciones fluidas entre gráficos. Se han simplificado las estadísticas eliminando el gasto medio mensual, el ranking de categorías y la matriz histórica de netos por decisión de UX. Se ha optimizado la carga en Dashboard y Estadísticas para evitar parpadeos y se han mejorado los gráficos con zoom, scroll y etiquetas detalladas.
 
+## Fase 8 bis — Notificaciones In-App (Gratuitas)
+> Nota: Al no poder usar Cloud Functions (exige plan Blaze de pago) para disparar notificaciones push (FCM) de forma segura, se implementa un sistema de alertas in-app basado en un listener de Firestore. Esto permite notificar a los usuarios que tengan la app abierta.
+- [ ] **Modelo de Notificación**: Crear subcolección `families/{familyId}/notifications`.
+- [ ] **Emisión**: Actualizar `TransactionRepository` para que, al crear un movimiento con éxito, escriba también un documento en `notifications` con el resumen del movimiento.
+- [ ] **Recepción**: Implementar un listener global (en `MainActivity` o mediante un `SharedViewModel`) que escuche esta colección y muestre una notificación in-app (Snackbar persistente, Toast personalizado o diálogo no intrusivo).
+- [ ] **Configuración**: Añadir interruptor "Notificar movimientos nuevos" en Ajustes de Perfil. Si está desactivado, el listener no muestra nada.
+- [ ] **Limpieza**: (Opcional) Las notificaciones de más de 24h pueden ignorarse en la consulta del listener para no saturar.
+
 ## Fase 9 — Calidad, seguridad y pulido
 - [x] Revisión completa de las reglas de seguridad de Firestore.
 - [x] Reducir al maximo posible SIN perder funcionalidad las llamadas a firebase para no superar el limite de llamadas.
+- [ ] **Soporte Multiidioma**:
+  - [ ] Extraer todos los strings hardcodeados a `strings.xml`.
+  - [ ] Crear `values-en/strings.xml` y traducir todos los recursos al inglés.
+  - [ ] Verificar que la UI se adapta correctamente a textos de distinta longitud.
 - [x] Manejo de estados vacíos (sin cuentas, sin movimientos, sin familia) y de errores de red.
 - [x] Verificar que la persistencia offline de Firestore funciona razonablemente bien.
 - [x] Revisión de accesibilidad básica (`contentDescription`, tamaños de texto, contraste).
 
-## Fase 9 bis — Privacidad: consentimiento y exportación de datos
-> Revisado 2026-07-21: se elimina la parte de cifrado de aplicación con Cloud KMS/Cloud Functions por exigir vincular una cuenta de facturación (plan Blaze), que el propietario descarta explícitamente. Ver `AGENTS.md`, entrada 2026-07-21. El cifrado en tránsito/reposo de Firestore ya cubre el requisito legal básico.
+## Fase 9 bis — Privacidad y GDPR: consentimiento y exportación
+> Revisado 2026-07-21: se confirma el enfoque 100% gratuito (plan Spark). Firestore cumple con el cifrado básico. Se refuerzan los derechos ARCO (Acceso, Rectificación, Cancelación, Oposición).
 
 ### Medidas organizativas y legales (no requieren código)
 - [ ] (Acción manual del humano/legal) Redactar la Política de Privacidad y el Aviso Legal.
 - [ ] (Acción manual del humano/legal) Revisar/aceptar el DPA de Google Cloud para Firebase y confirmar la región de Firestore.
 - [x] `PrivacyConsentFragment` (`ui/onboarding/`): checkbox obligatorio de aceptación en el primer login; al aceptar, escribe `privacyPolicyAcceptedAt`.
 - [x] **Self-heal para usuarios ya existentes**: si `privacyPolicyAcceptedAt` no existe, mostrarlo una única vez en el splash/loading (mismo patrón que Fase 7 bis).
-- [x] **Exportación de datos personales**: opción "Descargar mis datos" en Ajustes; genera JSON con perfil, `memberships` y movimientos propios (`createdBy == uid`); compartir vía `Intent.ACTION_SEND`.
+- [x] **Exportación de datos personales (Derecho de Acceso)**: opción "Descargar mis datos" en Ajustes; genera JSON con perfil, `memberships` y movimientos propios; compartir vía `Intent.ACTION_SEND`.
+- [ ] **Borrado de cuenta (Derecho al Olvido/Supresión)**: Asegurar que el borrado de cuenta en Ajustes realiza la limpieza completa ya definida en la Fase 3 bis (salir de familias, traspaso de owner, etc.) y elimina el documento `users/{uid}`.
 
 ### Auditoría de las reglas de seguridad ya existentes
 - [x] Ampliar la tarea de la Fase 9 "Revisión completa de las reglas de seguridad" con una pasada LOPD/RGPD: confirmar que ningún dato de un usuario es legible fuera de sus familias, y que `users/{uid}/memberships` sigue aislada por `uid`.

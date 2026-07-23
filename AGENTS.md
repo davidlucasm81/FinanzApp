@@ -24,6 +24,7 @@ Nombre de la app: **FinanzApp**.
 | Autenticación | Firebase Authentication + proveedor Google, integrado con **Credential Manager** (`androidx.credentials`) | Es la API recomendada actualmente por Google/Firebase; `GoogleSignInClient`/One Tap están deprecados desde 2025 |
 | Base de datos | Cloud Firestore | Tiempo real, offline-first, encaja con el modelo familiar/colaborativo |
 | Gráficos/estadísticas | MPAndroidChart | Librería Java madura, muy usada en apps de finanzas personales, gratuita |
+| Localización | `strings.xml` (Android l10n) | Soporte multiidioma estándar, gratuito y nativo |
 | Fechas/importes | `java.time` (API desugarizada) para fechas; `NumberFormat`/`Currency` de Java para importes | Evita bugs de zona horaria y de formato de moneda |
 | IA (sugerencia de categorías) | ELIMINADO | Requisito eliminado por decisión del usuario |
 | Notificaciones push / Backend serverless / Cifrado con Cloud KMS | ELIMINADO | Ambos requieren Cloud Functions, que exige vincular una cuenta de facturación (plan Blaze) de forma obligatoria, incluso con uso $0. Decisión del propietario: no vincular ningún medio de pago al proyecto. Ver entrada 2026-07-21 en "Decisiones tomadas durante el desarrollo". |
@@ -111,6 +112,14 @@ families/{familyId}/accounts/{accountId}
   // `currentBalance` mediante un delta dentro de la misma Firestore transaction:
   //   currentBalance_nuevo = currentBalance_actual + (initialBalance_nuevo − initialBalance_anterior)
   // para no perder el efecto de los movimientos ya registrados. Ver Fase 4 del plan.
+
+families/{familyId}/notifications/{notificationId}  // (Fase 8 bis) Alertas in-app para cambios en la familia
+  type: "new_transaction"
+  title: string
+  body: string
+  payload: map  // ej. { transactionId: "...", amount: "..." }
+  createdBy: uid
+  createdAt: timestamp
 
 families/{familyId}/categories/{categoryId}
   name: string
@@ -305,10 +314,12 @@ Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exi
 6. **Movimientos**: fecha, descripción, importe, tipo (gasto/ingreso), categoría, método de pago, cuenta asociada.
 7. **Posición neta**: pantalla resumen con saldo total y desglose por cuenta. El desglose ingresos/gastos del periodo y por categoría se han movido a la pestaña de Estadísticas para simplificar la vista principal.
 8. **Estadísticas avanzadas (Pestaña Independiente)**: sección dedicada con evolución mensual (ingreso/gasto/neto), variación porcentual respecto al mes anterior, distribución por categoría (donut + % sobre total + importe en euros) y tarjetas resumen. También incluye el desglose detallado de ingresos/gastos del periodo y por categoría que anteriormente estaba en el Dashboard. Uso de MPAndroidChart y enfoque en alta UX. Se eliminaron por decisión de UX el gasto medio, el ranking de categorías y la matriz histórica de netos. Los gráficos incluyen soporte para zoom y scroll horizontal en la evolución mensual para manejar grandes volúmenes de datos.
-9. **Importación de movimientos desde CSV** (solo `admin`/`owner`): dado un fichero con columnas `Fecha Concepto Categoría Valor Tipo Método Cuenta`, insertar los movimientos correspondientes; si la cuenta o la categoría de una fila no existen en la familia, crearlas automáticamente. Ver detalle en la sección 4, "Importación de movimientos desde CSV".
-10. **Sugerencia de categorías por IA** (ELIMINADO): Requisito eliminado por decisión del usuario.
-11. **Pertenencia a varias familias** (Fase 7 bis): un usuario puede pertenecer a N familias a la vez, cambiar entre ellas mediante un selector de familia activa, y crear o unirse a familias adicionales sin dejar de pertenecer a las anteriores. Ver detalle en la sección 4, "Pertenencia a varias familias (Fase 7 bis)".
-12. **Privacidad (Fase 9 bis, reducida)**: consentimiento explícito de la Política de Privacidad y exportación de los propios datos. Sin cifrado de aplicación adicional (Firestore ya cubre el requisito legal básico). Ver sección 4.
+9. **Notificaciones In-App** (Fase 8 bis): Alertas en tiempo real dentro de la aplicación cuando se añade un movimiento. Al no poder usar Cloud Functions (exige plan de pago), se implementa mediante un listener de Firestore sobre una colección de notificaciones. Los usuarios pueden desactivar estas alertas desde Ajustes.
+10. **Importación de movimientos desde CSV** (solo `admin`/`owner`): dado un fichero con columnas `Fecha Concepto Categoría Valor Tipo Método Cuenta`, insertar los movimientos correspondientes; si la cuenta o la categoría de una fila no existen en la familia, crearlas automáticamente. Ver detalle en la sección 4, "Importación de movimientos desde CSV".
+11. **Sugerencia de categorías por IA** (ELIMINADO): Requisito eliminado por decisión del usuario.
+12. **Pertenencia a varias familias** (Fase 7 bis): un usuario puede pertenecer a N familias a la vez, cambiar entre ellas mediante un selector de familia activa, y crear o unirse a familias adicionales sin dejar de pertenecer a las anteriores. Ver detalle en la sección 4, "Pertenencia a varias familias (Fase 7 bis)".
+13. **Privacidad y GDPR** (Fase 9 bis): cumplimiento de la normativa mediante consentimiento explícito, derecho al olvido (borrado de cuenta/datos) y derecho de acceso (exportación de datos). Firestore cubre el cifrado básico. Ver sección 4.
+14. **Multiidioma**: Soporte para Español e Inglés mediante recursos nativos de Android.
 
 ## 8. Convenciones de código
 
