@@ -5,6 +5,7 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.finanzapp.app.data.firebase.FirestorePaths;
 import com.finanzapp.app.data.model.Account;
+import com.finanzapp.app.util.FirestoreLiveData;
 import com.finanzapp.app.util.Result;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
@@ -13,9 +14,9 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class AccountRepository {
     private final FirebaseFirestore db;
@@ -24,10 +25,18 @@ public class AccountRepository {
     // familias/pantallas. stopListening() los desconecta todos de golpe.
     private final List<ListenerRegistration> activeListeners = new java.util.concurrent.CopyOnWriteArrayList<>();
 
+    // Caching LiveData instances
+    private final Map<String, LiveData<List<Account>>> accountsCache = new ConcurrentHashMap<>();
+
     public AccountRepository(AuthRepository authRepository) {
         db = FirebaseFirestore.getInstance();
 
-        authRepository.registerPreSignOutCleanup(this::stopListening);
+        authRepository.registerPreSignOutCleanup(this::clearCache);
+    }
+
+    private void clearCache() {
+        accountsCache.clear();
+        stopListening();
     }
 
     /**
@@ -60,6 +69,7 @@ public class AccountRepository {
         // Ensure currentBalance is initialized to initialBalance if not set
         account.setCurrentBalance(account.getCurrentBalance() == 0.0 ? account.getInitialBalance() : account.getCurrentBalance());
         account.setActive(true);
+        account.setTransactionCount(0L);
 
         ref.set(account).addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
@@ -76,93 +86,26 @@ public class AccountRepository {
      * Ideal para el Dashboard donde solo se necesita el saldo.
      */
     public LiveData<List<Account>> getAccounts(String familyId) {
-        MutableLiveData<List<Account>> live = new MutableLiveData<>();
-        ListenerRegistration reg = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS)
-                .addSnapshotListener((value, error) -> {
-                    if (error != null || value == null) return;
-                    List<Account> accounts = new ArrayList<>();
-                    for (com.google.firebase.firestore.QueryDocumentSnapshot doc : value) {
-                        accounts.add(doc.toObject(Account.class));
-                    }
-                    live.setValue(accounts);
-                });
-        activeListeners.add(reg);
-        return live;
+        if (accountsCache.containsKey(familyId)) {
+            return accountsCache.get(familyId);
+        }
+        FirestoreLiveData<Account> live = new FirestoreLiveData<>(
+                db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS),
+                Account.class, true);
+        accountsCache.put(familyId, (LiveData) live);
+        return (LiveData) live;
     }
 
     /**
      * Devuelve las cuentas de la familia, marcando en cada una si tiene o no movimientos
-     * asociados ({@link Account#isHasTransactions()}). La UI usa ese flag para decidir si
-     * ofrece "Archivar" (cuenta con movimientos) o "Eliminar" (cuenta sin movimientos),
-     * en vez de dejar que el usuario intente borrar y encontrarse con un error.
-     * <p>
-     * Se escuchan tanto la colección de cuentas como la de movimientos, para que el flag
-     * se mantenga correcto si se añade/borra un movimiento sin que cambien las cuentas.
+     * asociados. Ahora optimizado usando el campo transactionCount denormalizado.
      */
     public LiveData<List<Account>> getAccountsWithTransactionStatus(String familyId) {
-        MutableLiveData<List<Account>> live = new MutableLiveData<>();
-
-        ListenerRegistration reg = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS)
-                .addSnapshotListener((value, error) -> {
-                    if (error != null || value == null) return;
-                    List<Account> accounts = new ArrayList<>();
-                    for (com.google.firebase.firestore.QueryDocumentSnapshot doc : value) {
-                        accounts.add(doc.toObject(Account.class));
-                    }
-                    if (accounts.isEmpty()) {
-                        live.setValue(accounts);
-                    } else {
-                        refreshHasTransactionsFlag(familyId, accounts, live);
-                    }
-                });
-        activeListeners.add(reg);
-
-        return live;
+        // En esta nueva implementación, getAccounts() ya trae el transactionCount
+        // que actualiza el flag hasTransactions en el modelo POJO Account.
+        return getAccounts(familyId);
     }
 
-    private void refreshHasTransactionsFlag(String familyId, List<Account> accounts, MutableLiveData<List<Account>> live) {
-        List<String> ids = new ArrayList<>();
-        for (Account a : accounts) {
-            if (a.getId() != null) ids.add(a.getId());
-        }
-        if (ids.isEmpty()) {
-            live.setValue(accounts);
-            return;
-        }
-        // Firestore admite un máximo de 30 valores en una cláusula whereIn; en la práctica
-        // ninguna familia debería tener tantas cuentas, pero se acota por seguridad.
-        List<String> queryIds = ids.size() > 30 ? ids.subList(0, 30) : ids;
-
-        db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.TRANSACTIONS)
-                .whereIn("accountId", queryIds)
-                .get()
-                .addOnSuccessListener(snapshot -> {
-                    Set<String> accountIdsWithMovements = new HashSet<>();
-                    for (com.google.firebase.firestore.QueryDocumentSnapshot doc : snapshot) {
-                        String accId = doc.getString("accountId");
-                        if (accId != null) accountIdsWithMovements.add(accId);
-                    }
-                    for (Account a : accounts) {
-                        a.setHasTransactions(accountIdsWithMovements.contains(a.getId()));
-                    }
-                    live.setValue(accounts);
-                })
-                .addOnFailureListener(e -> {
-                    // Si falla la comprobación, se muestra la lista sin actualizar el flag
-                    // (se mantendrá el valor por defecto/anterior) en vez de bloquear el listado.
-                    live.setValue(accounts);
-                });
-    }
-
-    public interface SimpleCallback {
-        void onResult(Result<String> result);
-    }
-
-    /**
-     * Actualiza una cuenta existente de forma atómica.
-     * Calcula el delta entre el saldo inicial nuevo y el anterior para actualizar el saldo actual,
-     * preservando así el efecto de los movimientos ya registrados.
-     */
     public void updateAccount(String familyId, Account updatedAccount, AccountCallback callback) {
         if (updatedAccount.getId() == null) {
             callback.onResult(new Result.Error<>(new Exception("Account id missing")));
@@ -189,6 +132,8 @@ public class AccountRepository {
             // Al deserializar updatedAccount en el cliente para el diálogo de edición,
             // 'active' puede perderse o resetearse a false si no se lee del bundle.
             updatedAccount.setActive(oldAccount.isActive());
+            // Preserve transactionCount
+            updatedAccount.setTransactionCount(oldAccount.getTransactionCount());
 
             transaction.set(accountRef, updatedAccount);
             return updatedAccount;
@@ -199,6 +144,26 @@ public class AccountRepository {
                 callback.onResult(new Result.Error<>(task.getException()));
             }
         });
+    }
+
+    /**
+     * Cuenta los movimientos de una cuenta y actualiza el campo denormalizado transactionCount.
+     * Útil para migrar datos legados de forma transparente (self-healing).
+     */
+    public void migrateAccountTransactionCount(String familyId, String accountId) {
+        db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.TRANSACTIONS)
+                .whereEqualTo("accountId", accountId)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    long count = querySnapshot.size();
+                    db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS)
+                            .document(accountId)
+                            .update("transactionCount", count);
+                });
+    }
+
+    public interface SimpleCallback {
+        void onResult(Result<String> result);
     }
 
     public void archiveAccount(String familyId, String accountId, boolean active, SimpleCallback callback) {
@@ -215,25 +180,29 @@ public class AccountRepository {
     }
 
     public void deleteAccount(String familyId, String accountId, SimpleCallback callback) {
-        // Verificamos si hay transacciones antes de borrar físicamente
-        db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.TRANSACTIONS)
-                .whereEqualTo("accountId", accountId)
-                .limit(1)
+        // Verificamos si hay transacciones antes de borrar físicamente usando el campo denormalizado
+        db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS)
+                .document(accountId)
                 .get()
-                .addOnCompleteListener(queryTask -> {
-                    if (queryTask.isSuccessful() && !queryTask.getResult().isEmpty()) {
-                        callback.onResult(new Result.Error<>(new Exception("No se puede eliminar una cuenta con movimientos. Archívala en su lugar.")));
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult().exists()) {
+                        Account account = task.getResult().toObject(Account.class);
+                        if (account != null && account.getTransactionCount() > 0) {
+                            callback.onResult(new Result.Error<>(new Exception("No se puede eliminar una cuenta con movimientos. Archívala en su lugar.")));
+                        } else {
+                            db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS)
+                                    .document(accountId)
+                                    .delete()
+                                    .addOnCompleteListener(deleteTask -> {
+                                        if (deleteTask.isSuccessful()) {
+                                            callback.onResult(new Result.Success<>(accountId));
+                                        } else {
+                                            callback.onResult(new Result.Error<>(deleteTask.getException()));
+                                        }
+                                    });
+                        }
                     } else {
-                        db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS)
-                                .document(accountId)
-                                .delete()
-                                .addOnCompleteListener(task -> {
-                                    if (task.isSuccessful()) {
-                                        callback.onResult(new Result.Success<>(accountId));
-                                    } else {
-                                        callback.onResult(new Result.Error<>(task.getException()));
-                                    }
-                                });
+                        callback.onResult(new Result.Error<>(task.getException()));
                     }
                 });
     }

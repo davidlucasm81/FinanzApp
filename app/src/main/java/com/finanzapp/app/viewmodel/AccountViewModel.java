@@ -36,7 +36,6 @@ public class AccountViewModel extends ViewModel {
     }
 
     private void stopListening() {
-        accountRepository.stopListening();
         if (roleListener != null) {
             roleListener.remove();
             roleListener = null;

@@ -10,6 +10,7 @@ public class Account {
     private String name;
     private double initialBalance;
     private double currentBalance;
+    private Long transactionCount; // Use Long to detect if field is missing in legacy data
     private boolean active;
     private String createdBy;
     private Timestamp createdAt;
@@ -18,6 +19,7 @@ public class Account {
     // tiene al menos un movimiento asociado. Lo calcula AccountRepository.getAccounts()
     // cruzando con la colección de transactions, para que la UI sepa si debe permitir
     // borrar (sin movimientos) o solo archivar (con movimientos).
+    // NOTA 2026-07-25: Este flag ahora se alimenta del campo transactionCount persistido.
     private transient boolean hasTransactions = false;
 
     public Account() {
@@ -32,6 +34,7 @@ public class Account {
         this.active = active;
         this.createdBy = createdBy;
         this.createdAt = createdAt;
+        this.transactionCount = 0L;
     }
 
     // Getters and setters
@@ -46,6 +49,12 @@ public class Account {
 
     public double getCurrentBalance() { return currentBalance; }
     public void setCurrentBalance(double currentBalance) { this.currentBalance = currentBalance; }
+
+    public Long getTransactionCount() { return transactionCount; }
+    public void setTransactionCount(Long transactionCount) {
+        this.transactionCount = transactionCount;
+        this.hasTransactions = transactionCount != null && transactionCount > 0;
+    }
 
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }

@@ -26,7 +26,6 @@ public class CategoryViewModel extends ViewModel {
     }
 
     private void stopListening() {
-        repository.stopListening();
     }
 
     @Override

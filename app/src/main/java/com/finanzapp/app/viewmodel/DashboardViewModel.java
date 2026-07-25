@@ -17,8 +17,10 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 public class DashboardViewModel extends ViewModel {
     private final AuthRepository authRepository;
@@ -34,6 +36,7 @@ public class DashboardViewModel extends ViewModel {
     private final MutableLiveData<Double> netBalance = new MutableLiveData<>(0.0);
     private final MutableLiveData<List<Account>> accountsList = new MutableLiveData<>();
 
+    private final Set<String> migratingAccounts = new HashSet<>();
     private ListenerRegistration userListener;
 
     // Referencia estable para poder registrar/desregistrar el mismo Runnable
@@ -65,9 +68,15 @@ public class DashboardViewModel extends ViewModel {
             if (accounts != null) {
                 accountsList.postValue(accounts);
                 double totalBalance = 0;
+                String familyId = familyIdSource.getValue();
                 for (Account account : accounts) {
                     if (account.isActive()) {
                         totalBalance += account.getCurrentBalance();
+                    }
+                    // Self-healing migration for legacy data
+                    if (account.getTransactionCount() == null && familyId != null && !migratingAccounts.contains(account.getId())) {
+                        migratingAccounts.add(account.getId());
+                        accountRepository.migrateAccountTransactionCount(familyId, account.getId());
                     }
                 }
                 netBalance.postValue(totalBalance);

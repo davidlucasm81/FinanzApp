@@ -2,6 +2,7 @@ package com.finanzapp.app.ui.transactions;
 
 import android.app.DatePickerDialog;
 import android.os.Bundle;
+import androidx.core.os.BundleCompat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,7 +12,6 @@ import android.widget.Button;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Spinner;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.finanzapp.app.R;
@@ -24,7 +24,6 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.Navigation;
 
 import com.finanzapp.app.FinanzAppApplication;
-import com.finanzapp.app.R;
 import com.finanzapp.app.data.model.Account;
 import com.finanzapp.app.data.model.Category;
 import com.finanzapp.app.data.model.Transaction;
@@ -46,17 +45,17 @@ public class AddEditTransactionFragment extends Fragment {
     private Transaction existingTransaction;
     
     private TextInputLayout tilAmount, tilDescription;
-    private RadioGroup rgType;
     private RadioButton rbExpense, rbIncome;
-    private Button btnDate, btnSave, btnDelete;
+    private Button btnDate;
     private Spinner spinnerAccount, spinnerMethod;
     private AutoCompleteTextView autoCategory;
     private Category selectedCategory;
     
-    private Calendar selectedDate = Calendar.getInstance();
+    private final Calendar selectedDate = Calendar.getInstance();
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
     
     private List<Category> allCategories = new ArrayList<>();
+    private List<Category> filteredCategories = new ArrayList<>();
     private List<Account> allAccounts = new ArrayList<>();
     private final String[] paymentMethodValues = {
             "tarjeta", "efectivo", "transferencia", "bizum", 
@@ -86,7 +85,7 @@ public class AddEditTransactionFragment extends Fragment {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
             familyId = getArguments().getString("familyId");
-            existingTransaction = (Transaction) getArguments().getSerializable("transaction");
+            existingTransaction = BundleCompat.getSerializable(getArguments(), "transaction", Transaction.class);
         }
     }
 
@@ -100,12 +99,12 @@ public class AddEditTransactionFragment extends Fragment {
 
         tilAmount = view.findViewById(R.id.til_amount);
         tilDescription = view.findViewById(R.id.til_description);
-        rgType = view.findViewById(R.id.rg_type);
+        RadioGroup rgType = view.findViewById(R.id.rg_type);
         rbExpense = view.findViewById(R.id.rb_expense);
         rbIncome = view.findViewById(R.id.rb_income);
         btnDate = view.findViewById(R.id.btn_date);
-        btnSave = view.findViewById(R.id.btn_save);
-        btnDelete = view.findViewById(R.id.btn_delete);
+        Button btnSave = view.findViewById(R.id.btn_save);
+        Button btnDelete = view.findViewById(R.id.btn_delete);
         autoCategory = view.findViewById(R.id.auto_category);
         spinnerAccount = view.findViewById(R.id.spinner_account);
         spinnerMethod = view.findViewById(R.id.spinner_method);
@@ -157,7 +156,7 @@ public class AddEditTransactionFragment extends Fragment {
     }
 
     private void showDeleteConfirmation() {
-        new android.app.AlertDialog.Builder(requireContext())
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
                 .setTitle(R.string.delete_transaction_title)
                 .setMessage(R.string.delete_transaction_message)
                 .setPositiveButton(R.string.delete_button, (dialog, which) -> {
@@ -224,34 +223,35 @@ public class AddEditTransactionFragment extends Fragment {
     }
 
     private void filterCategories() {
+        if (allCategories.isEmpty()) return;
+        
         String type = rbIncome.isChecked() ? "income" : "expense";
         List<String> names = new ArrayList<>();
-        List<Category> filtered = new ArrayList<>();
+        filteredCategories.clear();
         
         for (Category c : allCategories) {
             if (c.getAppliesTo().equals(type) || c.getAppliesTo().equals("both")) {
-                filtered.add(c);
+                filteredCategories.add(c);
                 names.add(c.getName());
             }
         }
         
+        if (requireContext() == null) return;
         ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, names);
-        autoCategory.setAdapter(adapter);
+        autoCategory.post(() -> {
+            autoCategory.setAdapter(adapter);
+        });
         
         autoCategory.setOnItemClickListener((parent, view, position, id) -> {
-            String selectedName = (String) parent.getItemAtPosition(position);
-            for (Category c : allCategories) {
-                if (c.getName().equals(selectedName)) {
-                    selectedCategory = c;
-                    break;
-                }
+            if (position >= 0 && position < filteredCategories.size()) {
+                selectedCategory = filteredCategories.get(position);
             }
         });
 
         // Clear selection if current selectedCategory is not in filtered list
         if (selectedCategory != null) {
             boolean found = false;
-            for (Category c : filtered) {
+            for (Category c : filteredCategories) {
                 if (c.getId().equals(selectedCategory.getId())) {
                     found = true;
                     break;
@@ -259,7 +259,7 @@ public class AddEditTransactionFragment extends Fragment {
             }
             if (!found) {
                 selectedCategory = null;
-                autoCategory.setText("");
+                autoCategory.setText("", false);
             }
         }
     }

@@ -55,9 +55,6 @@ public class TransactionViewModel extends ViewModel {
     }
 
     private void stopListening() {
-        transactionRepository.stopListening();
-        accountRepository.stopListening();
-        categoryRepository.stopListening();
         if (membersListener != null) {
             membersListener.remove();
             membersListener = null;

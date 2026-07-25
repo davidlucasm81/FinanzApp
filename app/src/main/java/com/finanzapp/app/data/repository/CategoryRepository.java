@@ -5,13 +5,17 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.finanzapp.app.data.firebase.FirestorePaths;
 import com.finanzapp.app.data.model.Category;
+import com.finanzapp.app.util.FirestoreLiveData;
 import com.finanzapp.app.util.Result;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class CategoryRepository {
     private final FirebaseFirestore db;
@@ -19,9 +23,16 @@ public class CategoryRepository {
     // Listeners activos: stopListening() los desconecta todos antes de invalidar la sesión.
     private final List<ListenerRegistration> activeListeners = new java.util.concurrent.CopyOnWriteArrayList<>();
 
+    private final Map<String, LiveData<List<Category>>> categoriesCache = new ConcurrentHashMap<>();
+
     public CategoryRepository(AuthRepository authRepository) {
         this.db = FirebaseFirestore.getInstance();
-        authRepository.registerPreSignOutCleanup(this::stopListening);
+        authRepository.registerPreSignOutCleanup(this::clearCache);
+    }
+
+    private void clearCache() {
+        categoriesCache.clear();
+        stopListening();
     }
 
     public void stopListening() {
@@ -32,21 +43,15 @@ public class CategoryRepository {
     }
 
     public LiveData<List<Category>> getCategories(String familyId) {
-        MutableLiveData<List<Category>> categoriesLiveData = new MutableLiveData<>();
-        ListenerRegistration reg = db.collection(FirestorePaths.getCategoriesPath(familyId))
-                .orderBy("name")
-                .addSnapshotListener((value, error) -> {
-                    if (error != null || value == null) {
-                        return;
-                    }
-                    List<Category> categories = new ArrayList<>();
-                    for (QueryDocumentSnapshot doc : value) {
-                        categories.add(doc.toObject(Category.class));
-                    }
-                    categoriesLiveData.setValue(categories);
-                });
-        activeListeners.add(reg);
-        return categoriesLiveData;
+        if (categoriesCache.containsKey(familyId)) {
+            return categoriesCache.get(familyId);
+        }
+        Query query = db.collection(FirestorePaths.getCategoriesPath(familyId))
+                .orderBy("name");
+
+        FirestoreLiveData<Category> liveData = new FirestoreLiveData<>(query, Category.class, true);
+        categoriesCache.put(familyId, (LiveData) liveData);
+        return (LiveData) liveData;
     }
 
     public void addCategory(String familyId, Category category, Callback callback) {

@@ -9,9 +9,11 @@ import com.finanzapp.app.data.model.Account;
 import com.finanzapp.app.data.model.Notification;
 import com.finanzapp.app.data.model.Transaction;
 import com.finanzapp.app.util.Result;
+import com.finanzapp.app.util.FirestoreLiveData;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
@@ -21,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class TransactionRepository {
     private final FirebaseFirestore db;
@@ -31,12 +34,20 @@ public class TransactionRepository {
     // Listeners activos: stopListening() los desconecta todos antes de invalidar la sesión.
     private final List<ListenerRegistration> activeListeners = new java.util.concurrent.CopyOnWriteArrayList<>();
 
+    // Caching for LiveData to avoid creating multiple listeners for the same query
+    private final Map<String, LiveData<List<Transaction>>> transactionsCache = new ConcurrentHashMap<>();
+
     public TransactionRepository(android.content.Context context, AuthRepository authRepository) {
         this.db = FirebaseFirestore.getInstance();
         this.auth = FirebaseAuth.getInstance();
         this.notificationRepository = new NotificationRepository();
         this.context = context.getApplicationContext();
-        authRepository.registerPreSignOutCleanup(this::stopListening);
+        authRepository.registerPreSignOutCleanup(this::clearCache);
+    }
+
+    private void clearCache() {
+        transactionsCache.clear();
+        stopListening();
     }
 
     public void stopListening() {
@@ -75,7 +86,9 @@ public class TransactionRepository {
                     account.setCurrentBalance(account.getCurrentBalance() + balanceChange);
 
                     firestoreTransaction.set(transactionRef, transaction);
-                    firestoreTransaction.update(accountRef, "currentBalance", account.getCurrentBalance());
+                    firestoreTransaction.update(accountRef, 
+                            "currentBalance", account.getCurrentBalance(),
+                            "transactionCount", FieldValue.increment(1));
 
                     return null;
                 }).addOnSuccessListener(result -> {
@@ -123,23 +136,27 @@ public class TransactionRepository {
                     oldAccount.setCurrentBalance(oldAccount.getCurrentBalance() + oldBalanceRevert);
 
                     if (oldTransaction.getAccountId().equals(newTransaction.getAccountId())) {
-                        // Same account
+                        // Same account, transactionCount doesn't change
                         double newAmount = newTransaction.getAmount();
                         double newBalanceChange = "income".equals(newTransaction.getType()) ? newAmount : -newAmount;
                         oldAccount.setCurrentBalance(oldAccount.getCurrentBalance() + newBalanceChange);
 
                         firestoreTransaction.update(oldAccountRef, "currentBalance", oldAccount.getCurrentBalance());
                     } else {
-                        // Different account
+                        // Different account, update transactionCount for both
                         Account newAccount = firestoreTransaction.get(newAccountRef).toObject(Account.class);
                         if (newAccount == null) throw new RuntimeException("New account not found");
 
                         double newAmount = newTransaction.getAmount();
                         double newBalanceChange = "income".equals(newTransaction.getType()) ? newAmount : -newAmount;
                         newAccount.setCurrentBalance(newAccount.getCurrentBalance() + newBalanceChange);
-
-                        firestoreTransaction.update(oldAccountRef, "currentBalance", oldAccount.getCurrentBalance());
-                        firestoreTransaction.update(newAccountRef, "currentBalance", newAccount.getCurrentBalance());
+                        
+                        firestoreTransaction.update(oldAccountRef, 
+                                "currentBalance", oldAccount.getCurrentBalance(),
+                                "transactionCount", FieldValue.increment(-1));
+                        firestoreTransaction.update(newAccountRef, 
+                                "currentBalance", newAccount.getCurrentBalance(),
+                                "transactionCount", FieldValue.increment(1));
                     }
 
                     firestoreTransaction.set(transactionRef, newTransaction);
@@ -162,7 +179,9 @@ public class TransactionRepository {
                     account.setCurrentBalance(account.getCurrentBalance() + balanceRevert);
 
                     firestoreTransaction.delete(transactionRef);
-                    firestoreTransaction.update(accountRef, "currentBalance", account.getCurrentBalance());
+                    firestoreTransaction.update(accountRef, 
+                            "currentBalance", account.getCurrentBalance(),
+                            "transactionCount", FieldValue.increment(-1));
 
                     return null;
                 }).addOnSuccessListener(result -> callback.onResult(new Result.Success<>(true)))
@@ -174,7 +193,14 @@ public class TransactionRepository {
     }
 
     public LiveData<List<Transaction>> getTransactions(String familyId, String accountId, String categoryId, String type, String paymentMethod, Timestamp startDate, Timestamp endDate) {
-        MutableLiveData<List<Transaction>> liveData = new MutableLiveData<>();
+        // Cache key based on filters
+        String cacheKey = String.format("%s_%s_%s_%s_%s_%s_%s", familyId, accountId, categoryId, type, paymentMethod,
+                startDate != null ? startDate.getSeconds() : "null",
+                endDate != null ? endDate.getSeconds() : "null");
+
+        if (transactionsCache.containsKey(cacheKey)) {
+            return transactionsCache.get(cacheKey);
+        }
 
         Query query = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.TRANSACTIONS)
                 .orderBy("date", Query.Direction.DESCENDING)
@@ -199,18 +225,8 @@ public class TransactionRepository {
             query = query.whereLessThanOrEqualTo("date", endDate);
         }
 
-        ListenerRegistration reg = query.addSnapshotListener((value, error) -> {
-            if (error != null || value == null) {
-                android.util.Log.e("TransactionRepository", "Error getting transactions", error);
-                return;
-            }
-            List<Transaction> transactions = new ArrayList<>();
-            for (QueryDocumentSnapshot doc : value) {
-                transactions.add(doc.toObject(Transaction.class));
-            }
-            liveData.setValue(transactions);
-        });
-        activeListeners.add(reg);
-        return liveData;
+        FirestoreLiveData<Transaction> liveData = new FirestoreLiveData<>(query, Transaction.class, true);
+        transactionsCache.put(cacheKey, (LiveData) liveData);
+        return (LiveData) liveData;
     }
 }
