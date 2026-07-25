@@ -15,31 +15,30 @@
         android:scaleY="0.75">
 
         <!-- Casa: silueta con esquinas redondeadas y un hueco de puerta en arco (evenOdd),
-             relleno con degradado diagonal verde azulado -->
-        <path
-            android:fillType="evenOdd"
-            android:pathData="M49.66,32.14 Q54.00,28.00 58.34,32.14 L71.38,42.55 Q75.00,45.00 75.00,48.00 L75.00,72.00 Q75.00,80.00 67.00,80.00 L41.00,80.00 Q33.00,80.00 33.00,72.00 L33.00,48.00 Q33.00,45.00 36.62,42.55 L49.66,32.14 Z M45,80 L45,62 A9,9 0 0,1 63,62 L63,80 Z">
-            <aapt:attr name="android:fillColor">
-                <gradient
-                    android:type="linear"
-                    android:startX="33" android:startY="28"
-                    android:endX="75" android:endY="80"
-                    android:startColor="#2DD4BF"
-                    android:endColor="#0F766E" />
-            </aapt:attr>
-        </path>
-
-        <!-- "Tapa" sólida del color de fondo del icono, debajo de la moneda y su sombra.
-             Cubre cualquier cosa que hubiera detrás (la casa, o directamente nada) con
-             el mismo color plano de ic_launcher_background.xml (#0B3B37), para que el
-             hueco del "$" revele siempre ese color y nunca dependa de un recorte
-             geométrico entre paths (que falla donde la moneda sobresale del contorno
-             de la casa). Debe coincidir con android:fillColor de ic_launcher_background.xml
-             si ese color cambia. -->
-        <path
-            android:fillColor="#0B3B37"
-            android:pathData="M73,75 m-14.5,0 a14.5,14.5 0,1,1 29,0 a14.5,14.5 0,1,1 -29,0
-                M74.5,77.5 m-14.5,0 a14.5,14.5 0,1,1 29,0 a14.5,14.5 0,1,1 -29,0" />
+             relleno con degradado diagonal verde azulado.
+             Se envuelve en su propio <group> con un <clip-path> que excluye por completo
+             la zona donde irá la moneda (un único círculo que cubre tanto la moneda como
+             su sombra). Esto es transparencia REAL (alfa=0), a diferencia de "pintar encima"
+             con un color sólido: así funciona igual en modo de color normal (revela el
+             fondo real de ic_launcher_background.xml) y en iconos temáticos/monocromos
+             de Android 13+ (donde solo cuenta el canal alfa, no los colores). -->
+        <group>
+            <clip-path
+                android:pathData="M0,0 L108,0 L108,108 L0,108 Z
+                    M73.75,76.25 m-16,0 a16,16 0,1,0 32,0 a16,16 0,1,0 -32,0" />
+            <path
+                android:fillType="evenOdd"
+                android:pathData="M49.66,32.14 Q54.00,28.00 58.34,32.14 L71.38,42.55 Q75.00,45.00 75.00,48.00 L75.00,72.00 Q75.00,80.00 67.00,80.00 L41.00,80.00 Q33.00,80.00 33.00,72.00 L33.00,48.00 Q33.00,45.00 36.62,42.55 L49.66,32.14 Z M45,80 L45,62 A9,9 0 0,1 63,62 L63,80 Z">
+                <aapt:attr name="android:fillColor">
+                    <gradient
+                        android:type="linear"
+                        android:startX="33" android:startY="28"
+                        android:endX="75" android:endY="80"
+                        android:startColor="#2DD4BF"
+                        android:endColor="#0F766E" />
+                </aapt:attr>
+            </path>
+        </group>
 
         <!-- Sombra suave debajo de la moneda (con el mismo hueco del "$" recortado,
              para que la transparencia llegue hasta el fondo real del icono) -->
