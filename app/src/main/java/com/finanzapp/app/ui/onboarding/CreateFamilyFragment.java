@@ -40,7 +40,7 @@ public class CreateFamilyFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         FinanzAppApplication.AppContainer appContainer = ((FinanzAppApplication) requireActivity().getApplication()).getAppContainer();
-        ViewModelFactory factory = new ViewModelFactory(appContainer.getAuthRepository(), appContainer.getFamilyRepository());
+        ViewModelFactory factory = new ViewModelFactory(appContainer);
         viewModel = new ViewModelProvider(this, factory).get(OnboardingViewModel.class);
 
         setupCurrencyDropdown();

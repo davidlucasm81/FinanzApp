@@ -61,7 +61,7 @@ public class AddInitialAccountsFragment extends Fragment {
         }
 
         FinanzAppApplication.AppContainer appContainer = ((FinanzAppApplication) requireActivity().getApplication()).getAppContainer();
-        ViewModelFactory factory = new ViewModelFactory(appContainer.getAuthRepository(), appContainer.getFamilyRepository(), appContainer.getAccountRepository());
+        ViewModelFactory factory = new ViewModelFactory(appContainer);
         viewModel = new ViewModelProvider(this, factory).get(AccountViewModel.class);
 
         setupRecycler();
@@ -154,7 +154,7 @@ public class AddInitialAccountsFragment extends Fragment {
         String initialStr = binding.etInitialBalance.getText() != null ? binding.etInitialBalance.getText().toString().trim() : "";
 
         if (name.isEmpty()) {
-            binding.tilAccountName.setError("Nombre obligatorio");
+            binding.tilAccountName.setError(getString(R.string.error_name_required));
             return;
         } else {
             binding.tilAccountName.setError(null);

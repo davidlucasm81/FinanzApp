@@ -61,10 +61,9 @@ public class FamilySwitcherFragment extends BottomSheetDialogFragment {
         }
 
         FinanzAppApplication.AppContainer container = ((FinanzAppApplication) requireActivity().getApplication()).getAppContainer();
-        FamilyRepository repository = container.getFamilyRepository();
-        AuthRepository authRepository = container.getAuthRepository();
+        ViewModelFactory factory = new ViewModelFactory(container);
 
-        new ViewModelProvider(this, new ViewModelFactory(authRepository, repository)).get(FamilyViewModel.class);
+        new ViewModelProvider(this, factory).get(FamilyViewModel.class);
 
         RecyclerView rvFamilies = view.findViewById(R.id.rv_families);
         rvFamilies.setLayoutManager(new LinearLayoutManager(getContext()));
@@ -94,6 +93,11 @@ public class FamilySwitcherFragment extends BottomSheetDialogFragment {
 
         FamilyRepository repository = ((FinanzAppApplication) requireActivity().getApplication()).getAppContainer().getFamilyRepository();
         repository.getUserFamilies(uid, result -> {
+            // This is an async Firestore callback: by the time it fires, the user may
+            // have already dismissed this bottom sheet (or it may be mid-teardown),
+            // in which case getContext()/getActivity() is null. Bail out safely.
+            if (!isAdded() || getContext() == null) return;
+
             if (result instanceof Result.Success) {
                 adapter.setItems(((Result.Success<List<FamilyMembership>>) result).getData());
             } else if (result instanceof Result.Error) {
@@ -117,6 +121,7 @@ public class FamilySwitcherFragment extends BottomSheetDialogFragment {
                 // Phase 7 bis: Clear navigation and restart MainActivity to reload all viewmodels with new familyId
                 restartApp();
             } else {
+                if (!isAdded() || getContext() == null) return;
                 Toast.makeText(getContext(), R.string.error_switch_family, Toast.LENGTH_LONG).show();
             }
         });
@@ -124,7 +129,7 @@ public class FamilySwitcherFragment extends BottomSheetDialogFragment {
 
     private void restartApp() {
         if (getActivity() == null) return;
-        
+
         Intent intent = new Intent(requireActivity(), MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);

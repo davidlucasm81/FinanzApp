@@ -23,6 +23,7 @@ import java.util.Objects;
 public class DashboardViewModel extends ViewModel {
     private final AuthRepository authRepository;
     private final FamilyRepository familyRepository;
+    private final AccountRepository accountRepository;
 
     private final MutableLiveData<String> familyIdSource = new MutableLiveData<>();
     private final LiveData<Result<Family>> familyData;
@@ -35,16 +36,20 @@ public class DashboardViewModel extends ViewModel {
 
     private ListenerRegistration userListener;
 
+    // Referencia estable para poder registrar/desregistrar el mismo Runnable
+    private final Runnable signOutCleanup = this::stopListening;
+
     private void setupObservers() {
         // We use Transformations.map to link the data update to the accountsSource lifecycle
     }
 
     private final LiveData<Boolean> accountsLoaded;
 
-    public DashboardViewModel(AuthRepository authRepository, FamilyRepository familyRepository) {
+    public DashboardViewModel(AuthRepository authRepository, FamilyRepository familyRepository, AccountRepository accountRepository) {
         this.authRepository = authRepository;
         this.familyRepository = familyRepository;
-        AccountRepository accountRepository = new AccountRepository();
+        this.accountRepository = accountRepository;
+        authRepository.registerPreSignOutCleanup(signOutCleanup);
 
         // Reactive architecture
         familyData = Transformations.switchMap(familyIdSource, id -> {
@@ -104,7 +109,7 @@ public class DashboardViewModel extends ViewModel {
                             userData.postValue(new Result.Success<>(user));
                             String newFamilyId = user.getFamilyId();
                             String currentFamilyId = familyIdSource.getValue();
-                            
+
                             if (newFamilyId != null && !newFamilyId.equals(currentFamilyId)) {
                                 familyIdSource.postValue(newFamilyId);
                             } else if (newFamilyId == null && currentFamilyId != null) {
@@ -121,12 +126,17 @@ public class DashboardViewModel extends ViewModel {
         }
     }
 
-    @Override
-    protected void onCleared() {
-        super.onCleared();
+    private void stopListening() {
         if (userListener != null) {
             userListener.remove();
             userListener = null;
         }
+    }
+
+    @Override
+    protected void onCleared() {
+        super.onCleared();
+        authRepository.unregisterPreSignOutCleanup(signOutCleanup);
+        stopListening();
     }
 }

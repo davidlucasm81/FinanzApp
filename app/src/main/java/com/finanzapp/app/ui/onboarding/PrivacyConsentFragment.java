@@ -38,7 +38,7 @@ public class PrivacyConsentFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         FinanzAppApplication.AppContainer appContainer = ((FinanzAppApplication) requireActivity().getApplication()).getAppContainer();
-        ViewModelFactory factory = new ViewModelFactory(appContainer.getAuthRepository(), appContainer.getFamilyRepository());
+        ViewModelFactory factory = new ViewModelFactory(appContainer);
         viewModel = new ViewModelProvider(this, factory).get(OnboardingViewModel.class);
 
         binding.tvPrivacyPolicy.setText(Html.fromHtml(getString(R.string.privacy_policy_text), Html.FROM_HTML_MODE_LEGACY));

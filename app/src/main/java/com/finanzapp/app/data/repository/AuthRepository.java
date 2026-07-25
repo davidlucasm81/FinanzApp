@@ -21,11 +21,35 @@ public class AuthRepository {
     private final FirebaseFirestore db;
     private final MutableLiveData<FirebaseUser> firebaseUserLiveData;
 
+    // Registro central de limpieza: cada ViewModel que mantenga listeners de Firestore
+    // se registra aquí. Así, sea cual sea la pantalla desde la que se cierre sesión o
+    // se borre la cuenta, TODOS los listeners activos se desconectan antes de invalidar
+    // el token, evitando los PERMISSION_DENIED al perder los permisos de Firestore.
+    private final java.util.List<Runnable> preSignOutCleanupTasks = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    public void registerPreSignOutCleanup(Runnable cleanup) {
+        preSignOutCleanupTasks.add(cleanup);
+    }
+
+    public void unregisterPreSignOutCleanup(Runnable cleanup) {
+        preSignOutCleanupTasks.remove(cleanup);
+    }
+
+    private void runPreSignOutCleanup() {
+        for (Runnable cleanup : preSignOutCleanupTasks) {
+            try {
+                cleanup.run();
+            } catch (Exception e) {
+                android.util.Log.e("AuthRepository", "Error during pre-signout listener cleanup", e);
+            }
+        }
+    }
+
     public AuthRepository() {
         this.auth = FirebaseAuth.getInstance();
         this.db = FirebaseFirestore.getInstance();
         this.firebaseUserLiveData = new MutableLiveData<>(auth.getCurrentUser());
-        
+
         auth.addAuthStateListener(firebaseAuth -> {
             firebaseUserLiveData.setValue(firebaseAuth.getCurrentUser());
         });
@@ -84,6 +108,7 @@ public class AuthRepository {
     }
 
     public void signOut() {
+        runPreSignOutCleanup();
         auth.signOut();
     }
 
@@ -95,6 +120,11 @@ public class AuthRepository {
         }
 
         String uid = firebaseUser.getUid();
+
+        // Desconectamos todos los listeners activos antes de empezar a borrar/abandonar
+        // familias, ya que ese proceso puede ir dejando al usuario sin permisos sobre
+        // documentos que algún listener siga escuchando.
+        runPreSignOutCleanup();
 
         // Phase 7 bis: Iterate all memberships and leave each family
         db.collection(FirestorePaths.getMembershipsPath(uid)).get()
@@ -128,7 +158,7 @@ public class AuthRepository {
 
     private void proceedWithDeletion(FirebaseUser firebaseUser, AuthCallback callback) {
         String uid = firebaseUser.getUid();
-        
+
         // 3. Delete from Firestore
         db.collection(FirestorePaths.USERS).document(uid).delete()
                 .addOnCompleteListener(task -> {
@@ -160,7 +190,7 @@ public class AuthRepository {
         }
 
         String uid = firebaseUser.getUid();
-        
+
         db.runTransaction(transaction -> {
             DocumentSnapshot userDoc = transaction.get(db.collection(FirestorePaths.USERS).document(uid));
             if (!userDoc.exists()) {
@@ -182,7 +212,7 @@ public class AuthRepository {
         db.collection(FirestorePaths.getMembershipsPath(uid)).get().addOnSuccessListener(membershipsSnapshot -> {
             List<DocumentSnapshot> memberships = membershipsSnapshot.getDocuments();
             android.util.Log.d("AuthRepository", "Memberships fetched: " + memberships.size() + ", now fetching transactions family by family...");
-            
+
             List<DocumentSnapshot> allUserTransactions = new ArrayList<>();
             if (memberships.isEmpty()) {
                 generateAndPostJson(user, memberships, allUserTransactions, callback);
@@ -239,7 +269,7 @@ public class AuthRepository {
         sb.append("    \"displayName\": \"").append(user.getDisplayName()).append("\",\n");
         sb.append("    \"email\": \"").append(user.getEmail()).append("\"\n");
         sb.append("  },\n");
-        
+
         sb.append("  \"memberships\": [\n");
         for (int i = 0; i < memberships.size(); i++) {
             DocumentSnapshot doc = memberships.get(i);

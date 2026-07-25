@@ -3,27 +3,47 @@ package com.finanzapp.app.data.repository;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.finanzapp.app.R;
 import com.finanzapp.app.data.firebase.FirestorePaths;
 import com.finanzapp.app.data.model.Account;
+import com.finanzapp.app.data.model.Notification;
 import com.finanzapp.app.data.model.Transaction;
 import com.finanzapp.app.util.Result;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class TransactionRepository {
     private final FirebaseFirestore db;
     private final FirebaseAuth auth;
+    private final NotificationRepository notificationRepository;
+    private final android.content.Context context;
 
-    public TransactionRepository() {
+    // Listeners activos: stopListening() los desconecta todos antes de invalidar la sesión.
+    private final List<ListenerRegistration> activeListeners = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    public TransactionRepository(android.content.Context context, AuthRepository authRepository) {
         this.db = FirebaseFirestore.getInstance();
         this.auth = FirebaseAuth.getInstance();
+        this.notificationRepository = new NotificationRepository();
+        this.context = context.getApplicationContext();
+        authRepository.registerPreSignOutCleanup(this::stopListening);
+    }
+
+    public void stopListening() {
+        for (ListenerRegistration reg : activeListeners) {
+            reg.remove();
+        }
+        activeListeners.clear();
     }
 
     public interface Callback {
@@ -46,20 +66,43 @@ public class TransactionRepository {
         DocumentReference accountRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS).document(transaction.getAccountId());
 
         db.runTransaction(firestoreTransaction -> {
-            Account account = firestoreTransaction.get(accountRef).toObject(Account.class);
-            if (account == null) throw new RuntimeException("Account not found");
+                    Account account = firestoreTransaction.get(accountRef).toObject(Account.class);
+                    if (account == null) throw new RuntimeException("Account not found");
 
-            double amount = transaction.getAmount();
-            double balanceChange = "income".equals(transaction.getType()) ? amount : -amount;
-            
-            account.setCurrentBalance(account.getCurrentBalance() + balanceChange);
-            
-            firestoreTransaction.set(transactionRef, transaction);
-            firestoreTransaction.update(accountRef, "currentBalance", account.getCurrentBalance());
-            
-            return null;
-        }).addOnSuccessListener(result -> callback.onResult(new Result.Success<>(true)))
-          .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+                    double amount = transaction.getAmount();
+                    double balanceChange = "income".equals(transaction.getType()) ? amount : -amount;
+
+                    account.setCurrentBalance(account.getCurrentBalance() + balanceChange);
+
+                    firestoreTransaction.set(transactionRef, transaction);
+                    firestoreTransaction.update(accountRef, "currentBalance", account.getCurrentBalance());
+
+                    return null;
+                }).addOnSuccessListener(result -> {
+                    emitTransactionNotification(familyId, transaction);
+                    callback.onResult(new Result.Success<>(true));
+                })
+                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+    }
+
+    private void emitTransactionNotification(String familyId, Transaction transaction) {
+        Notification notification = new Notification();
+        notification.setType("new_transaction");
+        String title = "income".equals(transaction.getType())
+                ? context.getString(R.string.notif_new_income)
+                : context.getString(R.string.notif_new_expense);
+        notification.setTitle(title);
+        notification.setBody(transaction.getDescription() + ": " + transaction.getAmount());
+        notification.setCreatedBy(transaction.getCreatedBy());
+        notification.setCreatedAt(Timestamp.now());
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("transactionId", transaction.getId());
+        payload.put("amount", transaction.getAmount());
+        payload.put("type", transaction.getType());
+        notification.setPayload(payload);
+
+        notificationRepository.addNotification(familyId, notification);
     }
 
     public void updateTransaction(String familyId, Transaction oldTransaction, Transaction newTransaction, Callback callback) {
@@ -71,38 +114,38 @@ public class TransactionRepository {
         DocumentReference newAccountRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS).document(newTransaction.getAccountId());
 
         db.runTransaction(firestoreTransaction -> {
-            // Revert old transaction balance
-            Account oldAccount = firestoreTransaction.get(oldAccountRef).toObject(Account.class);
-            if (oldAccount == null) throw new RuntimeException("Old account not found");
-            
-            double oldAmount = oldTransaction.getAmount();
-            double oldBalanceRevert = "income".equals(oldTransaction.getType()) ? -oldAmount : oldAmount;
-            oldAccount.setCurrentBalance(oldAccount.getCurrentBalance() + oldBalanceRevert);
+                    // Revert old transaction balance
+                    Account oldAccount = firestoreTransaction.get(oldAccountRef).toObject(Account.class);
+                    if (oldAccount == null) throw new RuntimeException("Old account not found");
 
-            if (oldTransaction.getAccountId().equals(newTransaction.getAccountId())) {
-                // Same account
-                double newAmount = newTransaction.getAmount();
-                double newBalanceChange = "income".equals(newTransaction.getType()) ? newAmount : -newAmount;
-                oldAccount.setCurrentBalance(oldAccount.getCurrentBalance() + newBalanceChange);
-                
-                firestoreTransaction.update(oldAccountRef, "currentBalance", oldAccount.getCurrentBalance());
-            } else {
-                // Different account
-                Account newAccount = firestoreTransaction.get(newAccountRef).toObject(Account.class);
-                if (newAccount == null) throw new RuntimeException("New account not found");
-                
-                double newAmount = newTransaction.getAmount();
-                double newBalanceChange = "income".equals(newTransaction.getType()) ? newAmount : -newAmount;
-                newAccount.setCurrentBalance(newAccount.getCurrentBalance() + newBalanceChange);
+                    double oldAmount = oldTransaction.getAmount();
+                    double oldBalanceRevert = "income".equals(oldTransaction.getType()) ? -oldAmount : oldAmount;
+                    oldAccount.setCurrentBalance(oldAccount.getCurrentBalance() + oldBalanceRevert);
 
-                firestoreTransaction.update(oldAccountRef, "currentBalance", oldAccount.getCurrentBalance());
-                firestoreTransaction.update(newAccountRef, "currentBalance", newAccount.getCurrentBalance());
-            }
+                    if (oldTransaction.getAccountId().equals(newTransaction.getAccountId())) {
+                        // Same account
+                        double newAmount = newTransaction.getAmount();
+                        double newBalanceChange = "income".equals(newTransaction.getType()) ? newAmount : -newAmount;
+                        oldAccount.setCurrentBalance(oldAccount.getCurrentBalance() + newBalanceChange);
 
-            firestoreTransaction.set(transactionRef, newTransaction);
-            return null;
-        }).addOnSuccessListener(result -> callback.onResult(new Result.Success<>(true)))
-          .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+                        firestoreTransaction.update(oldAccountRef, "currentBalance", oldAccount.getCurrentBalance());
+                    } else {
+                        // Different account
+                        Account newAccount = firestoreTransaction.get(newAccountRef).toObject(Account.class);
+                        if (newAccount == null) throw new RuntimeException("New account not found");
+
+                        double newAmount = newTransaction.getAmount();
+                        double newBalanceChange = "income".equals(newTransaction.getType()) ? newAmount : -newAmount;
+                        newAccount.setCurrentBalance(newAccount.getCurrentBalance() + newBalanceChange);
+
+                        firestoreTransaction.update(oldAccountRef, "currentBalance", oldAccount.getCurrentBalance());
+                        firestoreTransaction.update(newAccountRef, "currentBalance", newAccount.getCurrentBalance());
+                    }
+
+                    firestoreTransaction.set(transactionRef, newTransaction);
+                    return null;
+                }).addOnSuccessListener(result -> callback.onResult(new Result.Success<>(true)))
+                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
 
     public void deleteTransaction(String familyId, Transaction transaction, Callback callback) {
@@ -110,20 +153,20 @@ public class TransactionRepository {
         DocumentReference accountRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS).document(transaction.getAccountId());
 
         db.runTransaction(firestoreTransaction -> {
-            Account account = firestoreTransaction.get(accountRef).toObject(Account.class);
-            if (account == null) throw new RuntimeException("Account not found");
+                    Account account = firestoreTransaction.get(accountRef).toObject(Account.class);
+                    if (account == null) throw new RuntimeException("Account not found");
 
-            double amount = transaction.getAmount();
-            double balanceRevert = "income".equals(transaction.getType()) ? -amount : amount;
-            
-            account.setCurrentBalance(account.getCurrentBalance() + balanceRevert);
-            
-            firestoreTransaction.delete(transactionRef);
-            firestoreTransaction.update(accountRef, "currentBalance", account.getCurrentBalance());
-            
-            return null;
-        }).addOnSuccessListener(result -> callback.onResult(new Result.Success<>(true)))
-          .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+                    double amount = transaction.getAmount();
+                    double balanceRevert = "income".equals(transaction.getType()) ? -amount : amount;
+
+                    account.setCurrentBalance(account.getCurrentBalance() + balanceRevert);
+
+                    firestoreTransaction.delete(transactionRef);
+                    firestoreTransaction.update(accountRef, "currentBalance", account.getCurrentBalance());
+
+                    return null;
+                }).addOnSuccessListener(result -> callback.onResult(new Result.Success<>(true)))
+                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
 
     public LiveData<List<Transaction>> getTransactions(String familyId) {
@@ -132,7 +175,7 @@ public class TransactionRepository {
 
     public LiveData<List<Transaction>> getTransactions(String familyId, String accountId, String categoryId, String type, String paymentMethod, Timestamp startDate, Timestamp endDate) {
         MutableLiveData<List<Transaction>> liveData = new MutableLiveData<>();
-        
+
         Query query = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.TRANSACTIONS)
                 .orderBy("date", Query.Direction.DESCENDING)
                 .orderBy("createdAt", Query.Direction.DESCENDING);
@@ -156,7 +199,7 @@ public class TransactionRepository {
             query = query.whereLessThanOrEqualTo("date", endDate);
         }
 
-        query.addSnapshotListener((value, error) -> {
+        ListenerRegistration reg = query.addSnapshotListener((value, error) -> {
             if (error != null || value == null) {
                 android.util.Log.e("TransactionRepository", "Error getting transactions", error);
                 return;
@@ -167,6 +210,7 @@ public class TransactionRepository {
             }
             liveData.setValue(transactions);
         });
+        activeListeners.add(reg);
         return liveData;
     }
 }

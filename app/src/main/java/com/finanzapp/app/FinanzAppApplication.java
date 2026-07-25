@@ -5,6 +5,7 @@ import com.finanzapp.app.data.repository.AuthRepository;
 import com.finanzapp.app.data.repository.FamilyRepository;
 import com.finanzapp.app.data.repository.CategoryRepository;
 import com.finanzapp.app.data.repository.AccountRepository;
+import com.finanzapp.app.data.repository.NotificationRepository;
 import com.finanzapp.app.data.repository.TransactionRepository;
 
 public class FinanzAppApplication extends Application {
@@ -13,7 +14,21 @@ public class FinanzAppApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        appContainer = new AppContainer();
+        appContainer = new AppContainer(this);
+
+        // Initialize Security Provider to avoid DynamiteModule/ProviderInstaller warnings
+        // and ensure latest security patches are applied for network operations.
+        com.google.android.gms.security.ProviderInstaller.installIfNeededAsync(this, new com.google.android.gms.security.ProviderInstaller.ProviderInstallListener() {
+            @Override
+            public void onProviderInstalled() {
+                android.util.Log.d("FinanzApp", "Security provider installed successfully.");
+            }
+
+            @Override
+            public void onProviderInstallFailed(int errorCode, android.content.Intent recoveryIntent) {
+                android.util.Log.w("FinanzApp", "Security provider installation failed: " + errorCode);
+            }
+        });
     }
 
     public AppContainer getAppContainer() {
@@ -26,13 +41,15 @@ public class FinanzAppApplication extends Application {
         private final CategoryRepository categoryRepository;
         private final AccountRepository accountRepository;
         private final TransactionRepository transactionRepository;
+        private final NotificationRepository notificationRepository;
 
-        public AppContainer() {
+        public AppContainer(android.content.Context context) {
             authRepository = new AuthRepository();
-            familyRepository = new FamilyRepository();
-            categoryRepository = new CategoryRepository();
-            accountRepository = new AccountRepository();
-            transactionRepository = new TransactionRepository();
+            familyRepository = new FamilyRepository(authRepository);
+            categoryRepository = new CategoryRepository(authRepository);
+            accountRepository = new AccountRepository(authRepository);
+            notificationRepository = new NotificationRepository();
+            transactionRepository = new TransactionRepository(context, authRepository);
         }
 
         public AuthRepository getAuthRepository() {
@@ -50,5 +67,7 @@ public class FinanzAppApplication extends Application {
         public AccountRepository getAccountRepository() { return accountRepository; }
 
         public TransactionRepository getTransactionRepository() { return transactionRepository; }
+
+        public NotificationRepository getNotificationRepository() { return notificationRepository; }
     }
 }

@@ -6,13 +6,16 @@ import androidx.lifecycle.ViewModel;
 
 import com.finanzapp.app.data.model.Invitation;
 import com.finanzapp.app.data.model.Member;
+import com.finanzapp.app.data.repository.AuthRepository;
 import com.finanzapp.app.data.repository.FamilyRepository;
 import com.finanzapp.app.util.Result;
 import com.finanzapp.app.util.SingleLiveEvent;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.List;
 
 public class FamilyViewModel extends ViewModel {
+    private final AuthRepository authRepository;
     private final FamilyRepository familyRepository;
     private final MutableLiveData<Result<List<Invitation>>> joinRequests = new MutableLiveData<>();
     private final SingleLiveEvent<Result<Boolean>> approvalResult = new SingleLiveEvent<>();
@@ -23,8 +26,17 @@ public class FamilyViewModel extends ViewModel {
     private final MutableLiveData<Result<com.finanzapp.app.data.model.Family>> familyData = new MutableLiveData<>();
     private final MutableLiveData<Result<Member>> currentMemberData = new MutableLiveData<>();
 
-    public FamilyViewModel(FamilyRepository familyRepository) {
+    private ListenerRegistration joinRequestsListener;
+    private ListenerRegistration membersListener;
+    private ListenerRegistration pendingInvitationsListener;
+
+    // Referencia estable para poder registrar/desregistrar el mismo Runnable
+    private final Runnable signOutCleanup = this::stopListening;
+
+    public FamilyViewModel(AuthRepository authRepository, FamilyRepository familyRepository) {
+        this.authRepository = authRepository;
         this.familyRepository = familyRepository;
+        authRepository.registerPreSignOutCleanup(signOutCleanup);
     }
 
     public LiveData<Result<List<Invitation>>> getJoinRequests() {
@@ -61,7 +73,8 @@ public class FamilyViewModel extends ViewModel {
 
     public void fetchJoinRequests(String familyId) {
         joinRequests.setValue(new Result.Loading<>());
-        familyRepository.getPendingJoinRequests(familyId, joinRequests::postValue);
+        if (joinRequestsListener != null) joinRequestsListener.remove();
+        joinRequestsListener = familyRepository.getPendingJoinRequests(familyId, joinRequests::postValue);
     }
 
     public void approveRequest(String familyId, Invitation invitation) {
@@ -81,17 +94,19 @@ public class FamilyViewModel extends ViewModel {
 
     public void fetchMembers(String familyId) {
         members.setValue(new Result.Loading<>());
-        familyRepository.getMembers(familyId, members::postValue);
+        if (membersListener != null) membersListener.remove();
+        membersListener = familyRepository.getMembers(familyId, members::postValue);
     }
 
     public void fetchPendingInvitations(String familyId) {
         pendingInvitations.setValue(new Result.Loading<>());
-        familyRepository.getPendingEmailInvitations(familyId, pendingInvitations::postValue);
+        if (pendingInvitationsListener != null) pendingInvitationsListener.remove();
+        pendingInvitationsListener = familyRepository.getPendingEmailInvitations(familyId, pendingInvitations::postValue);
     }
 
     public void cancelInvitation(String familyId, String invitationId) {
         familyRepository.deleteInvitation(familyId, invitationId, result -> {
-            // We don't necessarily need to post to a specific result LiveData if the listener 
+            // We don't necessarily need to post to a specific result LiveData if the listener
             // on getPendingEmailInvitations will trigger an update automatically
         });
     }
@@ -108,7 +123,8 @@ public class FamilyViewModel extends ViewModel {
 
     public void fetchCurrentMember(String familyId, String uid) {
         currentMemberData.setValue(new Result.Loading<>());
-        familyRepository.getMembers(familyId, result -> {
+        if (membersListener != null) membersListener.remove();
+        membersListener = familyRepository.getMembers(familyId, result -> {
             if (result instanceof Result.Success) {
                 List<Member> memberList = ((Result.Success<List<Member>>) result).getData();
                 for (Member m : memberList) {
@@ -137,5 +153,27 @@ public class FamilyViewModel extends ViewModel {
     public void removeMember(String familyId, String memberUid) {
         approvalResult.setValue(new Result.Loading<>());
         familyRepository.removeMember(familyId, memberUid, approvalResult::postValue);
+    }
+
+    private void stopListening() {
+        if (joinRequestsListener != null) {
+            joinRequestsListener.remove();
+            joinRequestsListener = null;
+        }
+        if (membersListener != null) {
+            membersListener.remove();
+            membersListener = null;
+        }
+        if (pendingInvitationsListener != null) {
+            pendingInvitationsListener.remove();
+            pendingInvitationsListener = null;
+        }
+    }
+
+    @Override
+    protected void onCleared() {
+        super.onCleared();
+        authRepository.unregisterPreSignOutCleanup(signOutCleanup);
+        stopListening();
     }
 }

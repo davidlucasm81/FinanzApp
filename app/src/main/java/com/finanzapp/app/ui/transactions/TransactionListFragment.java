@@ -101,9 +101,7 @@ public class TransactionListFragment extends Fragment {
         }
 
         FinanzAppApplication.AppContainer appContainer = ((FinanzAppApplication) requireActivity().getApplication()).getAppContainer();
-        ViewModelFactory factory = new ViewModelFactory(appContainer.getAuthRepository(), appContainer.getFamilyRepository(),
-                appContainer.getAccountRepository(), appContainer.getCategoryRepository(),
-                appContainer.getTransactionRepository());
+        ViewModelFactory factory = new ViewModelFactory(appContainer);
         viewModel = new ViewModelProvider(requireActivity(), factory).get(TransactionViewModel.class);
 
         RecyclerView rvTransactions = view.findViewById(R.id.rv_transactions);

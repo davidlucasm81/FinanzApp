@@ -160,6 +160,10 @@ service cloud.firestore {
       match /transactions/{transactionId} {
         allow read, write: if isMember(familyId);
       }
+
+      match /notifications/{notificationId} {
+        allow read, write: if isMember(familyId);
+      }
     }
 
     // 3. Collection Group rules

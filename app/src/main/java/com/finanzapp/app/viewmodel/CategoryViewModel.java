@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.finanzapp.app.data.model.Category;
+import com.finanzapp.app.data.repository.AuthRepository;
 import com.finanzapp.app.data.repository.CategoryRepository;
 import com.finanzapp.app.util.Result;
 import com.finanzapp.app.util.SingleLiveEvent;
@@ -11,11 +12,28 @@ import com.finanzapp.app.util.SingleLiveEvent;
 import java.util.List;
 
 public class CategoryViewModel extends ViewModel {
+    private final AuthRepository authRepository;
     private final CategoryRepository repository;
     private final SingleLiveEvent<Result<Boolean>> operationResult = new SingleLiveEvent<>();
 
-    public CategoryViewModel(CategoryRepository repository) {
+    // Referencia estable para poder registrar/desregistrar el mismo Runnable
+    private final Runnable signOutCleanup = this::stopListening;
+
+    public CategoryViewModel(AuthRepository authRepository, CategoryRepository repository) {
+        this.authRepository = authRepository;
         this.repository = repository;
+        authRepository.registerPreSignOutCleanup(signOutCleanup);
+    }
+
+    private void stopListening() {
+        repository.stopListening();
+    }
+
+    @Override
+    protected void onCleared() {
+        super.onCleared();
+        authRepository.unregisterPreSignOutCleanup(signOutCleanup);
+        stopListening();
     }
 
     public LiveData<List<Category>> getCategories(String familyId) {

@@ -2,6 +2,7 @@ package com.finanzapp.app.viewmodel;
 
 import androidx.core.util.Pair;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
@@ -45,9 +46,9 @@ import java.util.TreeMap;
 public class StatisticsViewModel extends ViewModel {
     private final AuthRepository authRepository;
     private final FamilyRepository familyRepository;
-    private final AccountRepository accountRepository = new AccountRepository();
-    private final TransactionRepository transactionRepository = new TransactionRepository();
-    private final CategoryRepository categoryRepository = new CategoryRepository();
+    private final AccountRepository accountRepository;
+    private final TransactionRepository transactionRepository;
+    private final CategoryRepository categoryRepository;
 
     private final MutableLiveData<String> familyIdSource = new MutableLiveData<>();
     private final LiveData<Result<Family>> familyData;
@@ -69,14 +70,26 @@ public class StatisticsViewModel extends ViewModel {
     private final MutableLiveData<List<DashboardCategorySummary>> categoryDistribution = new MutableLiveData<>(new ArrayList<>());
     private final MutableLiveData<List<Category>> allCategories = new MutableLiveData<>(new ArrayList<>());
 
+    private final MediatorLiveData<Void> statsMediator = new MediatorLiveData<>();
+    private final androidx.lifecycle.Observer<Void> statsObserver = v -> {};
+
     private ListenerRegistration userListener;
     private Set<String> activeAccountIds = new HashSet<>();
     private List<Transaction> allTransactions = new ArrayList<>();
     private List<Category> latestCategories = new ArrayList<>();
 
-    public StatisticsViewModel(AuthRepository authRepository, FamilyRepository familyRepository) {
+    // Referencia estable para poder registrar/desregistrar el mismo Runnable
+    private final Runnable signOutCleanup = this::stopListening;
+
+    public StatisticsViewModel(AuthRepository authRepository, FamilyRepository familyRepository, 
+                               AccountRepository accountRepository, CategoryRepository categoryRepository,
+                               TransactionRepository transactionRepository) {
         this.authRepository = authRepository;
         this.familyRepository = familyRepository;
+        this.accountRepository = accountRepository;
+        this.categoryRepository = categoryRepository;
+        this.transactionRepository = transactionRepository;
+        authRepository.registerPreSignOutCleanup(signOutCleanup);
 
         // Default range: current month
         LocalDate firstOfMonth = LocalDate.now().withDayOfMonth(1);
@@ -87,7 +100,7 @@ public class StatisticsViewModel extends ViewModel {
 
         dateRange.setValue(new Pair<>(start, end));
 
-        // Reactive architecture to avoid leaks and observeForever
+        // Reactive architecture to avoid leaks
         familyData = Transformations.switchMap(familyIdSource, id -> {
             MutableLiveData<Result<Family>> live = new MutableLiveData<>();
             familyRepository.getFamily(id, live::postValue);
@@ -99,20 +112,15 @@ public class StatisticsViewModel extends ViewModel {
         transactionsSource = Transformations.switchMap(familyIdSource, id -> {
             Pair<Long, Long> range = dateRange.getValue();
             if (range == null) {
-                // If no range, limit to last 12 months for evolution chart
                 LocalDate startLimit = LocalDate.now().minusMonths(11).withDayOfMonth(1);
                 ZonedDateTime zdt = startLimit.atStartOfDay(ZoneId.systemDefault());
                 Timestamp timestamp = new Timestamp(Date.from(zdt.toInstant()));
                 return transactionRepository.getTransactions(id, null, null, null, null, timestamp, null);
             } else {
-                // Fetch current range PLUS enough for previous comparison period
-                // We shift back by the same amount of time. Simplest is same duration or minusMonths(1)
                 LocalDate startDate = Instant.ofEpochMilli(range.first).atZone(ZoneId.systemDefault()).toLocalDate();
                 LocalDate compareStart = startDate.minusMonths(1).withDayOfMonth(1);
-                
                 ZonedDateTime zdt = compareStart.atStartOfDay(ZoneId.systemDefault());
                 Timestamp timestamp = new Timestamp(Date.from(zdt.toInstant()));
-                // We don't cap the end, or we can cap it at range.second
                 return transactionRepository.getTransactions(id, null, null, null, null, timestamp, null);
             }
         });
@@ -121,7 +129,7 @@ public class StatisticsViewModel extends ViewModel {
     }
 
     private void setupObservers() {
-        accountsSource.observeForever(accounts -> {
+        statsMediator.addSource(accountsSource, accounts -> {
             if (accounts != null) {
                 Set<String> activeIds = new HashSet<>();
                 for (Account account : accounts) {
@@ -134,16 +142,19 @@ public class StatisticsViewModel extends ViewModel {
             }
         });
 
-        categoriesSource.observeForever(categories -> {
+        statsMediator.addSource(categoriesSource, categories -> {
             latestCategories = categories != null ? categories : new ArrayList<>();
             allCategories.postValue(latestCategories);
             recomputeStatistics();
         });
 
-        transactionsSource.observeForever(transactions -> {
+        statsMediator.addSource(transactionsSource, transactions -> {
             allTransactions = transactions != null ? transactions : new ArrayList<>();
             recomputeStatistics();
         });
+        
+        // MediatorLiveData must be observed to be active
+        statsMediator.observeForever(statsObserver);
     }
 
     public LiveData<Result<Family>> getFamilyData() { return familyData; }
@@ -171,23 +182,6 @@ public class StatisticsViewModel extends ViewModel {
         }
     }
 
-    public void init() {
-        FirebaseUser currentUser = authRepository.getCurrentUser().getValue();
-        if (currentUser == null) return;
-
-        if (userListener == null) {
-            userListener = FirebaseFirestore.getInstance().collection(FirestorePaths.USERS).document(currentUser.getUid())
-                    .addSnapshotListener((value, error) -> {
-                        if (error != null || value == null) return;
-                        User user = value.toObject(User.class);
-                        if (user != null && user.getFamilyId() != null) {
-                            userData.postValue(new Result.Success<>(user));
-                            familyIdSource.postValue(user.getFamilyId());
-                        }
-                    });
-        }
-    }
-
     private void recomputeStatistics() {
         if (activeAccountIds.isEmpty()) {
             return;
@@ -209,13 +203,10 @@ public class StatisticsViewModel extends ViewModel {
             rangeStart = Instant.ofEpochMilli(range.first).atZone(ZoneId.systemDefault()).toLocalDate();
             rangeEnd = Instant.ofEpochMilli(range.second).atZone(ZoneId.systemDefault()).toLocalDate();
             
-            // Comparison period: shift back by 1 month (or same duration)
-            // Let's use 1 month shift as it's common for monthly reviews
             compareStart = rangeStart.minusMonths(1);
             compareEnd = rangeEnd.minusMonths(1);
             hasComparison = true;
         } else {
-            // Full history
             rangeStart = LocalDate.MIN;
             rangeEnd = LocalDate.MAX;
             compareStart = null;
@@ -227,13 +218,12 @@ public class StatisticsViewModel extends ViewModel {
         double previousIncome = 0;
         double previousExpense = 0;
 
-        Map<String, MonthlySummaryBuilder> monthlyMap = new TreeMap<>(); // Key: YYYY-MM
+        Map<String, MonthlySummaryBuilder> monthlyMap = new TreeMap<>();
         Map<String, Double> currentCategoryTotals = new HashMap<>();
 
         for (Transaction t : activeTransactions) {
             LocalDate date = t.getDate().toDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
             
-            // Current period totals
             if (!date.isBefore(rangeStart) && !date.isAfter(rangeEnd)) {
                 if ("income".equals(t.getType())) {
                     currentIncome += t.getAmount();
@@ -245,7 +235,6 @@ public class StatisticsViewModel extends ViewModel {
                     }
                 }
             } 
-            // Previous period totals for comparison
             else if (hasComparison && !date.isBefore(compareStart) && !date.isAfter(compareEnd)) {
                 if ("income".equals(t.getType())) {
                     previousIncome += t.getAmount();
@@ -254,7 +243,6 @@ public class StatisticsViewModel extends ViewModel {
                 }
             }
 
-            // Monthly Evolution (always based on month labels)
             String monthKey = date.getYear() + "-" + String.format("%02d", date.getMonthValue());
             String monthLabel = date.getMonth().getDisplayName(TextStyle.SHORT, Locale.getDefault()) + " " + (date.getYear() % 100);
             
@@ -270,7 +258,6 @@ public class StatisticsViewModel extends ViewModel {
         currentMonthIncome.postValue(currentIncome);
         currentMonthExpense.postValue(currentExpense);
         
-        // Variation labels
         if (hasComparison) {
             if (previousIncome > 0) {
                 incomeVariationPercentage.postValue(((currentIncome - previousIncome) / previousIncome) * 100);
@@ -288,14 +275,12 @@ public class StatisticsViewModel extends ViewModel {
             variationPercentage.postValue(null);
         }
 
-        // Evolution list
         List<MonthlySummary> evolution = new ArrayList<>();
         for (MonthlySummaryBuilder b : monthlyMap.values()) {
             evolution.add(new MonthlySummary(b.label, b.income, b.expense));
         }
         monthlyEvolution.postValue(evolution);
 
-        // Category distribution
         List<DashboardCategorySummary> distribution = new ArrayList<>();
         Map<String, Category> catMap = new HashMap<>();
         for (Category c : latestCategories) catMap.put(c.getId(), c);
@@ -320,9 +305,45 @@ public class StatisticsViewModel extends ViewModel {
         MonthlySummaryBuilder(String label) { this.label = label; }
     }
 
+    public void init() {
+        FirebaseUser currentUser = authRepository.getCurrentUser().getValue();
+        if (currentUser == null) return;
+
+        if (userListener == null) {
+            userListener = FirebaseFirestore.getInstance().collection(FirestorePaths.USERS).document(currentUser.getUid())
+                    .addSnapshotListener((value, error) -> {
+                        if (error != null || value == null) {
+                            // Si falla por permisos al cerrar sesión, no propagamos error si ya no hay usuario
+                            if (authRepository.getCurrentUser().getValue() != null) {
+                                userData.postValue(new Result.Error<>(error != null ? error : new Exception("User not found")));
+                            }
+                            return;
+                        }
+                        User user = value.toObject(User.class);
+                        if (user != null && user.getFamilyId() != null) {
+                            userData.postValue(new Result.Success<>(user));
+                            familyIdSource.postValue(user.getFamilyId());
+                        }
+                    });
+        }
+    }
+
+    private void stopListening() {
+        if (userListener != null) {
+            userListener.remove();
+            userListener = null;
+        }
+    }
+
     @Override
     protected void onCleared() {
         super.onCleared();
-        if (userListener != null) userListener.remove();
+        authRepository.unregisterPreSignOutCleanup(signOutCleanup);
+        // Important: MediatorLiveData.observeForever must be removed
+        statsMediator.removeObserver(statsObserver);
+        statsMediator.removeSource(accountsSource);
+        statsMediator.removeSource(categoriesSource);
+        statsMediator.removeSource(transactionsSource);
+        stopListening();
     }
 }

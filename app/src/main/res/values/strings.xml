@@ -23,6 +23,11 @@
     <string name="dashboard_placeholder">Tus cuentas y movimientos aparecerán aquí</string>
     <string name="amount_placeholder">0,00</string>
     <string name="desc_settings">Ajustes</string>
+    <string name="desc_edit_account">Editar cuenta</string>
+    <string name="desc_delete_account">Eliminar cuenta</string>
+    <string name="desc_import_csv">Importar CSV</string>
+    <string name="label_import_csv">Importar CSV</string>
+    <string name="desc_archive_account">Archivar/Desarchivar</string>
     <string name="family_label">Familia</string>
     <string name="invite_code_label">Código de invitación</string>
     <string name="copy_hint">Toca para copiar</string>
@@ -92,21 +97,21 @@
     <string name="privacy_consent_checkbox">He leído y acepto la Política de Privacidad</string>
     <string name="privacy_consent_continue">Continuar</string>
     <string name="privacy_policy_text">&lt;b&gt;POLÍTICA DE PRIVACIDAD DE FINANZAPP&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;
-        En &lt;b&gt;FinanzApp&lt;/b&gt;, la privacidad de tu familia es nuestra prioridad. Esta aplicación ha sido diseñada bajo principios de transparencia y seguridad.&lt;br/&gt;&lt;br/&gt;
+        En &lt;b&gt;FinanzApp&lt;/b&gt;, la privacidad de tu familia es nuestra prioridad. Esta aplicación ha sido diseñada bajo principios de transparencia y seguridad conforme al RGPD.&lt;br/&gt;&lt;br/&gt;
         &lt;b&gt;1. DATOS QUE RECOPILAMOS&lt;/b&gt;&lt;br/&gt;
         Recopilamos datos básicos de tu perfil de Google (nombre, email y foto) para identificarte en tu unidad familiar. También almacenamos los movimientos financieros y cuentas que registres de forma voluntaria.&lt;br/&gt;&lt;br/&gt;
         &lt;b&gt;2. FINALIDAD DEL TRATAMIENTO&lt;/b&gt;&lt;br/&gt;
         Tus datos se utilizan exclusivamente para permitir el funcionamiento de las finanzas compartidas. No vendemos ni compartimos tus datos con terceros fuera de los servicios de Google Cloud necesarios para la app.&lt;br/&gt;&lt;br/&gt;
         &lt;b&gt;3. SEGURIDAD Y ALMACENAMIENTO&lt;/b&gt;&lt;br/&gt;
-        La información se almacena en &lt;b&gt;Google Cloud (Firestore)&lt;/b&gt;, que cuenta con avanzados protocolos de cifrado en reposo y en tránsito. El acceso está restringido únicamente a los miembros de tu familia mediante reglas de seguridad validadas en el servidor.&lt;br/&gt;&lt;br/&gt;
+        La información se almacena en &lt;b&gt;Google Cloud (Firestore)&lt;/b&gt;, en la región &lt;b&gt;europe-southwest1 (Madrid)&lt;/b&gt;, que cuenta con avanzados protocolos de cifrado en reposo y en tránsito. El acceso está restringido únicamente a los miembros de tu familia mediante reglas de seguridad validadas en el servidor.&lt;br/&gt;&lt;br/&gt;
         &lt;b&gt;4. TUS DERECHOS&lt;/b&gt;&lt;br/&gt;
-        Como usuario, tienes derecho a acceso, rectificación, supresión, portabilidad, limitación y oposición sobre tus datos. En concreto, desde la propia app puedes:&lt;br/&gt;
+        Como usuario, tienes derecho a acceso, rectificación, supresión (Derecho al Olvido), portabilidad, limitación y oposición sobre tus datos. En concreto, desde la propia app puedes:&lt;br/&gt;
         • &lt;b&gt;Acceso:&lt;/b&gt; Consultar tus datos en cualquier momento.&lt;br/&gt;
         • &lt;b&gt;Rectificación:&lt;/b&gt; Corregir tu nombre o foto desde tu perfil de Google.&lt;br/&gt;
         • &lt;b&gt;Portabilidad:&lt;/b&gt; Descargar tu información en formato JSON desde Ajustes.&lt;br/&gt;
-        • &lt;b&gt;Supresión:&lt;/b&gt; Eliminar tu cuenta y todos tus datos asociados de forma permanente.&lt;br/&gt;
-        Para ejercer la limitación u oposición del tratamiento, o cualquier otra solicitud, escríbenos a: davidlucasmora81@gmail.com.&lt;br/&gt;&lt;br/&gt;
-        Puedes consultar la política completa, con la identidad del responsable del tratamiento y todos los detalles legales, en: &lt;b&gt;[URL pública de la Política de Privacidad una vez publicada]&lt;/b&gt;.&lt;br/&gt;&lt;br/&gt;
+        • &lt;b&gt;Supresión / Derecho al Olvido:&lt;/b&gt; Eliminar tu cuenta y todos tus datos asociados de forma permanente y definitiva desde Ajustes.&lt;br/&gt;
+        Para ejercer cualquier otra solicitud, escríbenos a: davidlucasmora81@gmail.com.&lt;br/&gt;&lt;br/&gt;
+        Puedes consultar la política completa y actualizada en: &lt;b&gt;https://github.com/davidlucasm81/FinanzApp/blob/master/POLITICA_PRIVACIDAD.md&lt;/b&gt;.&lt;br/&gt;&lt;br/&gt;
         Al continuar, confirmas que has leído y aceptas que FinanzApp procese tus datos según estos términos.</string>
     <string name="privacy_consent_content_description">Icono de privacidad</string>
     <string name="btn_sign_out">Cerrar sesión</string>
@@ -287,4 +292,13 @@
     <string name="label_add_account_title">Añadir cuenta</string>
     <string name="label_borrar">Borrar</string>
     <string name="label_expulsar">Expulsar</string>
+    <string name="ok">Aceptar</string>
+    <string name="error_field_required">Campo obligatorio</string>
+    <string name="error_name_required">Nombre obligatorio</string>
+    <string name="error_category_type_required">Selecciona al menos un tipo</string>
+    <string name="label_pending_request">Solicitud pendiente</string>
+    <string name="notif_new_income">Nuevo ingreso</string>
+    <string name="notif_new_expense">Nuevo gasto</string>
+    <string name="label_notifications_in_app">Notificaciones in-app</string>
+    <string name="notif_new_transaction_title">Nuevo movimiento añadido</string>
 </resources>

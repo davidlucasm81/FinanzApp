@@ -6,6 +6,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -39,6 +40,7 @@ public class ManageCategoriesFragment extends Fragment {
     private CategoryViewModel viewModel;
     private CategoryAdapter adapter;
     private String familyId;
+    private ProgressBar pbLoading;
 
     @Nullable
     @Override
@@ -51,12 +53,12 @@ public class ManageCategoriesFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         FinanzAppApplication.AppContainer appContainer = ((FinanzAppApplication) requireActivity().getApplication()).getAppContainer();
-        ViewModelFactory factory = new ViewModelFactory(appContainer.getAuthRepository(), appContainer.getFamilyRepository(), 
-                                                        appContainer.getAccountRepository(), appContainer.getCategoryRepository());
+        ViewModelFactory factory = new ViewModelFactory(appContainer);
         viewModel = new ViewModelProvider(this, factory).get(CategoryViewModel.class);
 
         RecyclerView rvCategories = view.findViewById(R.id.rv_categories);
         FloatingActionButton fabAdd = view.findViewById(R.id.fab_add_category);
+        pbLoading = view.findViewById(R.id.pb_loading);
 
         adapter = new CategoryAdapter(new ArrayList<>(), this::onEditCategory, this::onDeleteCategory);
         rvCategories.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -69,6 +71,7 @@ public class ManageCategoriesFragment extends Fragment {
             }
         });
 
+        pbLoading.setVisibility(View.VISIBLE);
         resolveFamilyId();
     }
 
@@ -81,13 +84,19 @@ public class ManageCategoriesFragment extends Fragment {
                         if (user != null && user.getFamilyId() != null) {
                             familyId = user.getFamilyId();
                             observeCategories();
+                        } else {
+                            pbLoading.setVisibility(View.GONE);
                         }
-                    });
+                    })
+                    .addOnFailureListener(e -> pbLoading.setVisibility(View.GONE));
+        } else {
+            pbLoading.setVisibility(View.GONE);
         }
     }
 
     private void observeCategories() {
         viewModel.getCategories(familyId).observe(getViewLifecycleOwner(), categories -> {
+            pbLoading.setVisibility(View.GONE);
             if (categories != null) {
                 adapter.updateCategories(categories);
                 View emptyState = getView() != null ? getView().findViewById(R.id.ll_empty_state) : null;
@@ -202,9 +211,9 @@ public class ManageCategoriesFragment extends Fragment {
             }
 
             holder.tvType.setText(typeText);
-            
+
             int color = android.graphics.Color.parseColor(category.getColor() != null ? category.getColor() : "#808080");
-            
+
             GradientDrawable gd = new GradientDrawable();
             gd.setShape(GradientDrawable.OVAL);
             gd.setColor(color);

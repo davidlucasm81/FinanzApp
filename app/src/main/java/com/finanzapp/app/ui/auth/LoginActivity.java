@@ -41,7 +41,7 @@ public class LoginActivity extends AppCompatActivity {
         setContentView(binding.getRoot());
 
         FinanzAppApplication.AppContainer container = ((FinanzAppApplication) getApplication()).getAppContainer();
-        ViewModelFactory factory = new ViewModelFactory(container.getAuthRepository(), container.getFamilyRepository());
+        ViewModelFactory factory = new ViewModelFactory(container);
         viewModel = new ViewModelProvider(this, factory).get(AuthViewModel.class);
 
         credentialManager = CredentialManager.create(this);

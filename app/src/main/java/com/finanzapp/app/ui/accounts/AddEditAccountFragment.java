@@ -55,7 +55,7 @@ public class AddEditAccountFragment extends DialogFragment {
         binding = DialogAddEditAccountBinding.inflate(LayoutInflater.from(requireContext()));
 
         FinanzAppApplication.AppContainer appContainer = ((FinanzAppApplication) requireActivity().getApplication()).getAppContainer();
-        ViewModelFactory factory = new ViewModelFactory(appContainer.getAuthRepository(), appContainer.getFamilyRepository(), appContainer.getAccountRepository());
+        ViewModelFactory factory = new ViewModelFactory(appContainer);
         // Use requireParentFragment() to share the ViewModel with AccountListFragment
         viewModel = new ViewModelProvider(requireParentFragment(), factory).get(AccountViewModel.class);
 
@@ -83,7 +83,7 @@ public class AddEditAccountFragment extends DialogFragment {
         String balanceStr = binding.etInitialBalance.getText().toString().trim();
 
         if (name.isEmpty()) {
-            binding.tilName.setError("Campo obligatorio");
+            binding.tilName.setError(getString(R.string.error_field_required));
             return;
         }
 

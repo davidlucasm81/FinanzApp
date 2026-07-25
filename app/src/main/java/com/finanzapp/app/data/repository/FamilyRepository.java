@@ -31,9 +31,20 @@ public class FamilyRepository {
     private final FirebaseFirestore db;
     private final FirebaseAuth auth;
 
-    public FamilyRepository() {
+    // Listeners activos: stopListening() los desconecta todos antes de invalidar la sesión.
+    private final java.util.List<ListenerRegistration> activeListeners = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    public FamilyRepository(AuthRepository authRepository) {
         this.db = FirebaseFirestore.getInstance();
         this.auth = FirebaseAuth.getInstance();
+        authRepository.registerPreSignOutCleanup(this::stopListening);
+    }
+
+    public void stopListening() {
+        for (ListenerRegistration reg : activeListeners) {
+            reg.remove();
+        }
+        activeListeners.clear();
     }
 
     public void createFamily(String name, String currencyCode, FamilyCallback callback) {
@@ -217,8 +228,8 @@ public class FamilyRepository {
         return sb.toString();
     }
 
-    public void getPendingJoinRequests(String familyId, RequestsCallback callback) {
-        db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.INVITATIONS)
+    public ListenerRegistration getPendingJoinRequests(String familyId, RequestsCallback callback) {
+        ListenerRegistration reg = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.INVITATIONS)
                 .whereEqualTo("type", "code_request")
                 .whereEqualTo("status", "pending")
                 .addSnapshotListener((value, error) -> {
@@ -232,10 +243,12 @@ public class FamilyRepository {
                     }
                     callback.onResult(new Result.Success<>(requests));
                 });
+        activeListeners.add(reg);
+        return reg;
     }
 
-    public void getPendingEmailInvitations(String familyId, RequestsCallback callback) {
-        db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.INVITATIONS)
+    public ListenerRegistration getPendingEmailInvitations(String familyId, RequestsCallback callback) {
+        ListenerRegistration reg = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.INVITATIONS)
                 .whereEqualTo("type", "email_invite")
                 .whereEqualTo("status", "pending")
                 .addSnapshotListener((value, error) -> {
@@ -249,6 +262,8 @@ public class FamilyRepository {
                     }
                     callback.onResult(new Result.Success<>(requests));
                 });
+        activeListeners.add(reg);
+        return reg;
     }
 
     public void approveJoinRequest(String familyId, Invitation invitation, ApproveCallback callback) {
@@ -289,7 +304,7 @@ public class FamilyRepository {
         // Phase 7 bis: Add membership for the approved user
         // We need the family name to seed the membership. The invitation doesn't have it,
         // but this method is called by an admin who can fetch it, or we fetch it now.
-        // For simplicity and since batch must be atomic, we'll fetch family name first in the ViewModel 
+        // For simplicity and since batch must be atomic, we'll fetch family name first in the ViewModel
         // OR we fetch it here before starting the batch.
 
         db.collection(FirestorePaths.FAMILIES).document(familyId).get().addOnCompleteListener(familyTask -> {
@@ -510,8 +525,8 @@ public class FamilyRepository {
         void onResult(Result<Invitation> result, String familyId);
     }
 
-    public void getMembers(String familyId, MembersCallback callback) {
-        db.collection(FirestorePaths.getMembersPath(familyId))
+    public ListenerRegistration getMembers(String familyId, MembersCallback callback) {
+        ListenerRegistration reg = db.collection(FirestorePaths.getMembersPath(familyId))
                 .addSnapshotListener((value, error) -> {
                     if (error != null || value == null) {
                         callback.onResult(new Result.Error<>(error != null ? error : new Exception("Empty result")));
@@ -523,6 +538,8 @@ public class FamilyRepository {
                     }
                     callback.onResult(new Result.Success<>(members));
                 });
+        activeListeners.add(reg);
+        return reg;
     }
 
     public void updateFamily(String familyId, String name, String currencyCode, ApproveCallback callback) {
@@ -633,7 +650,7 @@ public class FamilyRepository {
                 batch.update(db.collection(FirestorePaths.getMembershipsPath(successor.getUid())).document(familyId), "role", "owner");
             }
         } else if ("admin".equals(myRole)) {
-            // If I was the only admin/owner left, promote someone? 
+            // If I was the only admin/owner left, promote someone?
             // Actually, if owner exists, no problem. If no owner (shouldn't happen) and I'm last admin, promote.
             boolean ownerOrAdminExists = false;
             for (Member other : others) {
@@ -855,8 +872,8 @@ public class FamilyRepository {
         });
     }
 
-    public void getUserFamilies(String uid, MembershipsCallback callback) {
-        db.collection(FirestorePaths.getMembershipsPath(uid))
+    public ListenerRegistration getUserFamilies(String uid, MembershipsCallback callback) {
+        ListenerRegistration reg = db.collection(FirestorePaths.getMembershipsPath(uid))
                 .addSnapshotListener((value, error) -> {
                     if (error != null || value == null) {
                         callback.onResult(new Result.Error<>(error));
@@ -868,6 +885,8 @@ public class FamilyRepository {
                     }
                     callback.onResult(new Result.Success<>(memberships));
                 });
+        activeListeners.add(reg);
+        return reg;
     }
 
     public void switchActiveFamily(String uid, String familyId, ApproveCallback callback) {

@@ -24,6 +24,7 @@ import com.google.firebase.Timestamp;
 
 @SuppressLint("CustomSplashScreen")
 public class SplashActivity extends AppCompatActivity {
+    private static final String TAG = "SplashActivity";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,25 +32,34 @@ public class SplashActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
         
-        AuthRepository authRepository = ((FinanzAppApplication) getApplication()).getAppContainer().getAuthRepository();
-        
-        authRepository.getCurrentUser().observe(this, firebaseUser -> {
-            if (firebaseUser == null) {
-                navigateToLogin();
-            } else {
-                // PRIMERO: Comprobar siempre la política de privacidad, tenga familias o no
-                checkPrivacyPolicy(firebaseUser);
-            }
-        });
+        FirebaseUser currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) {
+            navigateToLogin();
+        } else {
+            checkPrivacyPolicy(currentUser);
+        }
     }
 
     private void checkPrivacyPolicy(FirebaseUser firebaseUser) {
+        // Timeout mechanism: if no response in 5 seconds, fallback to checkUserStatus directly
+        // to avoid getting stuck on Splash screen.
+        final boolean[] handled = {false};
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            if (!handled[0]) {
+                android.util.Log.w(TAG, "checkPrivacyPolicy: Timeout reached! Proceeding to checkUserStatus as fallback.");
+                handled[0] = true;
+                checkUserStatus(firebaseUser);
+            }
+        }, 5000);
+
         // Usamos Source.SERVER para asegurar que Splash compruebe siempre el estado más reciente
         // y evitar loops por caché local tras aceptar la política.
         FirebaseFirestore.getInstance().collection(FirestorePaths.USERS)
                 .document(firebaseUser.getUid())
                 .get(com.google.firebase.firestore.Source.SERVER)
                 .addOnSuccessListener(documentSnapshot -> {
+                    if (handled[0]) return;
+                    handled[0] = true;
                     if (documentSnapshot.exists()) {
                         Timestamp acceptedAt = documentSnapshot.getTimestamp("privacyPolicyAcceptedAt");
                         if (acceptedAt == null) {
@@ -63,11 +73,14 @@ public class SplashActivity extends AppCompatActivity {
                     }
                 })
                 .addOnFailureListener(e -> {
+                    if (handled[0]) return;
                     // Si falla el servidor (ej. offline), intentamos con la caché como fallback
                     FirebaseFirestore.getInstance().collection(FirestorePaths.USERS)
                             .document(firebaseUser.getUid())
                             .get(com.google.firebase.firestore.Source.CACHE)
                             .addOnSuccessListener(doc -> {
+                                if (handled[0]) return;
+                                handled[0] = true;
                                 if (doc.exists() && doc.getTimestamp("privacyPolicyAcceptedAt") != null) {
                                     checkUserStatus(firebaseUser);
                                 } else {
@@ -76,7 +89,11 @@ public class SplashActivity extends AppCompatActivity {
                                     navigateToPrivacyConsent();
                                 }
                             })
-                            .addOnFailureListener(e2 -> navigateToLogin());
+                            .addOnFailureListener(e2 -> {
+                                if (handled[0]) return;
+                                handled[0] = true;
+                                navigateToLogin();
+                            });
                 });
     }
 

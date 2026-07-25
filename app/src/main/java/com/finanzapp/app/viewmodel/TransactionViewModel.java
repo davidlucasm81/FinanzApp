@@ -9,22 +9,26 @@ import com.finanzapp.app.data.model.Category;
 import com.finanzapp.app.data.model.Member;
 import com.finanzapp.app.data.model.Transaction;
 import com.finanzapp.app.data.repository.AccountRepository;
+import com.finanzapp.app.data.repository.AuthRepository;
 import com.finanzapp.app.data.repository.CategoryRepository;
 import com.finanzapp.app.data.repository.FamilyRepository;
 import com.finanzapp.app.data.repository.TransactionRepository;
 import com.finanzapp.app.util.Result;
 import com.finanzapp.app.util.SingleLiveEvent;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.List;
 
 public class TransactionViewModel extends ViewModel {
+    private final AuthRepository authRepository;
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
     private final CategoryRepository categoryRepository;
     private final FamilyRepository familyRepository;
-    
+
     private final SingleLiveEvent<Result<Boolean>> operationResult = new SingleLiveEvent<>();
     private final MutableLiveData<List<com.finanzapp.app.data.model.Member>> members = new MutableLiveData<>();
+    private ListenerRegistration membersListener;
 
     // Filter state
     private String filterAccountId = null;
@@ -34,14 +38,37 @@ public class TransactionViewModel extends ViewModel {
     private com.google.firebase.Timestamp filterStartDate = null;
     private com.google.firebase.Timestamp filterEndDate = null;
 
-    public TransactionViewModel(TransactionRepository transactionRepository, 
-                                AccountRepository accountRepository, 
+    // Referencia estable para poder registrar/desregistrar el mismo Runnable
+    private final Runnable signOutCleanup = this::stopListening;
+
+    public TransactionViewModel(AuthRepository authRepository,
+                                TransactionRepository transactionRepository,
+                                AccountRepository accountRepository,
                                 CategoryRepository categoryRepository,
                                 FamilyRepository familyRepository) {
+        this.authRepository = authRepository;
         this.transactionRepository = transactionRepository;
         this.accountRepository = accountRepository;
         this.categoryRepository = categoryRepository;
         this.familyRepository = familyRepository;
+        authRepository.registerPreSignOutCleanup(signOutCleanup);
+    }
+
+    private void stopListening() {
+        transactionRepository.stopListening();
+        accountRepository.stopListening();
+        categoryRepository.stopListening();
+        if (membersListener != null) {
+            membersListener.remove();
+            membersListener = null;
+        }
+    }
+
+    @Override
+    protected void onCleared() {
+        super.onCleared();
+        authRepository.unregisterPreSignOutCleanup(signOutCleanup);
+        stopListening();
     }
 
     private String lastTransactionsFamilyId;
@@ -64,7 +91,8 @@ public class TransactionViewModel extends ViewModel {
     }
 
     public LiveData<List<Member>> getMembers(String familyId) {
-        familyRepository.getMembers(familyId, result -> {
+        if (membersListener != null) membersListener.remove();
+        membersListener = familyRepository.getMembers(familyId, result -> {
             if (result instanceof Result.Success) {
                 members.setValue(((Result.Success<List<Member>>) result).getData());
             }

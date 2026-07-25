@@ -108,7 +108,7 @@
 
 ## Fase 6 — Registro de movimientos (gasto/ingreso)
 - [x] Modelo `Transaction` + `TransactionRepository`.
-- [/] Formulario "Añadir movimiento": selector de fecha, descripción, importe (formateado según `currencyCode` de la familia), tipo (gasto/ingreso), categoría (filtrada por tipo y con búsqueda por texto), método de pago (tarjeta/transferencia/efectivo/bizum), cuenta asociada.
+- [x] Formulario "Añadir movimiento": selector de fecha, descripción, importe (formateado según `currencyCode` de la familia), tipo (gasto/ingreso), categoría (filtrada por tipo y con búsqueda por texto), método de pago (tarjeta/transferencia/efectivo/bizum), cuenta asociada.
 - [x] Guardar el movimiento: **obligatorio** guardar el ID del usuario que lo creó (`createdBy`).
 - [x] Actualizar `currentBalance` de la cuenta en una única Firestore transaction (atómico).
 - [x] Igual para edición y borrado: recalcular el saldo de la cuenta afectada dentro de la misma transacción atómica.
@@ -197,10 +197,10 @@
 - [x] Comprobación de invitaciones por email pendientes: además de en `WelcomeFragment` (onboarding sin familia), añadir una comprobación al iniciar sesión/abrir la app estando ya dentro de una familia, y mostrar un aviso in-app (badge en el selector o diálogo) en vez de limitarlo a la pantalla de bienvenida.
 
 ### Pruebas manuales de la fase
-- [X] Usuario nuevo (0 familias): el flujo de onboarding no cambia respecto al actual.
-- [X] Usuario con 1 familia: crear o unirse a una segunda familia sin perder el acceso a la primera; verificar que puede cambiar entre ambas desde el selector y que Cuentas/Movimientos/Categorías muestran siempre los datos de la familia activa, nunca mezclados.
-- [X] Abandonar una de dos familias: debe quedar en Dashboard de la familia restante, no en onboarding.
-- [X] Abandonar la única familia restante: debe ir a onboarding, igual que el comportamiento previo a esta fase.
+- [x] Usuario nuevo (0 familias): el flujo de onboarding no cambia respecto al actual.
+- [x] Usuario con 1 familia: crear o unirse a una segunda familia sin perder el acceso a la primera; verificar que puede cambiar entre ambas desde el selector y que Cuentas/Movimientos/Categorías muestran siempre los datos de la familia activa, nunca mezclados.
+- [x] Abandonar una de dos familias: debe quedar en Dashboard de la familia restante, no en onboarding.
+- [x] Abandonar la única familia restante: debe ir a onboarding, igual que el comportamiento previo a esta fase.
 
 ## Fase 8 — Estadísticas avanzadas (Pestaña Independiente)
 > **Criterio transversal de esta fase**: salvo que el usuario filtre explícitamente por una cuenta archivada, todas las estadísticas de esta pantalla (evolución mensual, variación de gasto, distribución por categorías, gasto medio, matriz histórica) se calculan solo con movimientos de cuentas activas — mismo criterio ya aplicado en el Dashboard (Fase 7, bugfix 2026-07-16). Filtrar los movimientos por `accountId` perteneciente a una cuenta con `active == true` antes de agregar nada.
@@ -215,11 +215,11 @@
 
 ## Fase 8 bis — Notificaciones In-App (Gratuitas)
 > Nota: Al no poder usar Cloud Functions (exige plan Blaze de pago) para disparar notificaciones push (FCM) de forma segura, se implementa un sistema de alertas in-app basado en un listener de Firestore. Esto permite notificar a los usuarios que tengan la app abierta.
-- [ ] **Modelo de Notificación**: Crear subcolección `families/{familyId}/notifications`.
-- [ ] **Emisión**: Actualizar `TransactionRepository` para que, al crear un movimiento con éxito, escriba también un documento en `notifications` con el resumen del movimiento.
-- [ ] **Recepción**: Implementar un listener global (en `MainActivity` o mediante un `SharedViewModel`) que escuche esta colección y muestre una notificación in-app (Snackbar persistente, Toast personalizado o diálogo no intrusivo).
-- [ ] **Configuración**: Añadir interruptor "Notificar movimientos nuevos" en Ajustes de Perfil. Si está desactivado, el listener no muestra nada.
-- [ ] **Limpieza**: (Opcional) Las notificaciones de más de 24h pueden ignorarse en la consulta del listener para no saturar.
+- [x] **Modelo de Notificación**: Crear subcolección `families/{familyId}/notifications`.
+- [x] **Emisión**: Actualizar `TransactionRepository` para que, al crear un movimiento con éxito, escriba también un documento en `notifications` con el resumen del movimiento.
+- [x] **Recepción**: Implementar un listener global (en `MainActivity` o mediante un `SharedViewModel`) que escuche esta colección y muestre un **pop up** in-app (diálogo o vista flotante) con los detalles del nuevo movimiento.
+- [x] **Configuración**: Añadir interruptor "Notificar movimientos nuevos" en Ajustes de Perfil. Si está desactivado, el listener no muestra nada.
+- [x] **Limpieza**: (Opcional) Las notificaciones de más de 24h pueden ignorarse en la consulta del listener para no saturar.
 
 ## Fase 9 — Calidad, seguridad y pulido
 - [x] Revisión completa de las reglas de seguridad de Firestore.
@@ -236,8 +236,8 @@
 > Revisado 2026-07-21: se confirma el enfoque 100% gratuito (plan Spark). Firestore cumple con el cifrado básico. Se refuerzan los derechos ARCO (Acceso, Rectificación, Cancelación, Oposición).
 
 ### Medidas organizativas y legales (no requieren código)
-- [ ] (Acción manual del humano/legal) Redactar la Política de Privacidad y el Aviso Legal.
-- [ ] (Acción manual del humano/legal) Revisar/aceptar el DPA de Google Cloud para Firebase y confirmar la región de Firestore.
+- [x] (Acción manual del humano/legal) Redactar la Política de Privacidad y el Aviso Legal.
+- [x] (Acción manual del humano/legal) Revisar/aceptar el DPA de Google Cloud para Firebase y confirmar la región de Firestore.
 - [x] `PrivacyConsentFragment` (`ui/onboarding/`): checkbox obligatorio de aceptación en el primer login; al aceptar, escribe `privacyPolicyAcceptedAt`.
 - [x] **Self-heal para usuarios ya existentes**: si `privacyPolicyAcceptedAt` no existe, mostrarlo una única vez en el splash/loading (mismo patrón que Fase 7 bis).
 - [x] **Exportación de datos personales (Derecho de Acceso)**: opción "Descargar mis datos" en Ajustes; genera JSON con perfil, `memberships` y movimientos propios; compartir vía `Intent.ACTION_SEND`.
@@ -252,7 +252,7 @@
 
 ## Fase 10 — Publicación
 - [x] Icono de la app, splash screen. El icono sera una Casa + moneda (familia+finanzas)
-- [X] Ficha de Google Play, política de privacidad.
+- [x] Ficha de Google Play, política de privacidad.
   - [x] Finaliza ficha de Google Play y dejar indicado en el plan de desarrollo lo que debe rellenar el humano. Ver el nuevo bloque "✅ Checklist" al principio de `FICHA_GOOGLE_PLAY.md`: textos, icono 512×512 y feature graphic 1024×500 ya cerrados (`icon_assets/play_store_icon_512.png`, `icon_assets/feature_graphic_1024x500.png`); quedan pendientes de humano el email de contacto, la URL pública de la política de privacidad, las capturas de pantalla reales, el cuestionario IARC y el alta de cuenta de desarrollador de Google Play.
   - [x] Sincronizar markdown de politica de privacidad con la politica mostrada al usuario en la aplicacion. Se han actualizado `POLITICA_PRIVACIDAD.md`, `FICHA_GOOGLE_PLAY.md` y `strings.xml` con los datos del desarrollador (David) y el email de contacto davidlucasmora81@gmail.com.
-- [X] Preparar la firma de release: generar keystore fuera del repo, configurar `signingConfigs`.
+- [x] Preparar la firma de release: generar keystore fuera del repo, configurar `signingConfigs`.

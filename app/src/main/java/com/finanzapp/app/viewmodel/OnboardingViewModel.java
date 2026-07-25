@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel;
 import com.finanzapp.app.data.model.Family;
 import com.finanzapp.app.data.model.Invitation;
 import com.finanzapp.app.data.model.User;
+import com.finanzapp.app.data.repository.AuthRepository;
 import com.finanzapp.app.data.repository.FamilyRepository;
 import com.finanzapp.app.util.Result;
 import com.finanzapp.app.util.SingleLiveEvent;
@@ -16,6 +17,7 @@ import com.finanzapp.app.data.firebase.FirestorePaths;
 
 public class OnboardingViewModel extends ViewModel {
     private final FamilyRepository familyRepository;
+    private final AuthRepository authRepository;
     private final SingleLiveEvent<Result<Family>> createFamilyResult = new SingleLiveEvent<>();
     private final SingleLiveEvent<Result<Boolean>> joinByCodeResult = new SingleLiveEvent<>();
     private final MutableLiveData<Result<Invitation>> pendingInvitation = new MutableLiveData<>();
@@ -33,8 +35,9 @@ public class OnboardingViewModel extends ViewModel {
     private final SingleLiveEvent<Result<Boolean>> privacyResult = new SingleLiveEvent<>();
     private String lastAction; // "accepted" | "rejected"
 
-    public OnboardingViewModel(FamilyRepository familyRepository) {
+    public OnboardingViewModel(FamilyRepository familyRepository, AuthRepository authRepository) {
         this.familyRepository = familyRepository;
+        this.authRepository = authRepository;
     }
 
     public LiveData<Result<Family>> getCreateFamilyResult() {
@@ -199,6 +202,6 @@ public class OnboardingViewModel extends ViewModel {
     }
 
     public void signOut() {
-        FirebaseAuth.getInstance().signOut();
+        authRepository.signOut();
     }
 }

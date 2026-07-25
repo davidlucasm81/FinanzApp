@@ -39,8 +39,8 @@ Notas:
 com.finanzapp.app/
 ├── FinanzAppApplication.java          // Application class, inicializa AppContainer y el NotificationChannel de FCM
 ├── data/
-│   ├── model/                    // POJOs: User, Family, Member, Invitation, Account, Transaction, Category, ImportRowResult, FamilyMembership, FcmToken
-│   ├── repository/               // AuthRepository, FamilyRepository, AccountRepository, TransactionRepository, CategoryRepository, NotificationSettingsRepository (Fase 8 bis)
+│   ├── model/                    // POJOs: User, Family, Member, Invitation, Account, Transaction, Category, ImportRowResult, FamilyMembership, FcmToken, Notification
+│   ├── repository/               // AuthRepository, FamilyRepository, AccountRepository, TransactionRepository, CategoryRepository, NotificationRepository, NotificationSettingsRepository (Fase 8 bis)
 │   ├── firebase/                 // Constantes de rutas Firestore, mappers documento<->POJO
 │   ├── importer/                  // CsvTransactionParser (detección de delimitador, parseo de filas), TransactionImportRepository (resuelve/crea cuentas y categorías, escribe en batch)
 ├── ui/
@@ -314,7 +314,7 @@ Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exi
 6. **Movimientos**: fecha, descripción, importe, tipo (gasto/ingreso), categoría, método de pago, cuenta asociada.
 7. **Posición neta**: pantalla resumen con saldo total y desglose por cuenta. El desglose ingresos/gastos del periodo y por categoría se han movido a la pestaña de Estadísticas para simplificar la vista principal.
 8. **Estadísticas avanzadas (Pestaña Independiente)**: sección dedicada con evolución mensual (ingreso/gasto/neto), variación porcentual respecto al mes anterior, distribución por categoría (donut + % sobre total + importe en euros) y tarjetas resumen. También incluye el desglose detallado de ingresos/gastos del periodo y por categoría que anteriormente estaba en el Dashboard. Uso de MPAndroidChart y enfoque en alta UX. Se eliminaron por decisión de UX el gasto medio, el ranking de categorías y la matriz histórica de netos. Los gráficos incluyen soporte para zoom y scroll horizontal en la evolución mensual para manejar grandes volúmenes de datos.
-9. **Notificaciones In-App** (Fase 8 bis): Alertas en tiempo real dentro de la aplicación cuando se añade un movimiento. Al no poder usar Cloud Functions (exige plan de pago), se implementa mediante un listener de Firestore sobre una colección de notificaciones. Los usuarios pueden desactivar estas alertas desde Ajustes.
+9. **Notificaciones In-App** (Fase 8 bis): Alertas en tiempo real dentro de la aplicación cuando se añade un movimiento. Al no poder usar Cloud Functions (exige plan de pago), se implementa mediante un listener de Firestore sobre una colección de notificaciones que muestra un **pop up** al usuario. Los usuarios pueden desactivar estas alertas desde Ajustes.
 10. **Importación de movimientos desde CSV** (solo `admin`/`owner`): dado un fichero con columnas `Fecha Concepto Categoría Valor Tipo Método Cuenta`, insertar los movimientos correspondientes; si la cuenta o la categoría de una fila no existen en la familia, crearlas automáticamente. Ver detalle en la sección 4, "Importación de movimientos desde CSV".
 11. **Sugerencia de categorías por IA** (ELIMINADO): Requisito eliminado por decisión del usuario.
 12. **Pertenencia a varias familias** (Fase 7 bis): un usuario puede pertenecer a N familias a la vez, cambiar entre ellas mediante un selector de familia activa, y crear o unirse a familias adicionales sin dejar de pertenecer a las anteriores. Ver detalle en la sección 4, "Pertenencia a varias familias (Fase 7 bis)".

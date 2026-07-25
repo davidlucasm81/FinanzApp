@@ -95,9 +95,7 @@ public class AddEditTransactionFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         FinanzAppApplication.AppContainer appContainer = ((FinanzAppApplication) requireActivity().getApplication()).getAppContainer();
-        ViewModelFactory factory = new ViewModelFactory(appContainer.getAuthRepository(), appContainer.getFamilyRepository(), 
-                                                        appContainer.getAccountRepository(), appContainer.getCategoryRepository(),
-                                                        appContainer.getTransactionRepository());
+        ViewModelFactory factory = new ViewModelFactory(appContainer);
         viewModel = new ViewModelProvider(this, factory).get(TransactionViewModel.class);
 
         tilAmount = view.findViewById(R.id.til_amount);

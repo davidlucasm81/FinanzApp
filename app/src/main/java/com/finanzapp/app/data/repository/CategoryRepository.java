@@ -7,6 +7,7 @@ import com.finanzapp.app.data.firebase.FirestorePaths;
 import com.finanzapp.app.data.model.Category;
 import com.finanzapp.app.util.Result;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
@@ -15,13 +16,24 @@ import java.util.List;
 public class CategoryRepository {
     private final FirebaseFirestore db;
 
-    public CategoryRepository() {
+    // Listeners activos: stopListening() los desconecta todos antes de invalidar la sesión.
+    private final List<ListenerRegistration> activeListeners = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    public CategoryRepository(AuthRepository authRepository) {
         this.db = FirebaseFirestore.getInstance();
+        authRepository.registerPreSignOutCleanup(this::stopListening);
+    }
+
+    public void stopListening() {
+        for (ListenerRegistration reg : activeListeners) {
+            reg.remove();
+        }
+        activeListeners.clear();
     }
 
     public LiveData<List<Category>> getCategories(String familyId) {
         MutableLiveData<List<Category>> categoriesLiveData = new MutableLiveData<>();
-        db.collection(FirestorePaths.getCategoriesPath(familyId))
+        ListenerRegistration reg = db.collection(FirestorePaths.getCategoriesPath(familyId))
                 .orderBy("name")
                 .addSnapshotListener((value, error) -> {
                     if (error != null || value == null) {
@@ -33,6 +45,7 @@ public class CategoryRepository {
                     }
                     categoriesLiveData.setValue(categories);
                 });
+        activeListeners.add(reg);
         return categoriesLiveData;
     }
 

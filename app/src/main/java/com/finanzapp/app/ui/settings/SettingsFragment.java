@@ -10,38 +10,36 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.Objects;
 import com.finanzapp.app.R;
-
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.navigation.Navigation;
 
 import com.finanzapp.app.FinanzAppApplication;
 import com.finanzapp.app.data.model.User;
+import com.finanzapp.app.databinding.FragmentSettingsBinding;
 import com.finanzapp.app.util.Result;
+import com.finanzapp.app.viewmodel.NotificationViewModel;
 import com.finanzapp.app.viewmodel.SettingsViewModel;
 import com.finanzapp.app.viewmodel.ViewModelFactory;
 
 public class SettingsFragment extends Fragment {
+    private FragmentSettingsBinding binding;
     private SettingsViewModel viewModel;
-    private TextView tvName;
-    private TextView tvEmail;
-    private Button btnSignOut;
-    private Button btnExportData;
-    private Button btnDeleteAccount;
+    private NotificationViewModel notificationViewModel;
     private com.finanzapp.app.data.repository.FamilyRepository familyRepository;
     private User currentUser;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(com.finanzapp.app.R.layout.fragment_settings, container, false);
+        binding = FragmentSettingsBinding.inflate(inflater, container, false);
+        return binding.getRoot();
     }
 
     @Override
@@ -50,40 +48,47 @@ public class SettingsFragment extends Fragment {
 
         FinanzAppApplication.AppContainer appContainer = ((FinanzAppApplication) requireActivity().getApplication()).getAppContainer();
         familyRepository = appContainer.getFamilyRepository();
-        ViewModelFactory factory = new ViewModelFactory(appContainer.getAuthRepository(), familyRepository);
+        ViewModelFactory factory = new ViewModelFactory(appContainer);
         viewModel = new ViewModelProvider(this, factory).get(SettingsViewModel.class);
+        notificationViewModel = new ViewModelProvider(requireActivity(), factory).get(NotificationViewModel.class);
 
-        tvName = requireView().findViewById(com.finanzapp.app.R.id.tv_name);
-        tvEmail = requireView().findViewById(com.finanzapp.app.R.id.tv_email);
-        btnSignOut = requireView().findViewById(com.finanzapp.app.R.id.btn_sign_out);
-        btnExportData = requireView().findViewById(com.finanzapp.app.R.id.btn_export_data);
-        btnDeleteAccount = requireView().findViewById(com.finanzapp.app.R.id.btn_delete_account);
+        setupClickListeners();
+        setupObservers();
 
-        btnSignOut.setOnClickListener(v -> {
+        viewModel.fetchUserData();
+    }
+
+    private void setupClickListeners() {
+        binding.btnSignOut.setOnClickListener(v -> {
             viewModel.signOut();
             Toast.makeText(requireContext(), R.string.msg_sign_out_success, Toast.LENGTH_SHORT).show();
             navigateToSplash();
         });
 
-        btnExportData.setOnClickListener(v -> {
-            btnExportData.setEnabled(false);
+        binding.btnExportData.setOnClickListener(v -> {
+            binding.btnExportData.setEnabled(false);
             viewModel.exportUserData();
         });
 
-        btnDeleteAccount.setOnClickListener(v -> showDeleteConfirmation());
+        binding.btnDeleteAccount.setOnClickListener(v -> showDeleteConfirmation());
 
-        setupObservers();
-        viewModel.fetchUserData();
+        binding.switchNotifications.setOnCheckedChangeListener((buttonView, isChecked) ->
+                notificationViewModel.setNotificationsEnabled(isChecked));
     }
 
     private void setupObservers() {
+        notificationViewModel.getNotificationsEnabled().observe(getViewLifecycleOwner(), enabled -> {
+            if (binding.switchNotifications.isChecked() != enabled) {
+                binding.switchNotifications.setChecked(enabled);
+            }
+        });
+
         viewModel.getUserData().observe(getViewLifecycleOwner(), result -> {
             if (result instanceof Result.Success) {
                 currentUser = ((Result.Success<User>) result).getData();
-                tvName.setText(currentUser.getDisplayName() != null ? currentUser.getDisplayName() : "-");
-                tvEmail.setText(currentUser.getEmail() != null ? currentUser.getEmail() : "-");
+                binding.tvName.setText(currentUser.getDisplayName() != null ? currentUser.getDisplayName() : "-");
+                binding.tvEmail.setText(currentUser.getEmail() != null ? currentUser.getEmail() : "-");
             } else if (result instanceof Result.Error) {
-                // Only show error if we are not signing out
                 if (getActivity() != null && !getActivity().isFinishing()) {
                     Toast.makeText(requireContext(), R.string.error_load_user, Toast.LENGTH_LONG).show();
                 }
@@ -102,12 +107,12 @@ public class SettingsFragment extends Fragment {
         });
 
         viewModel.getExportResult().observe(getViewLifecycleOwner(), result -> {
-            btnExportData.setEnabled(true);
+            binding.btnExportData.setEnabled(true);
             if (result instanceof Result.Success) {
                 String json = ((Result.Success<String>) result).getData();
                 shareJsonFile(json);
             } else if (result instanceof Result.Error) {
-                Toast.makeText(requireContext(), com.finanzapp.app.R.string.settings_export_error, Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), R.string.settings_export_error, Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -148,7 +153,7 @@ public class SettingsFragment extends Fragment {
 
     private void showDeleteConfirmation() {
         EditText input = new EditText(requireContext());
-        input.setHint(getString(com.finanzapp.app.R.string.delete_account_confirmation_phrase));
+        input.setHint(getString(R.string.delete_account_confirmation_phrase));
 
         LinearLayout container = new LinearLayout(requireContext());
         container.setOrientation(LinearLayout.VERTICAL);
@@ -157,12 +162,12 @@ public class SettingsFragment extends Fragment {
         container.addView(input);
 
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
-                .setTitle(com.finanzapp.app.R.string.delete_account_title)
-                .setMessage(Html.fromHtml(getString(com.finanzapp.app.R.string.delete_account_message) + "<br><br>" +
-                        getString(com.finanzapp.app.R.string.delete_account_verification_instruction), Html.FROM_HTML_MODE_LEGACY))
+                .setTitle(R.string.delete_account_title)
+                .setMessage(Html.fromHtml(getString(R.string.delete_account_message) + "<br><br>" +
+                        getString(R.string.delete_account_verification_instruction), Html.FROM_HTML_MODE_LEGACY))
                 .setView(container)
-                .setPositiveButton(com.finanzapp.app.R.string.delete_button, (d, which) -> viewModel.deleteAccount(familyRepository))
-                .setNegativeButton(com.finanzapp.app.R.string.cancel_button, null)
+                .setPositiveButton(R.string.delete_button, (d, which) -> viewModel.deleteAccount(familyRepository))
+                .setNegativeButton(R.string.cancel_button, null)
                 .create();
 
         dialog.setOnShowListener(d -> {
@@ -175,8 +180,8 @@ public class SettingsFragment extends Fragment {
 
                 @Override
                 public void onTextChanged(CharSequence s, int start, int before, int count) {
-                    String phrase = getString(com.finanzapp.app.R.string.delete_account_confirmation_phrase);
-                    deleteBtn.setEnabled(s.toString().equals(phrase));
+                    String phrase = getString(R.string.delete_account_confirmation_phrase);
+                    deleteBtn.setEnabled(Objects.equals(s.toString(), phrase));
                 }
 
                 @Override
@@ -190,5 +195,6 @@ public class SettingsFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        binding = null;
     }
 }

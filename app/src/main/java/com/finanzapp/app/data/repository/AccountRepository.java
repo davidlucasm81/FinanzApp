@@ -10,6 +10,7 @@ import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -19,8 +20,26 @@ import java.util.Set;
 public class AccountRepository {
     private final FirebaseFirestore db;
 
-    public AccountRepository() {
-        this.db = FirebaseFirestore.getInstance();
+    // Listeners activos: se van acumulando conforme se piden cuentas de distintas
+    // familias/pantallas. stopListening() los desconecta todos de golpe.
+    private final List<ListenerRegistration> activeListeners = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    public AccountRepository(AuthRepository authRepository) {
+        db = FirebaseFirestore.getInstance();
+
+        authRepository.registerPreSignOutCleanup(this::stopListening);
+    }
+
+    /**
+     * Desconecta todos los listeners de Firestore activos de este repositorio.
+     * Debe llamarse antes de invalidar la sesión (signOut/deleteAccount) para evitar
+     * PERMISSION_DENIED cuando el usuario pierde acceso a la familia.
+     */
+    public void stopListening() {
+        for (ListenerRegistration reg : activeListeners) {
+            reg.remove();
+        }
+        activeListeners.clear();
     }
 
     public interface AccountCallback {
@@ -58,7 +77,7 @@ public class AccountRepository {
      */
     public LiveData<List<Account>> getAccounts(String familyId) {
         MutableLiveData<List<Account>> live = new MutableLiveData<>();
-        db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS)
+        ListenerRegistration reg = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS)
                 .addSnapshotListener((value, error) -> {
                     if (error != null || value == null) return;
                     List<Account> accounts = new ArrayList<>();
@@ -67,6 +86,7 @@ public class AccountRepository {
                     }
                     live.setValue(accounts);
                 });
+        activeListeners.add(reg);
         return live;
     }
 
@@ -81,8 +101,8 @@ public class AccountRepository {
      */
     public LiveData<List<Account>> getAccountsWithTransactionStatus(String familyId) {
         MutableLiveData<List<Account>> live = new MutableLiveData<>();
-        
-        db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS)
+
+        ListenerRegistration reg = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS)
                 .addSnapshotListener((value, error) -> {
                     if (error != null || value == null) return;
                     List<Account> accounts = new ArrayList<>();
@@ -95,6 +115,7 @@ public class AccountRepository {
                         refreshHasTransactionsFlag(familyId, accounts, live);
                     }
                 });
+        activeListeners.add(reg);
 
         return live;
     }
@@ -163,7 +184,7 @@ public class AccountRepository {
             // Preservamos metadatos si no vienen en el objeto actualizado
             if (updatedAccount.getCreatedBy() == null) updatedAccount.setCreatedBy(oldAccount.getCreatedBy());
             if (updatedAccount.getCreatedAt() == null) updatedAccount.setCreatedAt(oldAccount.getCreatedAt());
-            
+
             // BUGFIX 2026-07-18: Asegurar que se mantiene el estado activo original.
             // Al deserializar updatedAccount en el cliente para el diálogo de edición,
             // 'active' puede perderse o resetearse a false si no se lee del bundle.

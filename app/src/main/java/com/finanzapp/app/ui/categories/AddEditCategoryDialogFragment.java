@@ -168,20 +168,19 @@ public class AddEditCategoryDialogFragment extends DialogFragment {
         }
 
         FinanzAppApplication.AppContainer appContainer = ((FinanzAppApplication) requireActivity().getApplication()).getAppContainer();
-        ViewModelFactory factory = new ViewModelFactory(appContainer.getAuthRepository(), appContainer.getFamilyRepository(), 
-                                                        appContainer.getAccountRepository(), appContainer.getCategoryRepository());
+        ViewModelFactory factory = new ViewModelFactory(appContainer);
         viewModel = new ViewModelProvider(this, factory).get(CategoryViewModel.class);
 
         btnSave.setOnClickListener(v -> {
             String name = tilName.getEditText() != null ? tilName.getEditText().getText().toString().trim() : "";
             if (name.isEmpty()) {
-                tilName.setError("Introduce un nombre");
+                tilName.setError(getString(R.string.error_name_required));
                 return;
             }
 
             if (!cbIncome.isChecked() && !cbExpense.isChecked()) {
                 Toast.makeText(requireContext(),
-                        "Selecciona al menos un tipo",
+                        R.string.error_category_type_required,
                         Toast.LENGTH_SHORT).show();
                 return;
             }

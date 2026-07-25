@@ -19,8 +19,12 @@ public class SettingsViewModel extends ViewModel {
     private final com.finanzapp.app.util.SingleLiveEvent<Result<String>> exportResult = new com.finanzapp.app.util.SingleLiveEvent<>();
     private ListenerRegistration userListener;
 
+    // Referencia estable para poder registrar/desregistrar el mismo Runnable
+    private final Runnable signOutCleanup = this::stopListening;
+
     public SettingsViewModel(AuthRepository authRepository) {
         this.authRepository = authRepository;
+        authRepository.registerPreSignOutCleanup(signOutCleanup);
     }
 
     public LiveData<Result<User>> getUserData() {
@@ -62,7 +66,6 @@ public class SettingsViewModel extends ViewModel {
     }
 
     public void signOut() {
-        stopListening();
         authRepository.signOut();
     }
 
@@ -76,11 +79,13 @@ public class SettingsViewModel extends ViewModel {
     @Override
     protected void onCleared() {
         super.onCleared();
+        authRepository.unregisterPreSignOutCleanup(signOutCleanup);
         stopListening();
     }
 
     public void deleteAccount(com.finanzapp.app.data.repository.FamilyRepository familyRepository) {
-        stopListening();
+        // authRepository.deleteAccount() ya ejecuta la limpieza central de listeners
+        // internamente antes de empezar a modificar/borrar datos.
         deleteAccountResult.setValue(new Result.Loading<>());
         authRepository.deleteAccount(familyRepository, result -> {
             if (result instanceof Result.Success) {

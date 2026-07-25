@@ -109,7 +109,7 @@ public class MemberAdapter extends RecyclerView.Adapter<MemberAdapter.ViewHolder
             // Mostrar nombre o email si el nombre no está disponible
             String displayName = i.getRequesterName() != null && !i.getRequesterName().isEmpty()
                 ? i.getRequesterName()
-                : (i.getRequesterEmail() != null ? i.getRequesterEmail() : "Solicitud pendiente");
+                : (i.getRequesterEmail() != null ? i.getRequesterEmail() : holder.itemView.getContext().getString(R.string.label_pending_request));
             holder.binding.tvName.setText(displayName);
             holder.binding.tvEmail.setText(i.getRequesterEmail() != null ? i.getRequesterEmail() : "-");
             holder.binding.tvRole.setVisibility(View.GONE);

@@ -53,7 +53,7 @@ public class AccountListFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         FinanzAppApplication.AppContainer appContainer = ((FinanzAppApplication) requireActivity().getApplication()).getAppContainer();
-        ViewModelFactory factory = new ViewModelFactory(appContainer.getAuthRepository(), appContainer.getFamilyRepository(), appContainer.getAccountRepository());
+        ViewModelFactory factory = new ViewModelFactory(appContainer);
         viewModel = new ViewModelProvider(this, factory).get(AccountViewModel.class);
         familyViewModel = new ViewModelProvider(requireActivity(), factory).get(FamilyViewModel.class);
 
@@ -63,6 +63,7 @@ public class AccountListFragment extends Fragment {
         binding.fabAdd.setOnClickListener(v -> showAddEditDialog(null));
 
         resolveFamilyId();
+        binding.pbLoading.setVisibility(View.VISIBLE);
     }
 
     private void resolveFamilyId() {
@@ -86,31 +87,6 @@ public class AccountListFragment extends Fragment {
         }
     }
 
-    /**
-     * Comprueba (en tiempo real) el rol del usuario actual dentro de la familia.
-     * Solo un admin/owner puede archivar o eliminar cuentas (ver AGENTS.md sección 5 y las
-     * reglas de seguridad de Firestore para families/{familyId}/accounts). Un member normal
-     * solo debe ver la opción de editar el nombre; si viera los botones de archivar/eliminar
-     * y los pulsara, Firestore rechazaría la escritura con PERMISSION_DENIED.
-     */
-    private void checkAdminRole(String familyId) {
-        String uid = com.google.firebase.auth.FirebaseAuth.getInstance().getUid();
-        if (uid == null || familyId == null) return;
-
-        com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                .collection(com.finanzapp.app.data.firebase.FirestorePaths.getFamilyPath(familyId) + "/members")
-                .document(uid)
-                .addSnapshotListener((doc, error) -> {
-                    if (error != null || doc == null || !doc.exists()) return;
-                    String role = doc.getString("role");
-                    boolean admin = "admin".equals(role) || "owner".equals(role);
-                    if (admin != isAdmin) {
-                        isAdmin = admin;
-                        if (adapter != null) adapter.setIsAdmin(isAdmin);
-                    }
-                });
-    }
-
     private void setupRecycler() {
         adapter = new AccountsAdapter(new ArrayList<>(), this::onEdit, this::onArchive, this::onDelete);
         binding.rvAccounts.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -120,19 +96,29 @@ public class AccountListFragment extends Fragment {
     private void setupObservers() {
         // Using getFamilyData from FamilyViewModel (which we saw in Dashboard)
         familyViewModel.getFamilyData().observe(getViewLifecycleOwner(), result -> {
-            if (result instanceof Result.Success) {
+            if (result instanceof Result.Loading) {
+                binding.pbLoading.setVisibility(View.VISIBLE);
+            } else if (result instanceof Result.Success) {
                 com.finanzapp.app.data.model.Family family = ((Result.Success<com.finanzapp.app.data.model.Family>) result).getData();
                 familyId = family.getId();
                 currencyCode = family.getCurrencyCode();
-                checkAdminRole(familyId);
+                viewModel.checkAdminRole(familyId);
 
                 viewModel.getAccounts(familyId).observe(getViewLifecycleOwner(), accounts -> {
+                    binding.pbLoading.setVisibility(View.GONE);
                     if (accounts != null) {
                         adapter.setItems(accounts, currencyCode);
                         binding.tvEmpty.setVisibility(accounts.isEmpty() ? View.VISIBLE : View.GONE);
                     }
                 });
+            } else if (result instanceof Result.Error) {
+                binding.pbLoading.setVisibility(View.GONE);
             }
+        });
+
+        viewModel.getIsAdmin().observe(getViewLifecycleOwner(), admin -> {
+            isAdmin = admin;
+            if (adapter != null) adapter.setIsAdmin(isAdmin);
         });
 
         viewModel.getCreateResult().observe(getViewLifecycleOwner(), result -> handleResult(result, "Cuenta creada"));

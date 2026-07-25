@@ -58,7 +58,7 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Archivar/Desarchivar"
+            android:contentDescription="@string/desc_archive_account"
             android:src="@android:drawable/ic_menu_save"
             app:tint="?attr/colorOnSurface" />
 
@@ -67,7 +67,7 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Editar cuenta"
+            android:contentDescription="@string/desc_edit_account"
             android:src="@android:drawable/ic_menu_edit"
             app:tint="?attr/colorOnSurface" />
 
@@ -76,7 +76,7 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Eliminar cuenta"
+            android:contentDescription="@string/desc_delete_account"
             android:src="@android:drawable/ic_menu_delete"
             app:tint="?attr/colorError" />
 

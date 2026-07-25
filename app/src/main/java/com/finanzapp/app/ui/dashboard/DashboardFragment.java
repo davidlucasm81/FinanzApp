@@ -46,7 +46,7 @@ public class DashboardFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         FinanzAppApplication.AppContainer appContainer = ((FinanzAppApplication) requireActivity().getApplication()).getAppContainer();
-        ViewModelFactory factory = new ViewModelFactory(appContainer.getAuthRepository(), appContainer.getFamilyRepository());
+        ViewModelFactory factory = new ViewModelFactory(appContainer);
         viewModel = new ViewModelProvider(this, factory).get(DashboardViewModel.class);
 
         setupRecyclerViews();
@@ -63,9 +63,7 @@ public class DashboardFragment extends Fragment {
     }
 
     private void setupClickListeners() {
-        binding.ivUserPhoto.setOnClickListener(v -> {
-            NavHostFragment.findNavController(this).navigate(com.finanzapp.app.R.id.settingsFragment);
-        });
+        binding.ivUserPhoto.setOnClickListener(v -> NavHostFragment.findNavController(this).navigate(com.finanzapp.app.R.id.settingsFragment));
 
         binding.btnTransactions.setOnClickListener(v -> {
             NavHostFragment.findNavController(this).navigate(com.finanzapp.app.R.id.action_dashboardFragment_to_transactionListFragment);
