@@ -29,14 +29,34 @@
             </aapt:attr>
         </path>
 
-        <!-- Sombra suave debajo de la moneda -->
+        <!-- "Tapa" sólida del color de fondo del icono, debajo de la moneda y su sombra.
+             Cubre cualquier cosa que hubiera detrás (la casa, o directamente nada) con
+             el mismo color plano de ic_launcher_background.xml (#0B3B37), para que el
+             hueco del "$" revele siempre ese color y nunca dependa de un recorte
+             geométrico entre paths (que falla donde la moneda sobresale del contorno
+             de la casa). Debe coincidir con android:fillColor de ic_launcher_background.xml
+             si ese color cambia. -->
+        <path
+            android:fillColor="#0B3B37"
+            android:pathData="M73,75 m-14.5,0 a14.5,14.5 0,1,1 29,0 a14.5,14.5 0,1,1 -29,0
+                M74.5,77.5 m-14.5,0 a14.5,14.5 0,1,1 29,0 a14.5,14.5 0,1,1 -29,0" />
+
+        <!-- Sombra suave debajo de la moneda (con el mismo hueco del "$" recortado,
+             para que la transparencia llegue hasta el fondo real del icono) -->
         <path
             android:fillColor="#29000000"
-            android:pathData="M74.5,77.5 m-13,0 a13,13 0,1,1 26,0 a13,13 0,1,1 -26,0" />
+            android:fillType="evenOdd"
+            android:pathData="M74.5,77.5 m-13,0 a13,13 0,1,1 26,0 a13,13 0,1,1 -26,0
+                M73.94,80.75 L72.94,80.75 L72.93,78.89 Q72.16,78.85 71.43,78.71 Q70.71,78.57 70.02,78.31 L70.02,76.69 Q70.73,77.06 71.46,77.25 Q72.19,77.45 72.94,77.47 L72.94,75.55 L72.73,75.51 Q71.25,75.25 70.63,74.69 Q70.01,74.14 70.01,73.09 Q70.01,71.98 70.77,71.36 Q71.53,70.74 72.93,70.68 L72.94,69.25 L72.94,69.25 L73.94,69.25 L73.94,70.66 Q74.56,70.71 75.18,70.81 Q75.80,70.92 76.42,71.08 L76.42,72.66 Q75.80,72.40 75.18,72.25 Q74.57,72.11 73.94,72.07 L73.94,73.85 L74.14,73.89 Q75.71,74.14 76.35,74.71 Q76.98,75.29 76.98,76.43 Q76.98,77.57 76.22,78.18 Q75.47,78.79 73.94,78.87 L73.94,80.75 Z M72.94,73.71 L72.94,72.09 Q72.50,72.12 72.23,72.33 Q71.97,72.55 71.97,72.87 Q71.97,73.24 72.21,73.45 Q72.45,73.65 72.94,73.71 Z M73.94,75.73 L73.94,77.45 Q74.48,77.44 74.75,77.24 Q75.02,77.03 75.02,76.62 Q75.02,76.20 74.77,76.00 Q74.52,75.79 73.94,75.73 Z" />
 
-        <!-- Moneda -->
+        <!-- Moneda con el signo de dólar recortado como hueco transparente (evenOdd).
+             Así el contraste se logra con transparencia real (se ve el fondo a través
+             del "$"), y no depende de que el tema del icono respete los colores del
+             vector, lo cual soluciona el problema en temas monocromos/minimalistas. -->
         <path
-            android:pathData="M73,75 m-13,0 a13,13 0,1,1 26,0 a13,13 0,1,1 -26,0">
+            android:fillType="evenOdd"
+            android:pathData="M73,75 m-13,0 a13,13 0,1,1 26,0 a13,13 0,1,1 -26,0
+                M73.94,80.75 L72.94,80.75 L72.93,78.89 Q72.16,78.85 71.43,78.71 Q70.71,78.57 70.02,78.31 L70.02,76.69 Q70.73,77.06 71.46,77.25 Q72.19,77.45 72.94,77.47 L72.94,75.55 L72.73,75.51 Q71.25,75.25 70.63,74.69 Q70.01,74.14 70.01,73.09 Q70.01,71.98 70.77,71.36 Q71.53,70.74 72.93,70.68 L72.94,69.25 L72.94,69.25 L73.94,69.25 L73.94,70.66 Q74.56,70.71 75.18,70.81 Q75.80,70.92 76.42,71.08 L76.42,72.66 Q75.80,72.40 75.18,72.25 Q74.57,72.11 73.94,72.07 L73.94,73.85 L74.14,73.89 Q75.71,74.14 76.35,74.71 Q76.98,75.29 76.98,76.43 Q76.98,77.57 76.22,78.18 Q75.47,78.79 73.94,78.87 L73.94,80.75 Z M72.94,73.71 L72.94,72.09 Q72.50,72.12 72.23,72.33 Q71.97,72.55 71.97,72.87 Q71.97,73.24 72.21,73.45 Q72.45,73.65 72.94,73.71 Z M73.94,75.73 L73.94,77.45 Q74.48,77.44 74.75,77.24 Q75.02,77.03 75.02,76.62 Q75.02,76.20 74.77,76.00 Q74.52,75.79 73.94,75.73 Z">
             <aapt:attr name="android:fillColor">
                 <gradient
                     android:type="radial"
@@ -55,11 +75,6 @@
             android:strokeColor="#B45309"
             android:strokeWidth="1.8"
             android:pathData="M73,75 m-13,0 a13,13 0,1,1 26,0 a13,13 0,1,1 -26,0" />
-
-        <!-- Signo de dólar -->
-        <path
-            android:fillColor="#7C2D12"
-            android:pathData="M73.94,80.75 L72.94,80.75 L72.93,78.89 Q72.16,78.85 71.43,78.71 Q70.71,78.57 70.02,78.31 L70.02,76.69 Q70.73,77.06 71.46,77.25 Q72.19,77.45 72.94,77.47 L72.94,75.55 L72.73,75.51 Q71.25,75.25 70.63,74.69 Q70.01,74.14 70.01,73.09 Q70.01,71.98 70.77,71.36 Q71.53,70.74 72.93,70.68 L72.94,69.25 L72.94,69.25 L73.94,69.25 L73.94,70.66 Q74.56,70.71 75.18,70.81 Q75.80,70.92 76.42,71.08 L76.42,72.66 Q75.80,72.40 75.18,72.25 Q74.57,72.11 73.94,72.07 L73.94,73.85 L74.14,73.89 Q75.71,74.14 76.35,74.71 Q76.98,75.29 76.98,76.43 Q76.98,77.57 76.22,78.18 Q75.47,78.79 73.94,78.87 L73.94,80.75 Z M72.94,73.71 L72.94,72.09 Q72.50,72.12 72.23,72.33 Q71.97,72.55 71.97,72.87 Q71.97,73.24 72.21,73.45 Q72.45,73.65 72.94,73.71 Z M73.94,75.73 L73.94,77.45 Q74.48,77.44 74.75,77.24 Q75.02,77.03 75.02,76.62 Q75.02,76.20 74.77,76.00 Q74.52,75.79 73.94,75.73 Z" />
     </group>
 
 </vector>

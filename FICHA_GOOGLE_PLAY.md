@@ -1,25 +1,22 @@
 # Ficha de Google Play — FinanzApp
 
-> Borrador de los textos que pide la Play Console en "Presencia en la
-> tienda" → "Ficha principal de la tienda". Ajusta longitudes exactas si
+> Textos definitivos (ya no borrador) para la Play Console en "Presencia en
+> la tienda" → "Ficha principal de la tienda". Ajusta longitudes exactas si
 > Google las cambia; los límites actuales son: título 30 caracteres,
 > descripción breve 80 caracteres, descripción completa 4000 caracteres.
 
 ## ✅ Checklist — qué queda listo aquí y qué debe rellenar el humano
 
 Textos (título, descripción breve, descripción completa, categoría, chuleta
-de "Seguridad de los datos") y assets gráficos de icono ya están cerrados en
-este documento y en `icon_assets/` (ver Fase 10 de `PLAN_DESARROLLO.md`).
-Queda pendiente, y **no se puede completar sin intervención humana**:
+de "Seguridad de los datos"), email de contacto, URL de la Política de
+Privacidad y assets gráficos de icono ya están cerrados en este documento y
+en `icon_assets/` (ver Fase 10 de `PLAN_DESARROLLO.md`). Solo queda
+pendiente lo que **no se puede completar sin intervención humana directa
+en la app o en la consola de Play** (no son huecos de texto, son acciones):
 
-- [ ] **Email de contacto** de la ficha (sección "Datos de contacto" más
-  abajo). Debe ser un email que el propietario revise, no uno genérico. davidlucasmora81@gmail.com
-- [ ] **URL pública de la Política de Privacidad**. Antes hace falta:
-  1. Completar los huecos `[COMPLETAR]` de `POLITICA_PRIVACIDAD.md` (razón
-     social/NIF/dirección, región de Firestore, fecha de publicación) —
-     David (desarrollador individual), David (desarrollador individual), David (desarrollador individual), Europa (España), 2024-07-23.
-  2. Publicar ese Markdown como página web (GitHub Pages, Firebase Hosting
-     capa gratuita, o Google Sites) y pegar aquí la URL resultante.
+- [x] **Email de contacto** de la ficha (sección "Datos de contacto" más
+  abajo): davidlucasmora81@gmail.com.
+- [x] **URL pública de la Política de Privacidad**: https://github.com/davidlucasm81/FinanzApp/blob/master/POLITICA_PRIVACIDAD.md
 - [ ] **Capturas de pantalla reales** (mínimo 2, recomendado 4-8): Dashboard,
   Movimientos, Estadísticas, Selector de familias. Deben salir de la app
   ejecutándose en un emulador/dispositivo, no se pueden generar aquí.
@@ -81,7 +78,7 @@ Finanzas
 
 ## Datos de contacto
 - Email: davidlucasmora81@gmail.com
-- Sitio web / política de privacidad: [COMPLETAR URL pública una vez publicada, necesaria para el formulario de Play Console]
+- Sitio web / política de privacidad: https://github.com/davidlucasm81/FinanzApp/blob/master/POLITICA_PRIVACIDAD.md
 
 ## Clasificación de contenido
 Deberás rellenar el cuestionario de IARC en Play Console. Al no incluir
@@ -104,6 +101,4 @@ de qué marcar):
 - Gráfico de la ficha (feature graphic) 1024×500 px.
 
 ## Textos legales que Google exige enlazar
-- Política de Privacidad pública (URL, no puede ser solo un fichero dentro
-  del repo): puedes publicarla gratis con GitHub Pages, Firebase Hosting
-  (capa gratuita) o Google Sites.
+- Política de Privacidad pública: https://github.com/davidlucasm81/FinanzApp/blob/master/POLITICA_PRIVACIDAD.md

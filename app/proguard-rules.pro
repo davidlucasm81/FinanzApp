@@ -1,21 +1,15 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Mantener todas las clases modelo de Firestore (POJOs) con su constructor
+# sin argumentos, getters/setters y campos, para que toObject()/toObjects()
+# sigan funcionando en release con minificación activada.
+-keepclassmembers class com.finanzapp.app.data.model.** {
+    <init>();
+    <fields>;
+    <methods>;
+}
+-keep class com.finanzapp.app.data.model.** { *; }
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
-
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Si usas @PropertyName, @Exclude, @ServerTimestamp, @IgnoreExtraProperties, etc.
+-keepattributes *Annotation*
+-keepattributes Signature
+-keepattributes InnerClasses
+-keepattributes EnclosingMethod
