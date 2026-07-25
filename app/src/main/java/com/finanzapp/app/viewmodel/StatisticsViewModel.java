@@ -1,5 +1,7 @@
 package com.finanzapp.app.viewmodel;
 
+import android.annotation.SuppressLint;
+
 import androidx.core.util.Pair;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
@@ -33,7 +35,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -45,10 +46,6 @@ import java.util.TreeMap;
 
 public class StatisticsViewModel extends ViewModel {
     private final AuthRepository authRepository;
-    private final FamilyRepository familyRepository;
-    private final AccountRepository accountRepository;
-    private final TransactionRepository transactionRepository;
-    private final CategoryRepository categoryRepository;
 
     private final MutableLiveData<String> familyIdSource = new MutableLiveData<>();
     private final LiveData<Result<Family>> familyData;
@@ -60,15 +57,14 @@ public class StatisticsViewModel extends ViewModel {
     private final MutableLiveData<Result<User>> userData = new MutableLiveData<>();
     private final MutableLiveData<Pair<Long, Long>> dateRange = new MutableLiveData<>();
     
-    private final MutableLiveData<Double> currentMonthIncome = new MutableLiveData<>(0.0);
-    private final MutableLiveData<Double> currentMonthExpense = new MutableLiveData<>(0.0);
-    private final MutableLiveData<Double> incomeVariationPercentage = new MutableLiveData<>(0.0);
-    private final MutableLiveData<Double> variationPercentage = new MutableLiveData<>(0.0);
-    private final MutableLiveData<String> currentPeriodLabel = new MutableLiveData<>("");
-    
-    private final MutableLiveData<List<MonthlySummary>> monthlyEvolution = new MutableLiveData<>(new ArrayList<>());
-    private final MutableLiveData<List<DashboardCategorySummary>> categoryDistribution = new MutableLiveData<>(new ArrayList<>());
-    private final MutableLiveData<List<Category>> allCategories = new MutableLiveData<>(new ArrayList<>());
+    private final MutableLiveData<Double> currentMonthIncome = new MutableLiveData<>();
+    private final MutableLiveData<Double> currentMonthExpense = new MutableLiveData<>();
+    private final MutableLiveData<Double> incomeVariationPercentage = new MutableLiveData<>();
+    private final MutableLiveData<Double> variationPercentage = new MutableLiveData<>();
+
+    private final MutableLiveData<List<MonthlySummary>> monthlyEvolution = new MutableLiveData<>();
+    private final MutableLiveData<List<DashboardCategorySummary>> categoryDistribution = new MutableLiveData<>();
+    private final MutableLiveData<List<Category>> allCategories = new MutableLiveData<>();
 
     private final MediatorLiveData<Void> statsMediator = new MediatorLiveData<>();
     private final androidx.lifecycle.Observer<Void> statsObserver = v -> {};
@@ -78,6 +74,10 @@ public class StatisticsViewModel extends ViewModel {
     private List<Transaction> allTransactions = new ArrayList<>();
     private List<Category> latestCategories = new ArrayList<>();
 
+    private boolean accountsResolved = false;
+    private boolean categoriesResolved = false;
+    private boolean transactionsResolved = false;
+
     // Referencia estable para poder registrar/desregistrar el mismo Runnable
     private final Runnable signOutCleanup = this::stopListening;
 
@@ -85,10 +85,6 @@ public class StatisticsViewModel extends ViewModel {
                                AccountRepository accountRepository, CategoryRepository categoryRepository,
                                TransactionRepository transactionRepository) {
         this.authRepository = authRepository;
-        this.familyRepository = familyRepository;
-        this.accountRepository = accountRepository;
-        this.categoryRepository = categoryRepository;
-        this.transactionRepository = transactionRepository;
         authRepository.registerPreSignOutCleanup(signOutCleanup);
 
         // Default range: current month
@@ -130,6 +126,7 @@ public class StatisticsViewModel extends ViewModel {
 
     private void setupObservers() {
         statsMediator.addSource(accountsSource, accounts -> {
+            accountsResolved = true;
             if (accounts != null) {
                 Set<String> activeIds = new HashSet<>();
                 for (Account account : accounts) {
@@ -143,12 +140,14 @@ public class StatisticsViewModel extends ViewModel {
         });
 
         statsMediator.addSource(categoriesSource, categories -> {
+            categoriesResolved = true;
             latestCategories = categories != null ? categories : new ArrayList<>();
             allCategories.postValue(latestCategories);
             recomputeStatistics();
         });
 
         statsMediator.addSource(transactionsSource, transactions -> {
+            transactionsResolved = true;
             allTransactions = transactions != null ? transactions : new ArrayList<>();
             recomputeStatistics();
         });
@@ -164,10 +163,9 @@ public class StatisticsViewModel extends ViewModel {
     public LiveData<Double> getCurrentMonthExpense() { return currentMonthExpense; }
     public LiveData<Double> getIncomeVariationPercentage() { return incomeVariationPercentage; }
     public LiveData<Double> getVariationPercentage() { return variationPercentage; }
-    public LiveData<String> getCurrentPeriodLabel() { return currentPeriodLabel; }
+
     public LiveData<List<MonthlySummary>> getMonthlyEvolution() { return monthlyEvolution; }
     public LiveData<List<DashboardCategorySummary>> getCategoryDistribution() { return categoryDistribution; }
-    public LiveData<List<Category>> getAllCategories() { return allCategories; }
 
     public void setDateRange(Long start, Long end) {
         if (start == null || end == null) {
@@ -183,7 +181,14 @@ public class StatisticsViewModel extends ViewModel {
     }
 
     private void recomputeStatistics() {
+        // Wait until all sources have emitted at least once
+        if (!accountsResolved || !categoriesResolved || !transactionsResolved) {
+            return;
+        }
+
+        // If no active accounts, we can show success but with empty state
         if (activeAccountIds.isEmpty()) {
+            dataLoaded.postValue(new Result.Success<>(true));
             return;
         }
 
@@ -231,6 +236,7 @@ public class StatisticsViewModel extends ViewModel {
                     currentExpense += t.getAmount();
                     String categoryId = t.getCategoryId();
                     if (categoryId != null) {
+                        //noinspection DataFlowIssue
                         currentCategoryTotals.put(categoryId, currentCategoryTotals.getOrDefault(categoryId, 0.0) + t.getAmount());
                     }
                 }
@@ -243,14 +249,10 @@ public class StatisticsViewModel extends ViewModel {
                 }
             }
 
-            String monthKey = date.getYear() + "-" + String.format("%02d", date.getMonthValue());
+            @SuppressLint("DefaultLocale") String monthKey = date.getYear() + "-" + String.format("%02d", date.getMonthValue());
             String monthLabel = date.getMonth().getDisplayName(TextStyle.SHORT, Locale.getDefault()) + " " + (date.getYear() % 100);
-            
-            MonthlySummaryBuilder builder = monthlyMap.get(monthKey);
-            if (builder == null) {
-                builder = new MonthlySummaryBuilder(monthLabel);
-                monthlyMap.put(monthKey, builder);
-            }
+
+            MonthlySummaryBuilder builder = monthlyMap.computeIfAbsent(monthKey, k -> new MonthlySummaryBuilder(monthLabel));
             if ("income".equals(t.getType())) builder.income += t.getAmount();
             else builder.expense += t.getAmount();
         }
@@ -292,7 +294,7 @@ public class StatisticsViewModel extends ViewModel {
             double percentage = currentExpense > 0 ? (entry.getValue() / currentExpense) * 100 : 0;
             distribution.add(new DashboardCategorySummary(entry.getKey(), name, color, entry.getValue(), percentage));
         }
-        Collections.sort(distribution, (s1, s2) -> Double.compare(s2.getAmount(), s1.getAmount()));
+        distribution.sort((s1, s2) -> Double.compare(s2.getAmount(), s1.getAmount()));
         categoryDistribution.postValue(distribution);
 
         dataLoaded.postValue(new Result.Success<>(true));
@@ -310,6 +312,8 @@ public class StatisticsViewModel extends ViewModel {
         if (currentUser == null) return;
 
         if (userListener == null) {
+            // Force loading state on init
+            dataLoaded.setValue(new Result.Loading<>());
             userListener = FirebaseFirestore.getInstance().collection(FirestorePaths.USERS).document(currentUser.getUid())
                     .addSnapshotListener((value, error) -> {
                         if (error != null || value == null) {

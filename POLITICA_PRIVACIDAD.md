@@ -1,21 +1,9 @@
 # Política de Privacidad de FinanzApp
 
-**Última actualización:** 23 de julio de 2024
+**Última actualización:** 25 de julio de 2026
 
 Esta Política de Privacidad describe cómo FinanzApp ("la app", "nosotros") recoge,
 usa y protege los datos personales de sus usuarios ("tú", "el usuario").
-
-> ⚠️ Este texto es un borrador técnico basado en el modelo de datos real de la
-> app. Antes de publicarlo debe revisarlo un profesional legal (ver tarea
-> pendiente "Acción manual del humano/legal" en `PLAN_DESARROLLO.md`, Fase 9
-> bis), especialmente la base legal de cada tratamiento.
->
-> **Sincronización con la app (Fase 10):** la pantalla de consentimiento
-> dentro de la app (`strings.xml` → `privacy_policy_text`) muestra un
-> resumen de este mismo documento (mismos datos recogidos, mismo tratamiento,
-> mismos derechos) y enlaza aquí para la versión completa con la identidad
-> del responsable. Cualquier cambio de fondo en uno de los dos textos debe
-> reflejarse en el otro para que no queden desincronizados.
 
 ## 1. Responsable del tratamiento
 

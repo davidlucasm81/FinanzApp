@@ -4,6 +4,7 @@ import android.view.LayoutInflater;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.finanzapp.app.data.model.Account;
@@ -20,17 +21,43 @@ public class DashboardAccountAdapter extends RecyclerView.Adapter<DashboardAccou
     private String currencyCode = "EUR";
 
     public void setItems(List<Account> newItems, String currencyCode) {
-        this.items.clear();
-        // El Dashboard solo debe mostrar cuentas activas: una cuenta archivada
-        // (active == false) sigue existiendo para conservar el histórico de
-        // movimientos, pero no debe listarse aquí ni sumar en el desglose.
+        List<Account> activeItems = new ArrayList<>();
         for (Account account : newItems) {
             if (account.isActive()) {
-                this.items.add(account);
+                activeItems.add(account);
             }
         }
+
+        DiffUtil.DiffResult result = DiffUtil.calculateDiff(new DiffUtil.Callback() {
+            @Override
+            public int getOldListSize() {
+                return items.size();
+            }
+
+            @Override
+            public int getNewListSize() {
+                return activeItems.size();
+            }
+
+            @Override
+            public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+                return java.util.Objects.equals(items.get(oldItemPosition).getId(),
+                        activeItems.get(newItemPosition).getId());
+            }
+
+            @Override
+            public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+                Account oldA = items.get(oldItemPosition);
+                Account newA = activeItems.get(newItemPosition);
+                return java.util.Objects.equals(oldA.getName(), newA.getName()) &&
+                        Double.compare(oldA.getCurrentBalance(), newA.getCurrentBalance()) == 0;
+            }
+        });
+
+        this.items.clear();
+        this.items.addAll(activeItems);
         this.currencyCode = currencyCode;
-        notifyDataSetChanged();
+        result.dispatchUpdatesTo(this);
     }
 
     @NonNull

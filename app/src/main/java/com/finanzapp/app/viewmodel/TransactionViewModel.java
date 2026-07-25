@@ -33,6 +33,7 @@ public class TransactionViewModel extends ViewModel {
     // Filter state
     private String filterAccountId = null;
     private String filterCategoryId = null;
+    private java.util.List<String> filterCategoryIds = null;
     private String filterType = null;
     private String filterMethod = null;
     private com.google.firebase.Timestamp filterStartDate = null;
@@ -68,23 +69,16 @@ public class TransactionViewModel extends ViewModel {
         stopListening();
     }
 
-    private String lastTransactionsFamilyId;
-    private LiveData<List<Transaction>> lastTransactionsLiveData;
-
-    public LiveData<List<Transaction>> getTransactions(String familyId) {
-        if (lastTransactionsLiveData == null || !familyId.equals(lastTransactionsFamilyId)) {
-            lastTransactionsFamilyId = familyId;
-            lastTransactionsLiveData = transactionRepository.getTransactions(familyId);
-        }
-        return lastTransactionsLiveData;
-    }
-
-    private String lastFilteredFamilyId;
-    private LiveData<List<Transaction>> lastFilteredLiveData;
-
     public LiveData<List<Transaction>> getFilteredTransactions(String familyId, String accountId, String categoryId, String type, String paymentMethod, com.google.firebase.Timestamp start, com.google.firebase.Timestamp end) {
-        // For filtered transactions, we don't cache as easily since filters change
-        return transactionRepository.getTransactions(familyId, accountId, categoryId, type, paymentMethod, start, end);
+        // Handle multicategory filter if set
+        java.util.List<String> catIds = null;
+        if (categoryId != null && !categoryId.isEmpty()) {
+            catIds = java.util.Collections.singletonList(categoryId);
+        } else if (filterCategoryIds != null && !filterCategoryIds.isEmpty()) {
+            catIds = filterCategoryIds;
+        }
+
+        return transactionRepository.getTransactions(familyId, accountId, catIds, type, paymentMethod, start, end);
     }
 
     public LiveData<List<Member>> getMembers(String familyId) {
@@ -126,7 +120,15 @@ public class TransactionViewModel extends ViewModel {
     public void setFilterAccountId(String filterAccountId) { this.filterAccountId = filterAccountId; }
 
     public String getFilterCategoryId() { return filterCategoryId; }
-    public void setFilterCategoryId(String filterCategoryId) { this.filterCategoryId = filterCategoryId; }
+    public void setFilterCategoryId(String filterCategoryId) { 
+        this.filterCategoryId = filterCategoryId; 
+        if (filterCategoryId != null) this.filterCategoryIds = null; // Clear multi if single set
+    }
+
+    public void setFilterCategoryIds(java.util.List<String> filterCategoryIds) {
+        this.filterCategoryIds = filterCategoryIds; 
+        if (filterCategoryIds != null) this.filterCategoryId = null; // Clear single if multi set
+    }
 
     public String getFilterType() { return filterType; }
     public void setFilterType(String filterType) { this.filterType = filterType; }

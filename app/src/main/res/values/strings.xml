@@ -88,6 +88,7 @@
     <string name="stats_average_expense">Gasto Medio</string>
     <string name="stats_monthly_evolution">Evolución Mensual</string>
     <string name="stats_category_distribution">Distribución por Categorías</string>
+    <string name="category_others">Otros</string>
     <string name="stats_net_history">Histórico Neto</string>
     <string name="date_filter_all">Todo el histórico</string>
     <string name="date_filter_clear_desc">Limpiar filtro</string>

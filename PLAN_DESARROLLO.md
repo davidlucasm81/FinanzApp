@@ -256,3 +256,84 @@
   - [x] Finaliza ficha de Google Play y dejar indicado en el plan de desarrollo lo que debe rellenar el humano. Ver el nuevo bloque "✅ Checklist" al principio de `FICHA_GOOGLE_PLAY.md`: textos, icono 512×512 y feature graphic 1024×500 ya cerrados (`icon_assets/play_store_icon_512.png`, `icon_assets/feature_graphic_1024x500.png`); quedan pendientes de humano el email de contacto, la URL pública de la política de privacidad, las capturas de pantalla reales, el cuestionario IARC y el alta de cuenta de desarrollador de Google Play.
   - [x] Sincronizar markdown de politica de privacidad con la politica mostrada al usuario en la aplicacion. Se han actualizado `POLITICA_PRIVACIDAD.md`, `FICHA_GOOGLE_PLAY.md` y `strings.xml` con los datos del desarrollador (David) y el email de contacto davidlucasmora81@gmail.com.
 - [x] Preparar la firma de release: generar keystore fuera del repo, configurar `signingConfigs`.
+
+## Fase 11 — Observabilidad y calidad pre-lanzamiento
+> Objetivo: detectar fallos y cuellos de botella en producción antes de que un usuario los reporte, y publicar de forma segura. Firebase Crashlytics y Performance Monitoring son gratuitos en el plan Spark — no requieren vincular tarjeta ni activar el plan Blaze, así que no chocan con la restricción de 2026-07-21 (ver `AGENTS.md`).
+
+### Firebase Crashlytics
+- [ ] Añadir el plugin `com.google.firebase.crashlytics` y la dependencia `firebase-crashlytics` al `build.gradle` (proyecto y módulo `app`).
+- [ ] (Acción manual del humano) Habilitar Crashlytics en la consola de Firebase para este proyecto.
+- [ ] Verificar que los símbolos de depuración (mapping de ProGuard/R8, si el release usa minificación) se suben automáticamente en el build de release.
+- [ ] Provocar un fallo de prueba (`throw` controlado tras un botón oculto en build de debug) y confirmar que aparece en la consola de Crashlytics en pocos minutos.
+- [ ] Añadir claves personalizadas (`setCustomKey`) útiles para depurar: `familyId` activo, rol del usuario, idioma. **Nunca** loguear `email` ni `displayName` completos (evitar exponer datos personales en los informes de fallo, coherente con la Fase 9 bis).
+
+### Firebase Performance Monitoring
+- [ ] Añadir el plugin `com.google.firebase.firebase-perf` y la dependencia `firebase-perf` al `build.gradle`.
+- [ ] Verificar que las trazas automáticas (arranque de la app, tiempos de renderizado de pantalla) aparecen en la consola tras un par de sesiones de uso.
+- [ ] Añadir trazas personalizadas en los puntos más sensibles: carga inicial del Dashboard, generación del gráfico de Estadísticas, importación CSV (Fase 6 bis) — para poder ver cuánto tarda cada uno con datos reales de familias grandes.
+
+### Revisión de índices compuestos de Firestore
+- [ ] Revisar todas las consultas de `TransactionRepository` y `StatisticsFragment`/`StatisticsViewModel` que combinan más de un filtro a la vez (cuenta + categoría + rango de fechas, o cuenta + rango de fechas + orden por fecha) y confirmar en la consola de Firebase (pestaña "Índices") si ya existe un índice compuesto para cada combinación soportada por la UI.
+- [ ] Para cada combinación sin índice, crearlo manualmente desde la consola (o exportar/versionar `firestore.indexes.json` con el Firebase CLI) en vez de esperar a que la app falle en producción y muestre el enlace de creación automática al primer usuario que la use.
+- [ ] Probar en el Firebase Emulator Suite o en un dispositivo real cada combinación de filtros de Movimientos y Estadísticas para confirmar que ninguna consulta lanza `FAILED_PRECONDITION` por falta de índice.
+
+### Publicación con staged rollout
+- [ ] Al publicar cualquier nueva versión en Google Play Console, usar un *staged rollout* (por ejemplo 10% → 50% → 100%) en vez de "publicar al 100% de los usuarios" directamente.
+- [ ] Antes de subir cada porcentaje del rollout, revisar Crashlytics (tasa de fallos) y Play Console (ANRs, valoraciones) de la fase anterior.
+- [ ] Documentar en este plan (o en un `CHANGELOG.md`, si se crea) el porcentaje y la fecha de cada escalón del rollout de cada versión publicada, para tener trazabilidad de qué versión estaba en qué porcentaje si aparece un problema.
+
+## Fase 12 — Movimientos recurrentes y alertas de presupuesto
+> Ver diseño completo (modelo de datos y decisiones) en `AGENTS.md`, sección 4, "Movimientos recurrentes y alertas de presupuesto (Fase 12)". Resuelto 100% en cliente, sin Cloud Functions, coherente con la restricción de no vincular tarjeta.
+
+### Modelo y repositorios
+- [ ] Nuevo POJO `RecurringTransaction` (`accountId`, `description`, `amount`, `type`, `categoryId`, `paymentMethod`, `dayOfMonth`, `active`, `lastGeneratedYearMonth`, `createdBy`, `createdAt`).
+- [ ] Nuevo POJO `Budget` (`categoryId`, `monthlyLimit`, `active`, `createdBy`, `createdAt`).
+- [ ] `RecurringTransactionRepository` (`data/recurring/`): CRUD sobre `families/{familyId}/recurringTransactions`.
+- [ ] `BudgetRepository` (`data/budget/`): CRUD sobre `families/{familyId}/budgets`.
+
+### Generación perezosa de movimientos recurrentes
+- [ ] En el mismo punto de la app donde ya se ejecuta el self-heal de las Fases 7 bis/9 bis (splash/loading, tras el login y con la familia activa resuelta), añadir un paso que recorra las `recurringTransactions` activas de la familia activa.
+- [ ] Para cada una cuyo `dayOfMonth` del mes actual ya haya pasado y cuyo `lastGeneratedYearMonth` sea distinto del mes actual (`"yyyy-MM"`), crear el `Transaction` correspondiente reutilizando la misma lógica atómica de `TransactionRepository` (actualiza `currentBalance` de la cuenta en la misma operación) y actualizar `lastGeneratedYearMonth`.
+- [ ] Si han pasado varios meses sin abrir la app, generar todos los movimientos pendientes de esos meses (uno por cada mes no generado), no solo el del mes actual.
+- [ ] Probar: crear una plantilla recurrente con `dayOfMonth` ya pasado, forzar el `lastGeneratedYearMonth` a un mes anterior manualmente en Firestore, reabrir la app y confirmar que se genera el movimiento exactamente una vez.
+
+### UI de movimientos recurrentes (solo admin/owner, igual que categorías)
+- [ ] `RecurringTransactionListFragment` (`ui/recurring/`): listado de plantillas activas/inactivas.
+- [ ] `AddEditRecurringTransactionFragment`: formulario para crear/editar una plantilla (reutilizar en lo posible los componentes ya existentes de `AddEditTransactionFragment` para categoría/cuenta/método de pago).
+- [ ] Punto de entrada visible solo para `admin`/`owner`, igual criterio que Importación CSV y Gestión de categorías.
+
+### Alertas de presupuesto
+- [ ] `BudgetListFragment`/`AddEditBudgetFragment` (`ui/budgets/`, solo admin/owner): definir un `monthlyLimit` por categoría.
+- [ ] Cálculo de consumo del mes en curso por categoría (sumar `transactions` de tipo `expense` de esa categoría, excluyendo cuentas archivadas, mismo criterio que Estadísticas).
+- [ ] Indicador visual (barra de progreso o color de alerta) en Estadísticas y/o Dashboard cuando el consumo se acerque o supere el `monthlyLimit` de alguna categoría con presupuesto activo.
+- [ ] Sin notificación push ni email — solo indicador visual dentro de la app.
+
+### Reglas de seguridad de Firestore
+- [ ] `families/{familyId}/recurringTransactions` y `families/{familyId}/budgets`: lectura para cualquier miembro aprobado; creación/edición/borrado restringida a `admin`/`owner`, mismo patrón que `categories`.
+- [ ] Probar con el Firebase Emulator Suite que un `member` normal no puede crear ni editar plantillas recurrentes ni presupuestos, solo leerlos.
+
+## Fase 13 — Exportación de movimientos a Excel/PDF
+> Ver diseño en `AGENTS.md`, sección 4, "Exportación de movimientos a Excel/PDF (Fase 13)". Complementa, sin sustituir, la exportación JSON de RGPD de la Fase 9 bis.
+
+- [ ] Decidir librería para Excel: Apache POI (más completa, más peso en el APK) vs. generación de CSV real como alternativa más ligera si el tamaño de la librería preocupa. Documentar la decisión tomada en `AGENTS.md`.
+- [ ] `ExcelExporter`/`PdfExporter` (`data/export/`): reciben la lista de movimientos **ya filtrada** que el usuario tiene en pantalla en `TransactionListFragment` (filtros de cuenta, categoría y rango de fechas ya aplicados) y generan el fichero correspondiente.
+- [ ] Para PDF: usar `PdfDocument` nativo de Android para un listado tabular simple, o revisar la skill `pdf` del proyecto si se necesita algo más elaborado (cabecera con nombre de familia y rango de fechas, totales al pie, etc.).
+- [ ] `ExportTransactionsFragment` o botón directo en `TransactionListFragment`: botón "Exportar" que ofrezca elegir formato (Excel/PDF) y comparta el resultado vía `Intent.ACTION_SEND`, igual patrón que la exportación JSON de RGPD.
+- [ ] Sin restricción de rol: cualquier miembro aprobado puede exportar los movimientos que ya puede ver (a diferencia de la importación CSV, que sí está restringida a admin/owner).
+- [ ] Probar con una familia con 0 movimientos filtrados (mostrar aviso en vez de generar un fichero vacío) y con varios cientos de movimientos (confirmar que no bloquea la UI — usar hilo de fondo/coroutine-equivalente en Java).
+
+## Fase 14 — Multi-divisa (esqueleto, sin diseño de datos cerrado)
+> Prioridad baja: no empezar esta fase hasta que haya demanda real de usuarios, según decisión documentada en `AGENTS.md` sección 10. Las tareas de esta fase son de investigación/diseño, no de implementación directa, hasta que se decida abordarla en serio.
+
+- [ ] Decidir fuente de tipos de cambio (API externa gratuita vs. actualización manual periódica) y si introduce o no una nueva dependencia de red/API key (ver sección 6 de `AGENTS.md` sobre gestión de credenciales si aplica).
+- [ ] Decidir el momento de conversión: en tiempo real al mostrar cada pantalla (siempre actualizado, pero más llamadas) vs. en el momento de guardar el movimiento (histórico estable, pero no refleja el tipo de cambio actual en consultas pasadas).
+- [ ] Diseñar qué cambia del modelo de datos actual: hoy `currencyCode` vive a nivel de `families/{familyId}` (una única moneda para toda la familia); permitir cuentas en distintas divisas implicaría mover o añadir `currencyCode` a nivel de `Account`, lo cual afecta a `currentBalance`, a los agregados del Dashboard y a todos los gráficos de Estadísticas. No implementar nada hasta tener este diseño explícitamente aprobado y documentado en `AGENTS.md`.
+- [ ] Una vez decidido lo anterior, desglosar esta fase en tareas concretas de implementación (modelo, repositorios, UI, reglas de seguridad), siguiendo el mismo formato que el resto del plan.
+
+## Fase 15 — Revisión periódica de deuda técnica documentada
+> A diferencia del resto de fases, esta no se marca como "completada" una única vez: es una revisión recurrente. Ver también la sección 9 de `AGENTS.md` ("Cómo debe trabajar el agente de código").
+
+- [ ] **`WriteBatch` en la importación CSV (Fase 6 bis)** en vez de una Firestore transaction por fila: revisar si el volumen real de movimientos importados por familia sigue siendo compatible con este patrón, o si conviene trocear las importaciones muy grandes en varios `WriteBatch` para no acercarse al límite de 500 operaciones por batch de Firestore.
+- [ ] **Doble fuente de verdad `members`/`memberships` (Fase 7 bis)**: releer la lista completa de puntos de escritura documentados en `AGENTS.md`/`PLAN_DESARROLLO.md` Fase 7 bis y confirmar, con datos reales de uso, que ambas colecciones siguen sincronizadas en todos los flujos (creación de familia, invitaciones, cambios de rol, cambio de nombre, abandonar/expulsar, traspaso de owner, deep-delete). Si se detecta cualquier desincronización real, documentarla como bugfix con fecha en "Decisiones tomadas durante el desarrollo" de `AGENTS.md`, igual que el resto de bugfixes ya registrados.
+- [ ] Revisar si alguna otra decisión ya marcada como "excepción deliberada" o "asunción tomada" en `AGENTS.md` ha dejado de ser válida a medida que ha crecido el uso real de la app (más familias, más movimientos, más miembros por familia), y documentar cualquier cambio de criterio con fecha, igual que el resto de decisiones del proyecto.
+- [ ] Repetir esta revisión periódicamente (por ejemplo, antes de empezar cualquier fase nueva no prevista, o cada varios meses de uso real en producción), no solo una vez.

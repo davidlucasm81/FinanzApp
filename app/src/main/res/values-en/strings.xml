@@ -88,6 +88,7 @@
     <string name="stats_average_expense">Average Expense</string>
     <string name="stats_monthly_evolution">Monthly Evolution</string>
     <string name="stats_category_distribution">Category Distribution</string>
+    <string name="category_others">Others</string>
     <string name="stats_net_history">Net History</string>
     <string name="date_filter_all">Full history</string>
     <string name="date_filter_clear_desc">Clear filter</string>

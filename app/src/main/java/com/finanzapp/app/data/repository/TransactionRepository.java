@@ -1,7 +1,6 @@
 package com.finanzapp.app.data.repository;
 
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
 
 import com.finanzapp.app.R;
 import com.finanzapp.app.data.firebase.FirestorePaths;
@@ -17,9 +16,7 @@ import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -188,13 +185,10 @@ public class TransactionRepository {
                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
 
-    public LiveData<List<Transaction>> getTransactions(String familyId) {
-        return getTransactions(familyId, null, null, null, null, null, null);
-    }
-
-    public LiveData<List<Transaction>> getTransactions(String familyId, String accountId, String categoryId, String type, String paymentMethod, Timestamp startDate, Timestamp endDate) {
+    public LiveData<List<Transaction>> getTransactions(String familyId, String accountId, List<String> categoryIds, String type, String paymentMethod, Timestamp startDate, Timestamp endDate) {
         // Cache key based on filters
-        String cacheKey = String.format("%s_%s_%s_%s_%s_%s_%s", familyId, accountId, categoryId, type, paymentMethod,
+        String categoryIdsKey = categoryIds != null ? categoryIds.toString() : "null";
+        String cacheKey = String.format("%s_%s_%s_%s_%s_%s_%s", familyId, accountId, categoryIdsKey, type, paymentMethod,
                 startDate != null ? startDate.getSeconds() : "null",
                 endDate != null ? endDate.getSeconds() : "null");
 
@@ -209,8 +203,14 @@ public class TransactionRepository {
         if (accountId != null && !accountId.isEmpty()) {
             query = query.whereEqualTo("accountId", accountId);
         }
-        if (categoryId != null && !categoryId.isEmpty()) {
-            query = query.whereEqualTo("categoryId", categoryId);
+        if (categoryIds != null && !categoryIds.isEmpty()) {
+            if (categoryIds.size() == 1) {
+                query = query.whereEqualTo("categoryId", categoryIds.get(0));
+            } else {
+                // Firestore 'in' filter supports up to 30 elements
+                List<String> limitedIds = categoryIds.size() > 30 ? categoryIds.subList(0, 30) : categoryIds;
+                query = query.whereIn("categoryId", limitedIds);
+            }
         }
         if (type != null && !type.isEmpty()) {
             query = query.whereEqualTo("type", type);

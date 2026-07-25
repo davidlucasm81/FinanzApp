@@ -19,6 +19,7 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.Navigation;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -68,6 +69,7 @@ public class TransactionListFragment extends Fragment {
 
     private String filterAccountId = null;
     private String filterCategoryId = null;
+    private List<String> filterCategoryIds = null;
     private String filterType = null;
     private String filterMethod = null;
     private Calendar filterStartDate = null;
@@ -98,6 +100,10 @@ public class TransactionListFragment extends Fragment {
             preselectedCategoryId = getArguments().getString("preselectedCategoryId");
             preselectedStartMillis = getArguments().getLong("preselectedStartDateMillis", -1L);
             preselectedEndMillis = getArguments().getLong("preselectedEndDateMillis", -1L);
+            String[] ids = getArguments().getStringArray("preselectedCategoryIds");
+            if (ids != null) {
+                filterCategoryIds = java.util.Arrays.asList(ids);
+            }
         }
 
         FinanzAppApplication.AppContainer appContainer = ((FinanzAppApplication) requireActivity().getApplication()).getAppContainer();
@@ -305,6 +311,8 @@ public class TransactionListFragment extends Fragment {
         spinnerFilterMethod.setSelection(0);
         filterStartDate = null;
         filterEndDate = null;
+        filterCategoryId = null;
+        filterCategoryIds = null;
         updateTransactions();
     }
 
@@ -312,9 +320,7 @@ public class TransactionListFragment extends Fragment {
         new AlertDialog.Builder(requireContext())
                 .setTitle(R.string.delete_transaction_title)
                 .setMessage(R.string.delete_transaction_message)
-                .setPositiveButton(R.string.delete_button, (dialog, which) -> {
-                    viewModel.deleteTransaction(familyId, t);
-                })
+                .setPositiveButton(R.string.delete_button, (dialog, which) -> viewModel.deleteTransaction(familyId, t))
                 .setNegativeButton(R.string.cancel_button, null)
                 .show();
     }
@@ -361,20 +367,28 @@ public class TransactionListFragment extends Fragment {
                     categoryColors.put(c.getId(), c.getColor());
                     names.add(c.getName());
                 }
+                
+                if ("GROUPED_OTHERS".equals(preselectedCategoryId)) {
+                    // Si venimos de la porción "Otros", añadimos una opción virtual al spinner
+                    names.add(getString(R.string.category_others));
+                }
+
                 adapter.notifyDataSetChanged();
                 ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, names);
                 adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
                 spinnerFilterCategory.setAdapter(adapter);
 
                 if (!isPreselectionApplied && preselectedCategoryId != null) {
-                    filterCategoryId = preselectedCategoryId;
-                }
-
-                if (filterCategoryId != null) {
-                    for (int i = 0; i < allCategories.size(); i++) {
-                        if (allCategories.get(i).getId().equals(filterCategoryId)) {
-                            spinnerFilterCategory.setSelection(i + 1);
-                            break;
+                    if ("GROUPED_OTHERS".equals(preselectedCategoryId)) {
+                        spinnerFilterCategory.setSelection(names.size() - 1);
+                        filterCategoryId = null;
+                    } else {
+                        filterCategoryId = preselectedCategoryId;
+                        for (int i = 0; i < allCategories.size(); i++) {
+                            if (allCategories.get(i).getId().equals(filterCategoryId)) {
+                                spinnerFilterCategory.setSelection(i + 1);
+                                break;
+                            }
                         }
                     }
                 }
@@ -382,7 +396,16 @@ public class TransactionListFragment extends Fragment {
                 spinnerFilterCategory.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                     @Override
                     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                        filterCategoryId = position == 0 ? null : allCategories.get(position - 1).getId();
+                        if (position == 0) {
+                            filterCategoryId = null;
+                            filterCategoryIds = null;
+                        } else if ("GROUPED_OTHERS".equals(preselectedCategoryId) && position == names.size() - 1) {
+                            filterCategoryId = null;
+                            // filterCategoryIds ya debería estar seteado desde onViewCreated
+                        } else {
+                            filterCategoryId = allCategories.get(position - 1).getId();
+                            filterCategoryIds = null;
+                        }
                         updateTransactions();
                     }
                     @Override
@@ -489,6 +512,7 @@ public class TransactionListFragment extends Fragment {
         // Sync local filters to ViewModel
         viewModel.setFilterAccountId(filterAccountId);
         viewModel.setFilterCategoryId(filterCategoryId);
+        viewModel.setFilterCategoryIds(filterCategoryIds);
         viewModel.setFilterType(filterType);
         viewModel.setFilterMethod(filterMethod);
         viewModel.setFilterStartDate(filterStartDate != null ? new com.google.firebase.Timestamp(filterStartDate.getTime()) : null);
@@ -561,9 +585,40 @@ public class TransactionListFragment extends Fragment {
         }
 
         void updateTransactions(List<Transaction> newTransactions) {
+            DiffUtil.DiffResult result = DiffUtil.calculateDiff(new DiffUtil.Callback() {
+                @Override
+                public int getOldListSize() {
+                    return transactions.size();
+                }
+
+                @Override
+                public int getNewListSize() {
+                    return newTransactions.size();
+                }
+
+                @Override
+                public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+                    return java.util.Objects.equals(transactions.get(oldItemPosition).getId(),
+                            newTransactions.get(newItemPosition).getId());
+                }
+
+                @Override
+                public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+                    Transaction oldT = transactions.get(oldItemPosition);
+                    Transaction newT = newTransactions.get(newItemPosition);
+                    return Double.compare(oldT.getAmount(), newT.getAmount()) == 0 &&
+                            java.util.Objects.equals(oldT.getDate(), newT.getDate()) &&
+                            java.util.Objects.equals(oldT.getDescription(), newT.getDescription()) &&
+                            java.util.Objects.equals(oldT.getCategoryId(), newT.getCategoryId()) &&
+                            java.util.Objects.equals(oldT.getAccountId(), newT.getAccountId()) &&
+                            java.util.Objects.equals(oldT.getType(), newT.getType()) &&
+                            java.util.Objects.equals(oldT.getPaymentMethod(), newT.getPaymentMethod());
+                }
+            });
+
             this.transactions.clear();
             this.transactions.addAll(newTransactions);
-            notifyDataSetChanged();
+            result.dispatchUpdatesTo(this);
         }
 
         @NonNull

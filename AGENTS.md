@@ -28,6 +28,7 @@ Nombre de la app: **FinanzApp**.
 | Fechas/importes | `java.time` (API desugarizada) para fechas; `NumberFormat`/`Currency` de Java para importes | Evita bugs de zona horaria y de formato de moneda |
 | IA (sugerencia de categorías) | ELIMINADO | Requisito eliminado por decisión del usuario |
 | Notificaciones push / Backend serverless / Cifrado con Cloud KMS | ELIMINADO | Ambos requieren Cloud Functions, que exige vincular una cuenta de facturación (plan Blaze) de forma obligatoria, incluso con uso $0. Decisión del propietario: no vincular ningún medio de pago al proyecto. Ver entrada 2026-07-21 en "Decisiones tomadas durante el desarrollo". |
+| Observabilidad | Firebase Crashlytics + Firebase Performance Monitoring | Ambos son gratuitos en el plan Spark (no exigen plan Blaze ni tarjeta vinculada), a diferencia de Cloud Functions/KMS. Ver Fase 11 en `PLAN_DESARROLLO.md`. |
 
 Notas:
 - Usa siempre el Firebase BoM (Bill of Materials) más reciente en vez de fijar versiones sueltas de cada librería; comprueba la versión actual en la consola de Firebase / documentación oficial al escribir el `build.gradle`, no la des por supuesta de memoria.
@@ -43,13 +44,18 @@ com.finanzapp.app/
 │   ├── repository/               // AuthRepository, FamilyRepository, AccountRepository, TransactionRepository, CategoryRepository, NotificationRepository, NotificationSettingsRepository (Fase 8 bis)
 │   ├── firebase/                 // Constantes de rutas Firestore, mappers documento<->POJO
 │   ├── importer/                  // CsvTransactionParser (detección de delimitador, parseo de filas), TransactionImportRepository (resuelve/crea cuentas y categorías, escribe en batch)
+│   ├── recurring/                 // (Fase 12) RecurringTransactionRepository: CRUD de plantillas recurrentes y generación del movimiento del mes al abrir la app
+│   ├── budget/                    // (Fase 12) BudgetRepository: CRUD de límites de presupuesto por categoría y cálculo de consumo del mes
+│   ├── export/                    // (Fase 13) ExcelExporter/PdfExporter: generación de fichero a partir de una lista de movimientos ya filtrada
 ├── ui/
 │   ├── auth/                      // LoginActivity/Fragment
 │   ├── onboarding/                // WelcomeFragment, CreateFamilyFragment, InitialAccountsFragment (alta de cuentas + posición neta inicial), JoinByCodeFragment, PendingApprovalFragment, AcceptInvitationFragment, PrivacyConsentFragment (Fase 9 bis)
 │   ├── settings/                  // SettingsFragment, ProfileFragment (incluye el interruptor de notificaciones y "Descargar mis datos", Fase 8 bis / 9 bis)
 │   ├── family/                    // FamilySettingsFragment, MemberListFragment, InviteMemberFragment, FamilySwitcherFragment (selector de familia activa), MyFamiliesFragment (listado de todas las familias del usuario)
 │   ├── accounts/                  // AccountListFragment, AddEditAccountFragment
-│   ├── transactions/              // AddEditTransactionFragment, TransactionListFragment, filtros, ImportTransactionsFragment (importación CSV)
+│   ├── transactions/              // AddEditTransactionFragment, TransactionListFragment, filtros, ImportTransactionsFragment (importación CSV), ExportTransactionsFragment (Fase 13, Excel/PDF)
+│   ├── recurring/                 // (Fase 12) RecurringTransactionListFragment, AddEditRecurringTransactionFragment
+│   ├── budgets/                   // (Fase 12) BudgetListFragment, AddEditBudgetFragment, indicador de consumo en Estadísticas/Dashboard
 │   ├── categories/                // ManageCategoriesFragment
 │   ├── dashboard/                 // DashboardFragment (posición neta)
 │   └── statistics/                // StatisticsFragment + subvistas de gráficos
@@ -137,6 +143,26 @@ families/{familyId}/transactions/{transactionId}
   type: "income" | "expense"
   categoryId: string
   paymentMethod: "tarjeta" | "transferencia" | "efectivo" | "bizum" | "tarjeta_restaurante" | "tarjeta_transporte" | "domiciliacion_bancaria"
+  createdBy: uid
+  createdAt: timestamp
+
+families/{familyId}/recurringTransactions/{recurringId}  // (Fase 12) plantilla de movimiento recurrente
+  accountId: string
+  description: string
+  amount: number
+  type: "income" | "expense"
+  categoryId: string
+  paymentMethod: string            // mismos valores que en Transaction
+  dayOfMonth: number               // 1-28, día del mes en que se genera el movimiento (se limita a 28 para evitar problemas con meses cortos)
+  active: boolean                  // si es false, no genera más movimientos aunque llegue la fecha
+  lastGeneratedYearMonth: string | null  // "yyyy-MM" del último mes ya generado, para no duplicar si el usuario abre la app varias veces el mismo mes
+  createdBy: uid
+  createdAt: timestamp
+
+families/{familyId}/budgets/{budgetId}  // (Fase 12) límite de gasto mensual por categoría
+  categoryId: string
+  monthlyLimit: number
+  active: boolean
   createdBy: uid
   createdAt: timestamp
 ```
@@ -248,6 +274,24 @@ Reglas de importación (`data/importer/`):
 - **Permisos**: como la importación puede crear categorías, y la gestión de categorías está restringida a `admin`/`owner` (Fase 5, sección 5), la pantalla de importación (`ImportTransactionsFragment`) solo es accesible para `admin`/`owner`, igual que "Gestionar categorías".
 - **Selección de fichero**: usar Storage Access Framework (`ACTION_OPEN_DOCUMENT`) para que el usuario elija el fichero desde donde quiera (no requiere subirlo a Firebase Storage, se lee y se descarta localmente); no añade ninguna dependencia nueva.
 
+### Movimientos recurrentes y alertas de presupuesto (Fase 12)
+
+> Requisito nuevo (2026-07-25): resolver íntegramente en cliente, sin backend, para no romper la restricción de no vincular ningún medio de facturación (ver entrada 2026-07-21).
+
+- **Generación de movimientos recurrentes sin backend**: no hay Cloud Functions disponibles, así que no se puede "disparar" la generación en una fecha exacta aunque la app esté cerrada. Se resuelve de forma perezosa: en cada apertura de la app (por ejemplo, en el mismo punto donde ya se hace el self-heal de la Fase 7 bis/9 bis), se recorren las `recurringTransactions` activas de la familia activa y, para cada una cuyo `dayOfMonth` ya haya pasado en el mes actual y cuyo `lastGeneratedYearMonth` sea distinto del mes actual, se crea el `Transaction` correspondiente (misma lógica atómica de actualización de `currentBalance` que un alta manual) y se actualiza `lastGeneratedYearMonth`. Asunción: si el usuario no abre la app durante varios meses, se generan igualmente todos los movimientos pendientes de esos meses al abrirla (no se "pierden"), cada uno con la fecha que le correspondía.
+- **Alcance inicial**: solo frecuencia mensual (`dayOfMonth`), por ser el caso de uso dominante en gastos domésticos (hipoteca, seguros, suscripciones). Frecuencias semanales/anuales quedan fuera de la v1 de esta fase.
+- **Alertas de presupuesto**: `budgets` define un `monthlyLimit` opcional por categoría. El consumo del mes se calcula en cliente (sumando `transactions` de tipo `expense` de esa categoría en el mes en curso, con el mismo criterio de "solo cuentas activas" ya usado en Estadísticas) y se muestra como aviso visual (barra de progreso o color de alerta) en Estadísticas y/o Dashboard cuando el consumo se acerca o supera el `monthlyLimit`. No se envía ninguna notificación push ni email; es un indicador visual dentro de la app, coherente con el enfoque 100% cliente de las notificaciones in-app de la Fase 8 bis.
+- **Permisos**: igual que con categorías y CSV, crear/editar/borrar `recurringTransactions` y `budgets` queda restringido a `admin`/`owner`; cualquier miembro aprobado puede consultarlos.
+
+### Exportación de movimientos a Excel/PDF (Fase 13)
+
+> Requisito nuevo (2026-07-25). Complementa la exportación JSON de RGPD (Fase 9 bis), que cubre "mis datos" para cumplimiento legal; esta exportación es una funcionalidad de producto para compartir/imprimir el listado de movimientos ya filtrado en `TransactionListFragment` (por cuenta, categoría y rango de fechas).
+
+- La exportación parte siempre de la lista de movimientos **ya filtrada** en pantalla, nunca de toda la familia sin filtrar, para evitar ficheros enormes y respetar el filtro que el usuario ya ha elegido.
+- Formato Excel (`.xlsx`) vía Apache POI, o alternativa más ligera si el tamaño de la librería preocupa (generación manual de CSV con extensión `.xlsx` no es válida; si se quiere evitar POI, ofrecer CSV real en su lugar). Formato PDF vía la misma librería ya usada en la skill de `pdf` del proyecto, o `PdfDocument` nativo de Android para un listado tabular simple.
+- El fichero generado se comparte vía `Intent.ACTION_SEND`, igual que ya se hace con la exportación JSON de RGPD.
+- Sin restricción de rol: cualquier miembro aprobado puede exportar los movimientos que ya puede ver.
+
 ### Sugerencia de categorías por IA (ELIMINADO)
 
 Este requisito ha sido eliminado por decisión del usuario.
@@ -320,6 +364,11 @@ Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exi
 12. **Pertenencia a varias familias** (Fase 7 bis): un usuario puede pertenecer a N familias a la vez, cambiar entre ellas mediante un selector de familia activa, y crear o unirse a familias adicionales sin dejar de pertenecer a las anteriores. Ver detalle en la sección 4, "Pertenencia a varias familias (Fase 7 bis)".
 13. **Privacidad y GDPR** (Fase 9 bis): cumplimiento de la normativa mediante consentimiento explícito, derecho al olvido (borrado de cuenta/datos) y derecho de acceso (exportación de datos). Firestore cubre el cifrado básico. Ver sección 4.
 14. **Multiidioma**: Soporte para Español e Inglés mediante recursos nativos de Android.
+15. **Modo oscuro**: soporte completo de tema oscuro (`values-night`) en toda la app. Implementado.
+16. **Observabilidad** (Fase 11): Firebase Crashlytics (informes de fallo) y Firebase Performance Monitoring (rendimiento de red/pantallas), ambos gratuitos en plan Spark. No es una funcionalidad visible para el usuario final, es una herramienta de calidad para el equipo de desarrollo.
+17. **Movimientos recurrentes y alertas de presupuesto** (Fase 12): plantillas de movimiento recurrente mensual que se generan solas al abrir la app, y límites de gasto mensual por categoría con aviso visual al superarse. Resuelto 100% en cliente, sin backend. Ver sección 4.
+18. **Exportación de movimientos a Excel/PDF** (Fase 13): exportar el listado de movimientos ya filtrado (cuenta/categoría/fechas) a un fichero Excel o PDF y compartirlo. Ver sección 4.
+19. **Multi-divisa** (Fase 14, prioridad baja): pendiente de decisión de diseño hasta que exista demanda real de usuarios; ver sección 10.
 
 ## 8. Convenciones de código
 
@@ -338,15 +387,16 @@ Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exi
 - Marcar cada tarea del plan como completada (`- [x]`) al terminarla, para que el progreso quede registrado en el propio repositorio.
 - **Mantenimiento del Plan**: Si durante el desarrollo se implementan funcionalidades, mejoras de UX o correcciones que no estaban contempladas originalmente en `PLAN_DESARROLLO.md`, el agente **debe** añadirlas al plan (preferiblemente en una sección de "Mejoras" o dentro de la fase correspondiente) para mantener la trazabilidad del proyecto.
 - Ante cualquier ambigüedad de negocio (no técnica) que no esté resuelta en este documento, no inventar: preguntar o documentar la asunción tomada en la sección "Decisiones tomadas durante el desarrollo" de este mismo archivo.
+- **Revisión periódica de deuda técnica documentada (Fase 15)**: a diferencia del resto de fases, esta no se marca como "completada" una única vez. Cada vez que se retome el desarrollo tras un periodo de inactividad, o periódicamente (por ejemplo, antes de cada nueva fase o cada varios meses de uso real), releer los puntos marcados en este documento como "excepción deliberada" (`WriteBatch` en la importación CSV, doble fuente de verdad `members`/`memberships` de la Fase 7 bis) y confirmar en `PLAN_DESARROLLO.md`, Fase 15, que siguen comportándose como se documentó; si el volumen de datos o de familias ha crecido lo suficiente como para que el coste aceptado en su día ya no compense, documentarlo como nueva decisión en vez de arrastrarlo en silencio.
 
 ## 10. Fuera de alcance en la v1 (posible trabajo futuro)
 
-- Multi-divisa con conversión automática entre cuentas de distinta moneda.
+- **Multi-divisa con conversión automática entre cuentas de distinta moneda.** Sigue siendo la de mayor complejidad (exige una fuente de tipos de cambio y decidir si la conversión se hace en tiempo real o al guardar el movimiento). Se mantiene fuera de alcance de forma deliberada — no abordar hasta que haya demanda real de usuarios. Ver Fase 14 (esqueleto, sin diseño de datos cerrado) en `PLAN_DESARROLLO.md`.
 - ~~Un usuario perteneciendo a más de una unidad familiar a la vez.~~ Pasa a ser un requisito de la v1 desde 2026-07-18 — ver Fase 7 bis en `PLAN_DESARROLLO.md` y la sección "Pertenencia a varias familias" en el punto 4 de este documento.
-- Movimientos recurrentes/automatizados y alertas de presupuesto.
-- Exportación a Excel/PDF.
+- ~~Movimientos recurrentes/automatizados y alertas de presupuesto.~~ Pasa a ser un requisito desde 2026-07-25 — ver Fase 12 en `PLAN_DESARROLLO.md` y la sección "Movimientos recurrentes y alertas de presupuesto (Fase 12)" en el punto 4 de este documento.
+- ~~Exportación a Excel/PDF.~~ Pasa a ser un requisito desde 2026-07-25 — ver Fase 13 en `PLAN_DESARROLLO.md` y la sección "Exportación de movimientos a Excel/PDF (Fase 13)" en el punto 4 de este documento.
 - Notificaciones push (FCM) para movimientos nuevos, solicitudes de unión pendientes, cambios de rol, etc. Requeriría Cloud Functions y, por tanto, vincular una cuenta de facturación (plan Blaze) — descartado por decisión del propietario (2026-07-21). Se podría retomar en el futuro si se acepta ese requisito.
-- Modo oscuro (fácil de añadir después, no bloquea nada).
+- ~~Modo oscuro.~~ **Implementado** (soporte completo de tema oscuro en toda la app).
 
 ---
 
@@ -400,3 +450,10 @@ Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exi
   - De la Fase 9 bis se elimina la parte de cifrado de aplicación (Cloud KMS + Cloud Functions); se mantienen la pantalla de consentimiento de la Política de Privacidad y la exportación de datos propios, por ser puramente cliente + Firestore. Se documenta que el cifrado en tránsito/reposo ya ofrecido por Firestore cubre el requisito legal básico para datos que no son de categoría especial.
   - Queda como posible ampliación futura, si el propietario decide en algún momento vincular el plan Blaze (lo cual no implica pagar mientras el uso se mantenga en las cuotas gratuitas, pero sí exige una tarjeta válida).
 - **2026-07-21**: **Nueva lista de categorías y mejoras de UX**: Se actualiza la lista de categorías semilla según la petición del usuario (25 categorías con colores RGB específicos). Se añade el requisito de permitir la entrada directa de código RGB al editar categorías y de implementar un selector de categorías con filtrado por texto (búsqueda) en el formulario de movimientos para mejorar la usabilidad con listas largas.
+- **2026-07-25**: **Cierre de la v1 (Fases 0-10 completas) y planificación de evolución post-lanzamiento.** Se añaden las Fases 11 a 15 a `PLAN_DESARROLLO.md`:
+  - **Fase 11 (Observabilidad y calidad pre-lanzamiento)**: Firebase Crashlytics + Performance Monitoring (gratuitos en plan Spark, no requieren tarjeta vinculada, coherente con la restricción de 2026-07-21), revisión de índices compuestos de Firestore antes del lanzamiento (Estadísticas combina varios filtros y puede necesitar índices que hoy no existen), y publicación mediante *staged rollout* en Google Play en vez de al 100% de golpe.
+  - **Fase 12 (Movimientos recurrentes y alertas de presupuesto)**: resuelta 100% en cliente (sin Cloud Functions), generando los movimientos pendientes de forma perezosa al abrir la app. Ver sección 4 para el detalle y las asunciones tomadas.
+  - **Fase 13 (Exportación a Excel/PDF)**: complementa, sin sustituir, la exportación JSON de RGPD de la Fase 9 bis.
+  - **Fase 14 (Multi-divisa)**: se documenta como fase existente en el plan pero **sin diseño de datos cerrado**, a la espera de demanda real de usuarios, por ser la funcionalidad de mayor complejidad de las pendientes.
+  - **Fase 15 (Revisión periódica de deuda técnica documentada)**: a diferencia de las anteriores, no es una fase que se marque como completada una única vez, sino una revisión recurrente (ver sección 9) de los puntos ya marcados en este documento como "excepción deliberada" (`WriteBatch` en la importación CSV en vez de una transaction por fila, y la doble fuente de verdad `members`/`memberships` de la Fase 7 bis), para confirmar que se mantienen sincronizados a medida que crece el uso real de la app.
+  - **Modo oscuro**: se confirma que ya está implementado; se corrige la sección 10 (antes lo listaba como pendiente) y se añade como punto 15 a la sección 7.

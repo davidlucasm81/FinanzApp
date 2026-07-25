@@ -2,12 +2,10 @@ package com.finanzapp.app.ui.statistics;
 
 import android.graphics.Color;
 import android.os.Bundle;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.TableRow;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -16,12 +14,12 @@ import androidx.core.content.ContextCompat;
 import androidx.core.util.Pair;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.finanzapp.app.FinanzAppApplication;
 import com.finanzapp.app.R;
-import com.finanzapp.app.data.model.Category;
 import com.finanzapp.app.data.model.DashboardCategorySummary;
 import com.finanzapp.app.data.model.statistics.MonthlySummary;
 import com.finanzapp.app.databinding.FragmentStatisticsBinding;
@@ -29,22 +27,18 @@ import com.finanzapp.app.util.ChartUtils;
 import com.finanzapp.app.viewmodel.StatisticsViewModel;
 import com.finanzapp.app.viewmodel.ViewModelFactory;
 import com.github.mikephil.charting.charts.CombinedChart;
-import com.github.mikephil.charting.charts.PieChart;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.BarDataSet;
 import com.github.mikephil.charting.data.BarEntry;
 import com.github.mikephil.charting.data.CombinedData;
 import com.github.mikephil.charting.data.Entry;
-import com.github.mikephil.charting.data.LineData;
-import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.data.PieData;
 import com.github.mikephil.charting.data.PieDataSet;
 import com.github.mikephil.charting.data.PieEntry;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import com.github.mikephil.charting.highlight.Highlight;
 import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
-import com.github.mikephil.charting.utils.ColorTemplate;
 import com.google.android.material.datepicker.MaterialDatePicker;
 
 import java.text.NumberFormat;
@@ -58,7 +52,6 @@ import java.util.Currency;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 import androidx.navigation.Navigation;
 
@@ -79,6 +72,11 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+
+        // Explicitly hide content and show loader before ANYTHING else
+        binding.progressBar.setVisibility(View.VISIBLE);
+        binding.scrollView.setVisibility(View.GONE);
+        binding.llEmptyState.setVisibility(View.GONE);
 
         FinanzAppApplication.AppContainer appContainer = ((FinanzAppApplication) requireActivity().getApplication()).getAppContainer();
         ViewModelFactory factory = new ViewModelFactory(appContainer);
@@ -151,6 +149,7 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
             } else if (result instanceof com.finanzapp.app.util.Result.Loading) {
                 binding.progressBar.setVisibility(View.VISIBLE);
                 binding.scrollView.setVisibility(View.GONE);
+                binding.llEmptyState.setVisibility(View.GONE);
             }
         });
 
@@ -268,26 +267,7 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         expenseSet.setValueTextSize(10f);
         expenseSet.setDrawValues(true);
 
-        BarData barData = new BarData(incomeSet, expenseSet);
-        barData.setValueFormatter(new com.github.mikephil.charting.formatter.ValueFormatter() {
-            @Override
-            public String getFormattedValue(float value) {
-                if (value == 0) return "";
-                return formatCurrency(value, currentCurrencyCode, 0);
-            }
-        });
-
-        float groupSpace = 0.08f;
-        float barSpace = 0.03f;
-        float barWidth = 0.43f;
-
-        barData.setBarWidth(barWidth);
-        if (data.size() > 1) {
-            barData.groupBars(0, groupSpace, barSpace);
-        }
-
-        CombinedData combinedData = new CombinedData();
-        combinedData.setData(barData);
+        CombinedData combinedData = getCombinedData(data, incomeSet, expenseSet);
 
         binding.monthlyChart.setData(combinedData);
         XAxis xAxis = binding.monthlyChart.getXAxis();
@@ -310,6 +290,31 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         binding.monthlyChart.invalidate();
     }
 
+    @NonNull
+    private CombinedData getCombinedData(List<MonthlySummary> data, BarDataSet incomeSet, BarDataSet expenseSet) {
+        BarData barData = new BarData(incomeSet, expenseSet);
+        barData.setValueFormatter(new com.github.mikephil.charting.formatter.ValueFormatter() {
+            @Override
+            public String getFormattedValue(float value) {
+                if (value == 0) return "";
+                return formatCurrency(value, currentCurrencyCode, 0);
+            }
+        });
+
+        float groupSpace = 0.08f;
+        float barSpace = 0.03f;
+        float barWidth = 0.43f;
+
+        barData.setBarWidth(barWidth);
+        if (data.size() > 1) {
+            barData.groupBars(0, groupSpace, barSpace);
+        }
+
+        CombinedData combinedData = new CombinedData();
+        combinedData.setData(barData);
+        return combinedData;
+    }
+
     private void updatePieChart(List<DashboardCategorySummary> data) {
         if (data.isEmpty()) {
             binding.categoryPieChart.clear();
@@ -324,7 +329,37 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
             totalAmount += summary.getAmount();
         }
 
+        // Dynamic Grouping strategy:
+        // 1. Minimum percentage threshold (3%)
+        // 2. Maximum number of slices in chart (8)
+        final double MIN_PERCENTAGE = 3.0;
+        final int MAX_SLICES = 8;
+        
+        double othersAmount = 0;
+        List<String> othersCategoryIds = new ArrayList<>();
+        List<DashboardCategorySummary> visibleCategories = new ArrayList<>();
+
         for (DashboardCategorySummary summary : data) {
+            double percentage = (totalAmount > 0) ? (summary.getAmount() / totalAmount) * 100.0 : 0;
+            
+            if (percentage < MIN_PERCENTAGE) {
+                othersAmount += summary.getAmount();
+                othersCategoryIds.add(summary.getCategoryId());
+            } else {
+                visibleCategories.add(summary);
+            }
+        }
+
+        // If we still have too many slices, move the smallest ones to "Others"
+        while (visibleCategories.size() > (othersAmount > 0 ? MAX_SLICES - 1 : MAX_SLICES)) {
+            // Data is already sorted by amount descending in ViewModel, so the last one is the smallest
+            DashboardCategorySummary smallest = visibleCategories.remove(visibleCategories.size() - 1);
+            othersAmount += smallest.getAmount();
+            othersCategoryIds.add(smallest.getCategoryId());
+        }
+
+        // Add main categories to entries
+        for (DashboardCategorySummary summary : visibleCategories) {
             double percentage = (totalAmount > 0) ? (summary.getAmount() / totalAmount) * 100.0 : 0;
             String label = String.format(Locale.getDefault(), "%s (%.1f%%)", 
                     summary.getCategoryName(), percentage);
@@ -338,6 +373,20 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
             }
         }
 
+        if (othersAmount > 0) {
+            double othersPercentage = (othersAmount / totalAmount) * 100.0;
+            String label = String.format(Locale.getDefault(), "%s (%.1f%%)", 
+                    getString(R.string.category_others), othersPercentage);
+            PieEntry entry = new PieEntry((float) othersAmount, label);
+            // We pass a joined string or special flag for navigation if needed, 
+            // but usually "Others" slice navigation is ambiguous. 
+            // We'll leave data null or handle it in onValueSelected.
+            entry.setData("GROUPED_OTHERS:" + String.join(",", othersCategoryIds)); 
+            entries.add(entry);
+            // Use a darker gray in Dark Mode for better contrast with white text
+            colors.add(isDarkMode() ? Color.DKGRAY : Color.LTGRAY);
+        }
+
         PieDataSet dataSet = new PieDataSet(entries, "");
         dataSet.setColors(colors);
         dataSet.setSliceSpace(3f);
@@ -348,6 +397,18 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         dataSet.setYValuePosition(PieDataSet.ValuePosition.INSIDE_SLICE);
         dataSet.setValueLineColor(isDarkMode() ? Color.WHITE : Color.BLACK);
 
+        PieData pieData = getPieData(dataSet);
+
+        binding.categoryPieChart.setData(pieData);
+        binding.categoryPieChart.setMinAngleForSlices(0f); // Disable minimum angle since we grouped small ones
+        binding.categoryPieChart.invalidate();
+
+        // Update custom legend with FULL data
+        legendAdapter.updateData(data);
+    }
+
+    @NonNull
+    private PieData getPieData(PieDataSet dataSet) {
         PieData pieData = new PieData(dataSet);
         pieData.setValueFormatter(new com.github.mikephil.charting.formatter.ValueFormatter() {
             @Override
@@ -359,13 +420,7 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         });
         pieData.setValueTextSize(10f);
         pieData.setValueTextColor(isDarkMode() ? Color.WHITE : Color.BLACK);
-
-        binding.categoryPieChart.setData(pieData);
-        binding.categoryPieChart.setMinAngleForSlices(12f);
-        binding.categoryPieChart.invalidate();
-
-        // Update custom legend
-        legendAdapter.updateData(data);
+        return pieData;
     }
 
     @Override
@@ -381,7 +436,13 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         Pair<Long, Long> range = viewModel.getDateRange().getValue();
         
         Bundle args = new Bundle();
-        args.putString("preselectedCategoryId", categoryId);
+        if (categoryId != null && categoryId.startsWith("GROUPED_OTHERS:")) {
+            String[] ids = categoryId.substring("GROUPED_OTHERS:".length()).split(",");
+            args.putString("preselectedCategoryId", "GROUPED_OTHERS");
+            args.putStringArray("preselectedCategoryIds", ids);
+        } else {
+            args.putString("preselectedCategoryId", categoryId);
+        }
         
         if (range != null) {
             args.putLong("preselectedStartDateMillis", range.first);
@@ -431,8 +492,36 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         private List<DashboardCategorySummary> items = new ArrayList<>();
 
         public void updateData(List<DashboardCategorySummary> newItems) {
-            this.items = newItems;
-            notifyDataSetChanged();
+            DiffUtil.DiffResult result = DiffUtil.calculateDiff(new DiffUtil.Callback() {
+                @Override
+                public int getOldListSize() {
+                    return items.size();
+                }
+
+                @Override
+                public int getNewListSize() {
+                    return newItems.size();
+                }
+
+                @Override
+                public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+                    return items.get(oldItemPosition).getCategoryId().equals(
+                            newItems.get(newItemPosition).getCategoryId());
+                }
+
+                @Override
+                public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+                    DashboardCategorySummary oldItem = items.get(oldItemPosition);
+                    DashboardCategorySummary newItem = newItems.get(newItemPosition);
+                    return oldItem.getAmount() == newItem.getAmount() &&
+                            oldItem.getPercentage() == newItem.getPercentage() &&
+                            oldItem.getCategoryName().equals(newItem.getCategoryName()) &&
+                            oldItem.getCategoryColor().equals(newItem.getCategoryColor());
+                }
+            });
+
+            this.items = new ArrayList<>(newItems);
+            result.dispatchUpdatesTo(this);
         }
 
         @NonNull

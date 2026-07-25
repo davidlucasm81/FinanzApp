@@ -29,7 +29,7 @@ Queda pendiente, y **no se puede completar sin intervención humana**:
   garantizado.
 - [ ] **Cuenta de desarrollador de Google Play** (pago único de registro) y
   aceptar los acuerdos de distribución vigentes en la consola.
-- [x] **Icono de alta resolución 512×512** y **feature graphic 1024×500**:
+- [ ] **Icono de alta resolución 512×512** y **feature graphic 1024×500**:
   generados en `icon_assets/play_store_icon_512.png` y
   `icon_assets/feature_graphic_1024x500.png` (ver Fase 10). El feature
   graphic es un borrador funcional; sustitúyelo si un diseñador prepara
