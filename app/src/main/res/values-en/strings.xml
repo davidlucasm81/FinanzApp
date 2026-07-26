@@ -105,6 +105,8 @@
         To exercise the limitation or opposition of treatment, or any other request, write to us at: davidlucasmora81@gmail.com.&lt;br/&gt;&lt;br/&gt;
         You can consult the full policy, with the identity of the data controller and all legal details, at: &lt;b&gt;[Privacy Policy Public URL once published]&lt;/b&gt;.&lt;br/&gt;&lt;br/&gt;
         By continuing, you confirm that you have read and accept that FinanzApp processes your data according to these terms.</string>
+    <string name="settings_view_privacy_policy">View Privacy Policy</string>
+    <string name="label_legal">Legal Notice</string>
     <string name="privacy_consent_content_description">Privacy icon</string>
     <string name="btn_sign_out">Sign out</string>
     <string name="settings_export_data">Download my data (JSON)</string>
@@ -281,4 +283,8 @@
     <string name="notif_new_expense">New expense</string>
     <string name="label_notifications_in_app">In-app notifications</string>
     <string name="notif_new_transaction_title">New transaction added</string>
+    <string name="label_family_info_section">Family information</string>
+    <string name="label_invitation_section">Invitation</string>
+    <string name="label_management_section">Management</string>
+    <string name="msg_invite_code_desc">Share this code with the members you want to join your family.</string>
 </resources>

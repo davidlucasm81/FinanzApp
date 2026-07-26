@@ -103,7 +103,17 @@
         android:id="@+id/settingsFragment"
         android:name="com.finanzapp.app.ui.settings.SettingsFragment"
         android:label="@string/nav_settings"
-        tools:layout="@layout/fragment_settings" />
+        tools:layout="@layout/fragment_settings">
+        <action
+            android:id="@+id/action_settingsFragment_to_privacyPolicyFragment"
+            app:destination="@id/privacyPolicyFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/privacyPolicyFragment"
+        android:name="com.finanzapp.app.ui.settings.PrivacyPolicyFragment"
+        android:label="@string/nav_privacy"
+        tools:layout="@layout/fragment_privacy_policy" />
 
     <fragment
         android:id="@+id/manageCategoriesFragment"

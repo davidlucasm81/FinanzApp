@@ -9,9 +9,9 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.ImageButton;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -39,11 +39,12 @@ import com.finanzapp.app.viewmodel.ViewModelFactory;
 public class FamilySettingsFragment extends Fragment {
     private FamilyViewModel viewModel;
     private String familyId;
-    private Spinner spinnerCurrency;
+    private AutoCompleteTextView autoCurrency;
     private Button btnSave;
     private Button btnManageCategories;
     private TextView tvInviteCode;
     private com.google.android.material.textfield.TextInputLayout tilName;
+    private com.google.android.material.textfield.TextInputLayout tilCurrency;
 
     @Nullable
     @Override
@@ -91,26 +92,26 @@ public class FamilySettingsFragment extends Fragment {
         ViewModelFactory factory = new ViewModelFactory(appContainer);
         viewModel = new ViewModelProvider(this, factory).get(FamilyViewModel.class);
 
-        spinnerCurrency = requireView().findViewById(com.finanzapp.app.R.id.spinner_currency);
+        autoCurrency = requireView().findViewById(com.finanzapp.app.R.id.auto_currency);
         btnSave = requireView().findViewById(com.finanzapp.app.R.id.btn_save);
         Button btnLeave = requireView().findViewById(R.id.btn_leave);
         btnManageCategories = requireView().findViewById(com.finanzapp.app.R.id.btn_manage_categories);
         tilName = requireView().findViewById(com.finanzapp.app.R.id.til_name);
+        tilCurrency = requireView().findViewById(R.id.til_currency);
         tvInviteCode = requireView().findViewById(com.finanzapp.app.R.id.tv_invite_code);
         ImageButton btnCopyCode = requireView().findViewById(R.id.btn_copy_code);
 
-        // Simple currency selector
+        // Modern currency selector using AutoCompleteTextView
         String[] currencies = new String[]{"EUR", "USD", "GBP"};
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, currencies);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerCurrency.setAdapter(adapter);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_list_item_1, currencies);
+        autoCurrency.setAdapter(adapter);
 
         btnSave.setOnClickListener(v -> {
             if (familyId == null) return;
             String name = tilName.getEditText() != null ? tilName.getEditText().getText().toString().trim() : "";
-            String currency = spinnerCurrency.getSelectedItem().toString();
+            String currency = autoCurrency.getText().toString();
             if (name.isEmpty()) {
-                tilName.setError("Introduce un nombre");
+                tilName.setError(getString(R.string.label_name_required));
                 return;
             }
             viewModel.updateFamily(familyId, name, currency);
@@ -152,15 +153,10 @@ public class FamilySettingsFragment extends Fragment {
                     tvInviteCode.setText(family.getInviteCode());
                 }
                 
-                // Set spinner selection
+                // Set currency selection
                 String currency = family.getCurrencyCode();
                 if (currency != null) {
-                    for (int i = 0; i < spinnerCurrency.getCount(); i++) {
-                        if (spinnerCurrency.getItemAtPosition(i).toString().equals(currency)) {
-                            spinnerCurrency.setSelection(i);
-                            break;
-                        }
-                    }
+                    autoCurrency.setText(currency, false);
                 }
             }
         });
@@ -189,6 +185,9 @@ public class FamilySettingsFragment extends Fragment {
                 Member member = ((Result.Success<Member>) result).getData();
                 String role = member.getRole();
                 boolean isAdminOrOwner = "admin".equals(role) || "owner".equals(role);
+                
+                // Management section visibility (Member can always see Manage Categories but maybe not edit? 
+                // AGENTS.md says: "Solo un member con role == admin o role == owner puede: gestionar categorías")
                 btnManageCategories.setVisibility(isAdminOrOwner ? View.VISIBLE : View.GONE);
 
                 // Solo admin/owner pueden editar el nombre de la familia y su moneda
@@ -196,8 +195,15 @@ public class FamilySettingsFragment extends Fragment {
                 if (tilName.getEditText() != null) {
                     tilName.getEditText().setEnabled(isAdminOrOwner);
                 }
-                tilName.setHelperText(isAdminOrOwner ? null : "Solo un admin puede editar el nombre de la familia");
-                spinnerCurrency.setEnabled(isAdminOrOwner);
+                
+                autoCurrency.setEnabled(isAdminOrOwner);
+                tilCurrency.setEnabled(isAdminOrOwner);
+
+                if (!isAdminOrOwner) {
+                    tilName.setHelperText("Solo un administrador puede editar la información de la familia");
+                } else {
+                    tilName.setHelperText(null);
+                }
             }
         });
     }

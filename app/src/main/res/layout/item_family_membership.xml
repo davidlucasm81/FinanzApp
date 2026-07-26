@@ -18,7 +18,8 @@
         android:src="@drawable/ic_members"
         android:padding="8dp"
         android:background="@drawable/shape_circle"
-        app:tint="?attr/colorPrimary"/>
+        app:tint="?attr/colorPrimary"
+        android:contentDescription="@null"/>
 
     <LinearLayout
         android:layout_width="0dp"
@@ -47,8 +48,9 @@
         android:id="@+id/iv_active"
         android:layout_width="24dp"
         android:layout_height="24dp"
-        android:src="@android:drawable/checkbox_on_background"
+        android:src="@drawable/ic_check"
         app:tint="?attr/colorPrimary"
-        android:visibility="gone"/>
+        android:visibility="gone"
+        android:contentDescription="@null"/>
 
 </LinearLayout>

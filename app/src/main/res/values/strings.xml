@@ -105,6 +105,8 @@
         Para ejercer cualquier otra solicitud, escríbenos a: davidlucasmora81@gmail.com.&lt;br/&gt;&lt;br/&gt;
         Puedes consultar la política completa y actualizada en: &lt;b&gt;https://github.com/davidlucasm81/FinanzApp/blob/master/POLITICA_PRIVACIDAD.md&lt;/b&gt;.&lt;br/&gt;&lt;br/&gt;
         Al continuar, confirmas que has leído y aceptas que FinanzApp procese tus datos según estos términos.</string>
+    <string name="settings_view_privacy_policy">Ver política de privacidad</string>
+    <string name="label_legal">Aviso Legal</string>
     <string name="privacy_consent_content_description">Icono de privacidad</string>
     <string name="btn_sign_out">Cerrar sesión</string>
     <string name="settings_export_data">Descargar mis datos (JSON)</string>
@@ -281,4 +283,8 @@
     <string name="notif_new_expense">Nuevo gasto</string>
     <string name="label_notifications_in_app">Notificaciones in-app</string>
     <string name="notif_new_transaction_title">Nuevo movimiento añadido</string>
+    <string name="label_family_info_section">Información de la familia</string>
+    <string name="label_invitation_section">Invitación</string>
+    <string name="label_management_section">Gestión</string>
+    <string name="msg_invite_code_desc">Comparte este código con los miembros que quieras unir a tu familia.</string>
 </resources>

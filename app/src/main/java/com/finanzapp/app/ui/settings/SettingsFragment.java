@@ -70,6 +70,11 @@ public class SettingsFragment extends Fragment {
             viewModel.exportUserData();
         });
 
+        binding.btnViewPrivacyPolicy.setOnClickListener(v -> {
+            androidx.navigation.Navigation.findNavController(v)
+                    .navigate(R.id.action_settingsFragment_to_privacyPolicyFragment);
+        });
+
         binding.btnDeleteAccount.setOnClickListener(v -> showDeleteConfirmation());
 
         binding.switchNotifications.setOnCheckedChangeListener((buttonView, isChecked) ->
@@ -88,6 +93,14 @@ public class SettingsFragment extends Fragment {
                 currentUser = ((Result.Success<User>) result).getData();
                 binding.tvName.setText(currentUser.getDisplayName() != null ? currentUser.getDisplayName() : "-");
                 binding.tvEmail.setText(currentUser.getEmail() != null ? currentUser.getEmail() : "-");
+                
+                if (currentUser.getPhotoUrl() != null && !currentUser.getPhotoUrl().isEmpty()) {
+                    com.bumptech.glide.Glide.with(this)
+                            .load(currentUser.getPhotoUrl())
+                            .circleCrop()
+                            .placeholder(R.drawable.ic_user_placeholder)
+                            .into(binding.ivUserPhotoProfile);
+                }
             } else if (result instanceof Result.Error) {
                 if (getActivity() != null && !getActivity().isFinishing()) {
                     Toast.makeText(requireContext(), R.string.error_load_user, Toast.LENGTH_LONG).show();
