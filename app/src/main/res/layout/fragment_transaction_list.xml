@@ -44,10 +44,19 @@
                         android:layout_height="48dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:contentDescription="@string/desc_import_csv"
-                        android:src="@android:drawable/stat_sys_download"
+                        android:src="@drawable/ic_import"
                         android:visibility="gone"
                         app:tint="?attr/colorPrimary"
                         tools:visibility="visible" />
+
+                    <ImageButton
+                        android:id="@+id/btn_export"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/desc_export"
+                        android:src="@drawable/ic_export"
+                        app:tint="?attr/colorPrimary" />
 
                     <ImageButton
                         android:id="@+id/btn_open_filters"
@@ -55,7 +64,7 @@
                         android:layout_height="48dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:contentDescription="@string/filter_section_title"
-                        android:src="@android:drawable/ic_menu_search"
+                        android:src="@drawable/ic_filter"
                         app:tint="?attr/colorPrimary" />
 
                     <ImageButton

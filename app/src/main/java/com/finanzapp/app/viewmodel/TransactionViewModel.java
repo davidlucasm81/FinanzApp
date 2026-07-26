@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel;
 
 import com.finanzapp.app.data.model.Account;
 import com.finanzapp.app.data.model.Category;
+import com.finanzapp.app.data.model.Family;
 import com.finanzapp.app.data.model.Member;
 import com.finanzapp.app.data.model.Transaction;
 import com.finanzapp.app.data.repository.AccountRepository;
@@ -97,6 +98,12 @@ public class TransactionViewModel extends ViewModel {
 
     public LiveData<List<Category>> getCategories(String familyId) {
         return categoryRepository.getCategories(familyId);
+    }
+
+    public LiveData<Result<Family>> getFamilyData(String familyId) {
+        MutableLiveData<Result<Family>> result = new MutableLiveData<>();
+        familyRepository.getFamily(familyId, result::postValue);
+        return result;
     }
 
     public LiveData<Result<Boolean>> getOperationResult() {

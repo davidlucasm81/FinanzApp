@@ -23,6 +23,13 @@
     <string name="desc_edit_account">Editar cuenta</string>
     <string name="desc_delete_account">Eliminar cuenta</string>
     <string name="desc_import_csv">Importar CSV</string>
+    <string name="desc_export">Exportar movimientos</string>
+    <string name="export_options_title">Exportar como...</string>
+    <string name="export_option_excel">Excel (.xlsx)</string>
+    <string name="export_option_pdf">PDF (.pdf)</string>
+    <string name="export_error_empty">No hay movimientos para exportar con los filtros actuales.</string>
+    <string name="export_error_generic">Error al generar el archivo de exportación.</string>
+    <string name="export_sharing_title">Compartir exportación</string>
     <string name="label_import_csv">Importar CSV</string>
     <string name="desc_archive_account">Archivar/Desarchivar</string>
     <string name="family_label">Familia</string>

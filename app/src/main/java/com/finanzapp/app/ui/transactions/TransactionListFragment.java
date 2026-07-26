@@ -25,20 +25,28 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.finanzapp.app.FinanzAppApplication;
 import com.finanzapp.app.R;
+import com.finanzapp.app.data.export.ExcelExporter;
+import com.finanzapp.app.data.export.PdfExporter;
 import com.finanzapp.app.data.firebase.FirestorePaths;
 import com.finanzapp.app.data.model.Account;
 import com.finanzapp.app.data.model.Category;
+import com.finanzapp.app.data.model.Family;
+import com.finanzapp.app.data.model.FamilyMembership;
 import com.finanzapp.app.data.model.Member;
 import com.finanzapp.app.data.model.Transaction;
 import com.finanzapp.app.data.model.User;
 import com.finanzapp.app.util.Result;
 import com.finanzapp.app.viewmodel.TransactionViewModel;
 import com.finanzapp.app.viewmodel.ViewModelFactory;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -49,6 +57,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executors;
+
+import android.net.Uri;
+import android.util.Log;
+import android.content.Intent;
+import androidx.core.content.FileProvider;
 
 public class TransactionListFragment extends Fragment {
     private TransactionViewModel viewModel;
@@ -64,6 +78,7 @@ public class TransactionListFragment extends Fragment {
     private View btnFilterDate, emptyState, btnImportCsv;
     private ImageButton btnClearFiltersTop;
     private View btnClearFiltersDrawer;
+    private View btnExport;
     private DrawerLayout drawerLayout;
     private View progressBar;
 
@@ -74,6 +89,9 @@ public class TransactionListFragment extends Fragment {
     private String filterMethod = null;
     private Calendar filterStartDate = null;
     private Calendar filterEndDate = null;
+
+    private String familyName = "";
+    private List<Transaction> currentTransactions = new ArrayList<>();
 
     private boolean isPreselectionApplied = false;
     private String preselectedCategoryId = null;
@@ -164,6 +182,9 @@ public class TransactionListFragment extends Fragment {
             args.putString("familyId", familyId);
             Navigation.findNavController(v).navigate(R.id.action_transactionListFragment_to_importTransactionsFragment, args);
         });
+        
+        btnExport = view.findViewById(R.id.btn_export);
+        btnExport.setOnClickListener(v -> showExportOptions());
 
         restoreFiltersFromViewModel();
         resolveFamilyId();
@@ -328,30 +349,31 @@ public class TransactionListFragment extends Fragment {
     private void resolveFamilyId() {
         String uid = FirebaseAuth.getInstance().getUid();
         if (uid != null) {
+            // Buscamos el documento del usuario para saber su familia activa
             FirebaseFirestore.getInstance().collection(FirestorePaths.USERS).document(uid).get()
                     .addOnSuccessListener(documentSnapshot -> {
                         User user = documentSnapshot.toObject(User.class);
                         if (user != null && user.getFamilyId() != null) {
                             familyId = user.getFamilyId();
-                            checkPermissions();
+                            
+                            // En lugar de hacer otra consulta a red para el rol, usamos la subcolección 
+                            // de memberships que se lee desde el cache de Firestore (está disponible tras login)
+                            FirebaseFirestore.getInstance().collection(FirestorePaths.getMembershipsPath(uid))
+                                    .document(familyId).get()
+                                    .addOnSuccessListener(membershipDoc -> {
+                                        if (membershipDoc.exists()) {
+                                            FamilyMembership membership = membershipDoc.toObject(FamilyMembership.class);
+                                            if (membership != null) {
+                                                boolean isAdmin = "admin".equals(membership.getRole()) || "owner".equals(membership.getRole());
+                                                btnImportCsv.setVisibility(isAdmin ? View.VISIBLE : View.GONE);
+                                            }
+                                        }
+                                    });
+
                             observeData();
                         }
                     });
         }
-    }
-
-    private void checkPermissions() {
-        String uid = FirebaseAuth.getInstance().getUid();
-        if (uid == null || familyId == null) return;
-
-        FirebaseFirestore.getInstance().collection(FirestorePaths.getMembersPath(familyId)).document(uid).get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    Member member = documentSnapshot.toObject(Member.class);
-                    if (member != null) {
-                        boolean isAdmin = "admin".equals(member.getRole()) || "owner".equals(member.getRole());
-                        btnImportCsv.setVisibility(isAdmin ? View.VISIBLE : View.GONE);
-                    }
-                });
     }
 
     private void observeData() {
@@ -478,6 +500,13 @@ public class TransactionListFragment extends Fragment {
             }
         });
 
+        viewModel.getFamilyData(familyId).observe(getViewLifecycleOwner(), result -> {
+            if (result instanceof Result.Success) {
+                Family family = ((Result.Success<Family>) result).getData();
+                familyName = family.getName();
+            }
+        });
+
         updateTransactions();
 
         viewModel.getOperationResult().observe(getViewLifecycleOwner(), result -> {
@@ -538,6 +567,7 @@ public class TransactionListFragment extends Fragment {
                                 visibleTransactions.add(t);
                             }
                         }
+                        currentTransactions = visibleTransactions;
                         adapter.updateTransactions(visibleTransactions);
                         emptyState.setVisibility(visibleTransactions.isEmpty() ? View.VISIBLE : View.GONE);
                     }
@@ -552,6 +582,110 @@ public class TransactionListFragment extends Fragment {
             ((android.widget.Button)btnFilterDate).setText(btnFormat.format(filterStartDate.getTime()) + " - " + btnFormat.format(filterEndDate.getTime()));
         } else {
             ((android.widget.Button)btnFilterDate).setText(R.string.filter_dates);
+        }
+    }
+
+    private void showExportOptions() {
+        if (currentTransactions.isEmpty()) {
+            Toast.makeText(requireContext(), R.string.export_error_empty, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String[] options = {
+                getString(R.string.export_option_excel),
+                getString(R.string.export_option_pdf)
+        };
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.export_options_title)
+                .setItems(options, (dialog, which) -> {
+                    if (which == 0) {
+                        exportToExcel();
+                    } else {
+                        exportToPdf();
+                    }
+                })
+                .show();
+    }
+
+    private void exportToExcel() {
+        progressBar.setVisibility(View.VISIBLE);
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                File cachePath = new File(requireContext().getCacheDir(), "exports");
+                if (!cachePath.exists() && !cachePath.mkdirs()) throw new IOException("Could not create cache");
+
+                File file = new File(cachePath, "movimientos_" + System.currentTimeMillis() + ".xlsx");
+                FileOutputStream outputStream = new FileOutputStream(file);
+
+                ExcelExporter.exportTransactions(
+                        currentTransactions,
+                        categoryNames,
+                        accountNames,
+                        memberNames,
+                        paymentMethodLabels,
+                        outputStream
+                );
+                outputStream.close();
+
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    shareFile(file, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                });
+            } catch (Exception e) {
+                Log.e("TransactionList", "Excel export error", e);
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(requireContext(), R.string.export_error_generic, Toast.LENGTH_LONG).show();
+                });
+            }
+        });
+    }
+
+    private void exportToPdf() {
+        progressBar.setVisibility(View.VISIBLE);
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                File cachePath = new File(requireContext().getCacheDir(), "exports");
+                if (!cachePath.exists() && !cachePath.mkdirs()) throw new IOException("Could not create cache");
+
+                File file = new File(cachePath, "movimientos_" + System.currentTimeMillis() + ".pdf");
+                FileOutputStream outputStream = new FileOutputStream(file);
+
+                PdfExporter.exportTransactions(
+                        currentTransactions,
+                        familyName,
+                        categoryNames,
+                        accountNames,
+                        memberNames,
+                        paymentMethodLabels,
+                        outputStream
+                );
+                outputStream.close();
+
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    shareFile(file, "application/pdf");
+                });
+            } catch (Exception e) {
+                Log.e("TransactionList", "PDF export error", e);
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(requireContext(), R.string.export_error_generic, Toast.LENGTH_LONG).show();
+                });
+            }
+        });
+    }
+
+    private void shareFile(File file, String mimeType) {
+        Uri contentUri = FileProvider.getUriForFile(requireContext(), "com.finanzapp.app.fileprovider", file);
+        if (contentUri != null) {
+            Intent shareIntent = new Intent(Intent.ACTION_SEND);
+            shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            shareIntent.setDataAndType(contentUri, mimeType);
+            shareIntent.putExtra(Intent.EXTRA_STREAM, contentUri);
+            shareIntent.setType(mimeType);
+            startActivity(Intent.createChooser(shareIntent, getString(R.string.export_sharing_title)));
         }
     }
 

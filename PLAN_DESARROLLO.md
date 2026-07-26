@@ -315,12 +315,12 @@
 ## Fase 13 — Exportación de movimientos a Excel/PDF
 > Ver diseño en `AGENTS.md`, sección 4, "Exportación de movimientos a Excel/PDF (Fase 13)". Complementa, sin sustituir, la exportación JSON de RGPD de la Fase 9 bis.
 
-- [ ] Decidir librería para Excel: Apache POI (más completa, más peso en el APK) vs. generación de CSV real como alternativa más ligera si el tamaño de la librería preocupa. Documentar la decisión tomada en `AGENTS.md`.
-- [ ] `ExcelExporter`/`PdfExporter` (`data/export/`): reciben la lista de movimientos **ya filtrada** que el usuario tiene en pantalla en `TransactionListFragment` (filtros de cuenta, categoría y rango de fechas ya aplicados) y generan el fichero correspondiente.
-- [ ] Para PDF: usar `PdfDocument` nativo de Android para un listado tabular simple, o revisar la skill `pdf` del proyecto si se necesita algo más elaborado (cabecera con nombre de familia y rango de fechas, totales al pie, etc.).
-- [ ] `ExportTransactionsFragment` o botón directo en `TransactionListFragment`: botón "Exportar" que ofrezca elegir formato (Excel/PDF) y comparta el resultado vía `Intent.ACTION_SEND`, igual patrón que la exportación JSON de RGPD.
-- [ ] Sin restricción de rol: cualquier miembro aprobado puede exportar los movimientos que ya puede ver (a diferencia de la importación CSV, que sí está restringida a admin/owner).
-- [ ] Probar con una familia con 0 movimientos filtrados (mostrar aviso en vez de generar un fichero vacío) y con varios cientos de movimientos (confirmar que no bloquea la UI — usar hilo de fondo/coroutine-equivalente en Java).
+- [x] Decidir librería para Excel: Apache POI (más completa, más peso en el APK) vs. generación de CSV real como alternativa más ligera si el tamaño de la librería preocupa. Documentar la decisión tomada en `AGENTS.md`.
+- [x] `ExcelExporter`/`PdfExporter` (`data/export/`): reciben la lista de movimientos **ya filtrada** que el usuario tiene en pantalla en `TransactionListFragment` (filtros de cuenta, categoría y rango de fechas ya aplicados) y generan el fichero correspondiente.
+- [x] Para PDF: usar `PdfDocument` nativo de Android para un listado tabular simple, o revisar la skill `pdf` del proyecto si se necesita algo más elaborado (cabecera con nombre de familia y rango de fechas, totales al pie, etc.).
+- [x] `ExportTransactionsFragment` o botón directo en `TransactionListFragment`: botón "Exportar" que ofrezca elegir formato (Excel/PDF) y comparta el resultado vía `Intent.ACTION_SEND`, igual patrón que la exportación JSON de RGPD.
+- [x] Sin restricción de rol: cualquier miembro aprobado puede exportar los movimientos que ya puede ver (a diferencia de la importación CSV, que sí está restringida a admin/owner).
+- [x] Probar con una familia con 0 movimientos filtrados (mostrar aviso en vez de generar un fichero vacío) y con varios cientos de movimientos (confirmar que no bloquea la UI — usar hilo de fondo/coroutine-equivalente en Java).
 
 ## Fase 14 — Multi-divisa (esqueleto, sin diseño de datos cerrado)
 > Prioridad baja: no empezar esta fase hasta que haya demanda real de usuarios, según decisión documentada en `AGENTS.md` sección 10. Las tareas de esta fase son de investigación/diseño, no de implementación directa, hasta que se decida abordarla en serio.

@@ -60,6 +60,14 @@ android {
     buildFeatures {
         viewBinding true
     }
+    packagingOptions {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/DEPENDENCIES"
+            excludes += "META-INF/LICENSE*"
+            excludes += "META-INF/NOTICE*"
+        }
+    }
 }
 
 dependencies {
@@ -76,6 +84,7 @@ dependencies {
     implementation libs.androidx.core.splashscreen
     implementation libs.colorpicker
     implementation libs.mpandroidchart
+    implementation libs.poi.ooxml
 
     implementation libs.glide
     annotationProcessor libs.compiler
