@@ -124,11 +124,9 @@ public class TransactionImportRepository {
 
             // Special handling for "Ahorros" category
             if (row.getCategoryName().equalsIgnoreCase("Ahorros")) {
-                Double currentInitialDelta = initialBalanceDeltas.get(account.getId());
-                initialBalanceDeltas.put(account.getId(), (currentInitialDelta != null ? currentInitialDelta : 0.0) + delta);
-                
-                Double currentAccDelta = accountDeltas.get(account.getId());
-                accountDeltas.put(account.getId(), (currentAccDelta != null ? currentAccDelta : 0.0) + delta);
+                initialBalanceDeltas.compute(account.getId(), (key, currentInitialDelta) -> (currentInitialDelta != null ? currentInitialDelta : 0.0) + delta);
+
+                accountDeltas.compute(account.getId(), (k, currentAccDelta) -> (currentAccDelta != null ? currentAccDelta : 0.0) + delta);
 
                 result.setImportedCount(result.getImportedCount() + 1);
                 continue;
@@ -200,9 +198,7 @@ public class TransactionImportRepository {
             commitTasks.add(batch.commit());
         }
 
-        Tasks.whenAll(commitTasks).addOnSuccessListener(aVoid -> {
-            callback.onResult(new Result.Success<>(result));
-        }).addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+        Tasks.whenAll(commitTasks).addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(result))).addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
 
     private String getCategoryKey(String name, String type) {

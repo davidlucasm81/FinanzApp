@@ -65,9 +65,7 @@ public class DashboardFragment extends Fragment {
     private void setupClickListeners() {
         binding.ivUserPhoto.setOnClickListener(v -> NavHostFragment.findNavController(this).navigate(com.finanzapp.app.R.id.settingsFragment));
 
-        binding.btnTransactions.setOnClickListener(v -> {
-            NavHostFragment.findNavController(this).navigate(com.finanzapp.app.R.id.action_dashboardFragment_to_transactionListFragment);
-        });
+        binding.btnTransactions.setOnClickListener(v -> NavHostFragment.findNavController(this).navigate(com.finanzapp.app.R.id.action_dashboardFragment_to_transactionListFragment));
 
         binding.llFamilySelector.setOnClickListener(v -> {
             if (currentFamilyId != null) {
@@ -117,13 +115,9 @@ public class DashboardFragment extends Fragment {
             }
         });
 
-        viewModel.getNetBalance().observe(getViewLifecycleOwner(), total -> {
-            binding.tvNetBalanceValue.setText(formatCurrency(total, currentCurrencyCode));
-        });
+        viewModel.getNetBalance().observe(getViewLifecycleOwner(), total -> binding.tvNetBalanceValue.setText(formatCurrency(total, currentCurrencyCode)));
 
-        viewModel.getAccountsList().observe(getViewLifecycleOwner(), accounts -> {
-            accountAdapter.setItems(accounts, currentCurrencyCode);
-        });
+        viewModel.getAccountsList().observe(getViewLifecycleOwner(), accounts -> accountAdapter.setItems(accounts, currentCurrencyCode));
     }
 
     @Override

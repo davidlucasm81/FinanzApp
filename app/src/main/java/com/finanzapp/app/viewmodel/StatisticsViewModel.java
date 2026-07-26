@@ -301,7 +301,7 @@ public class StatisticsViewModel extends ViewModel {
     }
 
     private static class MonthlySummaryBuilder {
-        String label;
+        final String label;
         double income = 0;
         double expense = 0;
         MonthlySummaryBuilder(String label) { this.label = label; }

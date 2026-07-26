@@ -55,7 +55,7 @@ public class AddEditTransactionFragment extends Fragment {
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
     
     private List<Category> allCategories = new ArrayList<>();
-    private List<Category> filteredCategories = new ArrayList<>();
+    private final List<Category> filteredCategories = new ArrayList<>();
     private List<Account> allAccounts = new ArrayList<>();
     private final String[] paymentMethodValues = {
             "tarjeta", "efectivo", "transferencia", "bizum", 
@@ -159,9 +159,7 @@ public class AddEditTransactionFragment extends Fragment {
         new androidx.appcompat.app.AlertDialog.Builder(requireContext())
                 .setTitle(R.string.delete_transaction_title)
                 .setMessage(R.string.delete_transaction_message)
-                .setPositiveButton(R.string.delete_button, (dialog, which) -> {
-                    viewModel.deleteTransaction(familyId, existingTransaction);
-                })
+                .setPositiveButton(R.string.delete_button, (dialog, which) -> viewModel.deleteTransaction(familyId, existingTransaction))
                 .setNegativeButton(R.string.cancel_button, null)
                 .show();
     }
@@ -235,12 +233,10 @@ public class AddEditTransactionFragment extends Fragment {
                 names.add(c.getName());
             }
         }
-        
-        if (requireContext() == null) return;
+
+        requireContext();
         ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, names);
-        autoCategory.post(() -> {
-            autoCategory.setAdapter(adapter);
-        });
+        autoCategory.post(() -> autoCategory.setAdapter(adapter));
         
         autoCategory.setOnItemClickListener((parent, view, position, id) -> {
             if (position >= 0 && position < filteredCategories.size()) {

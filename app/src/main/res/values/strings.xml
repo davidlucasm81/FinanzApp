@@ -11,18 +11,15 @@
     <string name="nav_accounts">Cuentas</string>
     <string name="nav_statistics">Estadísticas</string>
     <string name="nav_members">Miembros</string>
-    <string name="nav_requests">Solicitudes</string>
     <string name="nav_family">Familia</string>
     <string name="nav_family_settings">Ajustes de Familia</string>
     <string name="nav_manage_categories">Gestionar Categorías</string>
     <string name="nav_invite">Invitar</string>
     <string name="nav_privacy">Privacidad</string>
     <string name="nav_settings">Ajustes</string>
-    <string name="welcome_greeting">¡Hola!</string>
     <string name="net_position">Posición Neta</string>
     <string name="dashboard_placeholder">Tus cuentas y movimientos aparecerán aquí</string>
     <string name="amount_placeholder">0,00</string>
-    <string name="desc_settings">Ajustes</string>
     <string name="desc_edit_account">Editar cuenta</string>
     <string name="desc_delete_account">Eliminar cuenta</string>
     <string name="desc_import_csv">Importar CSV</string>
@@ -43,7 +40,6 @@
     <string name="invitation_alert_text">Te han invitado a formar parte de la unidad familiar <b>%1$s</b>.</string>
     <string name="accept_button">Unirme ahora</string>
     <string name="reject_button">No, gracias</string>
-    <string name="pending_invitation_label">Invitación pendiente</string>
     <string name="pending_tag">PENDIENTE</string>
     <string name="options_desc">Opciones</string>
     <string name="menu_make_admin">Hacer administrador</string>
@@ -80,16 +76,11 @@
 
     <!-- Statistics -->
     <string name="stats_title">Estadísticas</string>
-    <string name="stats_summary_period">Resumen del Periodo</string>
     <string name="stats_income">Ingresos</string>
     <string name="stats_expense">Gastos</string>
-    <string name="stats_variation">Variación</string>
-    <string name="stats_variation_vs_previous">variación gasto vs mes anterior</string>
-    <string name="stats_average_expense">Gasto Medio</string>
     <string name="stats_monthly_evolution">Evolución Mensual</string>
     <string name="stats_category_distribution">Distribución por Categorías</string>
     <string name="category_others">Otros</string>
-    <string name="stats_net_history">Histórico Neto</string>
     <string name="date_filter_all">Todo el histórico</string>
     <string name="date_filter_clear_desc">Limpiar filtro</string>
     <string name="date_filter_select_period">Seleccionar periodo</string>
@@ -117,7 +108,6 @@
     <string name="privacy_consent_content_description">Icono de privacidad</string>
     <string name="btn_sign_out">Cerrar sesión</string>
     <string name="settings_export_data">Descargar mis datos (JSON)</string>
-    <string name="settings_export_success">Datos listos para descargar</string>
     <string name="settings_export_error">Error al preparar la descarga</string>
     <string name="stats_empty_title">Sin movimientos</string>
     <string name="stats_empty_subtitle">No hay datos para el periodo seleccionado</string>
@@ -192,7 +182,6 @@
     <string name="label_confirm">Confirmar</string>
     <string name="label_profile">Perfil</string>
     <string name="label_name">Nombre</string>
-    <string name="label_delete_account">Borrar cuenta</string>
     <string name="label_family_settings_title">Ajustes de la familia</string>
     <string name="label_save">Guardar</string>
     <string name="label_manage_categories_btn">Gestionar categorías</string>
@@ -266,15 +255,6 @@
     <string name="error_identify_family">Error: No se pudo identificar la familia</string>
     <string name="msg_request_cancelled">Solicitud cancelada</string>
     <string name="label_invitation_sent">Invitación enviada</string>
-    <string name="label_import_empty_file">El fichero está vacío.</string>
-    <string name="label_import_delimiter_error">No se ha podido detectar el delimitador (esperado: tabulador, coma o punto y coma).</string>
-    <string name="label_import_row_error">Fila %1$d: %2$s</string>
-    <string name="label_import_columns_error">Número de columnas insuficiente (esperadas 7).</string>
-    <string name="label_import_date_error">Formato de fecha inválido (esperado dd/MM/yyyy).</string>
-    <string name="label_import_value_error">Valor numérico inválido: %1$s</string>
-    <string name="label_import_type_error">Tipo desconocido (esperado: Ingreso o Gasto).</string>
-    <string name="label_import_method_error">Método de pago no reconocido: %1$s</string>
-    <string name="label_import_no_description">Importado sin descripción</string>
     <string name="dialog_edit_account">Editar cuenta</string>
     <string name="dialog_delete_account">Eliminar cuenta</string>
     <string name="dialog_edit_transaction">Editar Movimiento</string>
@@ -293,7 +273,6 @@
     <string name="label_add_account_title">Añadir cuenta</string>
     <string name="label_borrar">Borrar</string>
     <string name="label_expulsar">Expulsar</string>
-    <string name="ok">Aceptar</string>
     <string name="error_field_required">Campo obligatorio</string>
     <string name="error_name_required">Nombre obligatorio</string>
     <string name="error_category_type_required">Selecciona al menos un tipo</string>

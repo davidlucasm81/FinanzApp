@@ -1,7 +1,6 @@
 package com.finanzapp.app.data.repository;
 
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
 
 import com.finanzapp.app.data.firebase.FirestorePaths;
 import com.finanzapp.app.data.model.Account;
@@ -13,7 +12,6 @@ import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -85,7 +83,7 @@ public class AccountRepository {
      * Versión optimizada que NO comprueba si tienen movimientos asociados.
      * Ideal para el Dashboard donde solo se necesita el saldo.
      */
-    public LiveData<List<Account>> getAccounts(String familyId) {
+    public LiveData getAccounts(String familyId) {
         if (accountsCache.containsKey(familyId)) {
             return accountsCache.get(familyId);
         }

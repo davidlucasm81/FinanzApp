@@ -185,7 +185,7 @@ public class TransactionRepository {
                 .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
 
-    public LiveData<List<Transaction>> getTransactions(String familyId, String accountId, List<String> categoryIds, String type, String paymentMethod, Timestamp startDate, Timestamp endDate) {
+    public LiveData getTransactions(String familyId, String accountId, List<String> categoryIds, String type, String paymentMethod, Timestamp startDate, Timestamp endDate) {
         // Cache key based on filters
         String categoryIdsKey = categoryIds != null ? categoryIds.toString() : "null";
         String cacheKey = String.format("%s_%s_%s_%s_%s_%s_%s", familyId, accountId, categoryIdsKey, type, paymentMethod,

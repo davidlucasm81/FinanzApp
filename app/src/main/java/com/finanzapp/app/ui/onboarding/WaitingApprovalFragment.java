@@ -13,7 +13,6 @@ import androidx.navigation.Navigation;
 
 import com.bumptech.glide.Glide;
 import com.finanzapp.app.FinanzAppApplication;
-import com.finanzapp.app.R;
 import com.finanzapp.app.data.model.User;
 import com.finanzapp.app.data.model.Invitation;
 import com.finanzapp.app.databinding.FragmentWaitingApprovalBinding;
@@ -74,9 +73,7 @@ public class WaitingApprovalFragment extends Fragment {
             }
         });
 
-        binding.ivUserPhoto.setOnClickListener(v -> {
-            Navigation.findNavController(v).navigate(R.id.settingsFragment);
-        });
+        binding.ivUserPhoto.setOnClickListener(v -> Navigation.findNavController(v).navigate(R.id.settingsFragment));
 
 
         setupObservers();

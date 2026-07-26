@@ -98,6 +98,6 @@ public class SettingsViewModel extends ViewModel {
 
     public void exportUserData() {
         exportResult.setValue(new Result.Loading<>());
-        authRepository.exportUserData(result -> exportResult.postValue(result));
+        authRepository.exportUserData(exportResult::postValue);
     }
 }

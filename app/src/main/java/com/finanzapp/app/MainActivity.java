@@ -27,10 +27,8 @@ import java.util.Queue;
 
 public class MainActivity extends AppCompatActivity {
 
-    private NotificationViewModel notificationViewModel;
     private View currentNotificationView;
     private final Handler notificationHandler = new Handler(Looper.getMainLooper());
-    private Runnable notificationRunnable;
     private static final int NOTIFICATION_DURATION_MS = 5000;
     private int statusBarHeight = 0;
     private final Queue<Notification> notificationQueue = new LinkedList<>();
@@ -82,7 +80,7 @@ public class MainActivity extends AppCompatActivity {
     private void setupNotificationViewModel() {
         FinanzAppApplication.AppContainer container = ((FinanzAppApplication) getApplication()).getAppContainer();
         ViewModelFactory factory = new ViewModelFactory(container);
-        notificationViewModel = new ViewModelProvider(this, factory).get(NotificationViewModel.class);
+        NotificationViewModel notificationViewModel = new ViewModelProvider(this, factory).get(NotificationViewModel.class);
 
         notificationViewModel.getNotificationEvent().observe(this, notification -> {
             notificationQueue.add(notification);
@@ -125,14 +123,16 @@ public class MainActivity extends AppCompatActivity {
         currentNotificationView = notificationView;
 
         final long startTime = System.currentTimeMillis();
-        notificationRunnable = new Runnable() {
+        // Check for more notifications
+        Runnable notificationRunnable = new Runnable() {
             @Override
             public void run() {
                 long elapsed = System.currentTimeMillis() - startTime;
                 if (elapsed >= NOTIFICATION_DURATION_MS) {
                     notificationView.animate().translationY(-500).setDuration(300).withEndAction(() -> {
                         root.removeView(notificationView);
-                        if (currentNotificationView == notificationView) currentNotificationView = null;
+                        if (currentNotificationView == notificationView)
+                            currentNotificationView = null;
                         isShowingNotification = false;
                         processNextNotification(); // Check for more notifications
                     }).start();

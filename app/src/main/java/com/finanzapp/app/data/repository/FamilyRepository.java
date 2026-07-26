@@ -17,14 +17,12 @@ import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
-import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.WriteBatch;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 
 public class FamilyRepository {
@@ -328,7 +326,7 @@ public class FamilyRepository {
                 // 4. Update user familyId
                 try {
                     finalBatch.update(db.collection(FirestorePaths.USERS).document(userUid), "familyId", familyId);
-                } catch (Exception e) {
+                } catch (Exception ignored) {
                 }
 
                 finalBatch.commit().addOnCompleteListener(commitTask -> {
@@ -476,7 +474,7 @@ public class FamilyRepository {
                         if (!task.getResult().isEmpty()) {
                             QueryDocumentSnapshot doc = (QueryDocumentSnapshot) task.getResult().getDocuments().get(0);
                             Invitation invitation = doc.toObject(Invitation.class);
-                            String familyId = doc.getReference().getParent().getParent().getId();
+                            String familyId = Objects.requireNonNull(doc.getReference().getParent().getParent()).getId();
                             android.util.Log.d("FamilyRepository", "Invitation found! FamilyId: " + familyId);
                             callback.onResult(new Result.Success<>(invitation), familyId);
                         } else {
@@ -503,7 +501,7 @@ public class FamilyRepository {
                         if (!task.getResult().isEmpty()) {
                             QueryDocumentSnapshot doc = (QueryDocumentSnapshot) task.getResult().getDocuments().get(0);
                             Invitation invitation = doc.toObject(Invitation.class);
-                            String familyId = doc.getReference().getParent().getParent().getId();
+                            String familyId = Objects.requireNonNull(doc.getReference().getParent().getParent()).getId();
                             android.util.Log.d("FamilyRepository", "Pending code request found! FamilyId: " + familyId);
                             callback.onResult(new Result.Success<>(invitation), familyId);
                         } else {
@@ -872,7 +870,7 @@ public class FamilyRepository {
         });
     }
 
-    public ListenerRegistration getUserFamilies(String uid, MembershipsCallback callback) {
+    public void getUserFamilies(String uid, MembershipsCallback callback) {
         ListenerRegistration reg = db.collection(FirestorePaths.getMembershipsPath(uid))
                 .addSnapshotListener((value, error) -> {
                     if (error != null || value == null) {
@@ -886,7 +884,6 @@ public class FamilyRepository {
                     callback.onResult(new Result.Success<>(memberships));
                 });
         activeListeners.add(reg);
-        return reg;
     }
 
     public void switchActiveFamily(String uid, String familyId, ApproveCallback callback) {

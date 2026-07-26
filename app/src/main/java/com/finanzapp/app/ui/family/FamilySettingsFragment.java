@@ -41,10 +41,8 @@ public class FamilySettingsFragment extends Fragment {
     private String familyId;
     private Spinner spinnerCurrency;
     private Button btnSave;
-    private Button btnLeave;
     private Button btnManageCategories;
     private TextView tvInviteCode;
-    private ImageButton btnCopyCode;
     private com.google.android.material.textfield.TextInputLayout tilName;
 
     @Nullable
@@ -95,11 +93,11 @@ public class FamilySettingsFragment extends Fragment {
 
         spinnerCurrency = requireView().findViewById(com.finanzapp.app.R.id.spinner_currency);
         btnSave = requireView().findViewById(com.finanzapp.app.R.id.btn_save);
-        btnLeave = requireView().findViewById(com.finanzapp.app.R.id.btn_leave);
+        Button btnLeave = requireView().findViewById(R.id.btn_leave);
         btnManageCategories = requireView().findViewById(com.finanzapp.app.R.id.btn_manage_categories);
         tilName = requireView().findViewById(com.finanzapp.app.R.id.til_name);
         tvInviteCode = requireView().findViewById(com.finanzapp.app.R.id.tv_invite_code);
-        btnCopyCode = requireView().findViewById(com.finanzapp.app.R.id.btn_copy_code);
+        ImageButton btnCopyCode = requireView().findViewById(R.id.btn_copy_code);
 
         // Simple currency selector
         String[] currencies = new String[]{"EUR", "USD", "GBP"};
@@ -123,9 +121,7 @@ public class FamilySettingsFragment extends Fragment {
             showLeaveConfirmation();
         });
 
-        btnManageCategories.setOnClickListener(v -> {
-            Navigation.findNavController(v).navigate(com.finanzapp.app.R.id.action_familySettingsFragment_to_manageCategoriesFragment);
-        });
+        btnManageCategories.setOnClickListener(v -> Navigation.findNavController(v).navigate(R.id.action_familySettingsFragment_to_manageCategoriesFragment));
 
         btnCopyCode.setOnClickListener(v -> copyCodeToClipboard());
         tvInviteCode.setOnClickListener(v -> copyCodeToClipboard());

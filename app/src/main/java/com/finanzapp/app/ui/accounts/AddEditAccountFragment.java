@@ -2,8 +2,6 @@ package com.finanzapp.app.ui.accounts;
 
 import android.app.Dialog;
 import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -18,6 +16,8 @@ import com.finanzapp.app.data.model.Account;
 import com.finanzapp.app.databinding.DialogAddEditAccountBinding;
 import com.finanzapp.app.viewmodel.AccountViewModel;
 import com.finanzapp.app.viewmodel.ViewModelFactory;
+
+import java.util.Objects;
 
 public class AddEditAccountFragment extends DialogFragment {
     private DialogAddEditAccountBinding binding;
@@ -52,7 +52,7 @@ public class AddEditAccountFragment extends DialogFragment {
             }
         }
 
-        binding = DialogAddEditAccountBinding.inflate(LayoutInflater.from(requireContext()));
+        binding = DialogAddEditAccountBinding.inflate(getLayoutInflater());
 
         FinanzAppApplication.AppContainer appContainer = ((FinanzAppApplication) requireActivity().getApplication()).getAppContainer();
         ViewModelFactory factory = new ViewModelFactory(appContainer);
@@ -71,16 +71,14 @@ public class AddEditAccountFragment extends DialogFragment {
                 .setNegativeButton(R.string.cancel_button, (dialog, which) -> dismiss());
 
         AlertDialog dialog = builder.create();
-        dialog.setOnShowListener(d -> {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> onSave());
-        });
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> onSave()));
 
         return dialog;
     }
 
     private void onSave() {
-        String name = binding.etName.getText().toString().trim();
-        String balanceStr = binding.etInitialBalance.getText().toString().trim();
+        String name = Objects.requireNonNull(Objects.requireNonNull(binding.etName.getText())).toString().trim();
+        String balanceStr = Objects.requireNonNull(Objects.requireNonNull(binding.etInitialBalance.getText())).toString().trim();
 
         if (name.isEmpty()) {
             binding.tilName.setError(getString(R.string.error_field_required));

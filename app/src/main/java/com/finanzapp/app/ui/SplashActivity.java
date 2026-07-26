@@ -6,12 +6,10 @@ import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.finanzapp.app.FinanzAppApplication;
 import com.finanzapp.app.MainActivity;
 import com.finanzapp.app.R;
 import com.finanzapp.app.data.firebase.FirestorePaths;
 import com.finanzapp.app.data.model.User;
-import com.finanzapp.app.data.repository.AuthRepository;
 import com.finanzapp.app.ui.auth.LoginActivity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;

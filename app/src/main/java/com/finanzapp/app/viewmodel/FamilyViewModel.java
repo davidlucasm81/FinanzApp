@@ -147,7 +147,7 @@ public class FamilyViewModel extends ViewModel {
 
     public void updateMemberRole(String familyId, String memberUid, String newRole) {
         approvalResult.setValue(new Result.Loading<>());
-        familyRepository.updateMemberRole(familyId, memberUid, newRole, result -> approvalResult.postValue(result));
+        familyRepository.updateMemberRole(familyId, memberUid, newRole, approvalResult::postValue);
     }
 
     public void removeMember(String familyId, String memberUid) {

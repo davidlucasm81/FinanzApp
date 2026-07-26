@@ -25,11 +25,9 @@ import java.util.Set;
 public class DashboardViewModel extends ViewModel {
     private final AuthRepository authRepository;
     private final FamilyRepository familyRepository;
-    private final AccountRepository accountRepository;
 
     private final MutableLiveData<String> familyIdSource = new MutableLiveData<>();
     private final LiveData<Result<Family>> familyData;
-    private final LiveData<List<Account>> accountsSource;
 
     private final MutableLiveData<Result<Boolean>> dataLoaded = new MutableLiveData<>(new Result.Loading<>());
     private final MutableLiveData<Result<User>> userData = new MutableLiveData<>();
@@ -51,7 +49,6 @@ public class DashboardViewModel extends ViewModel {
     public DashboardViewModel(AuthRepository authRepository, FamilyRepository familyRepository, AccountRepository accountRepository) {
         this.authRepository = authRepository;
         this.familyRepository = familyRepository;
-        this.accountRepository = accountRepository;
         authRepository.registerPreSignOutCleanup(signOutCleanup);
 
         // Reactive architecture
@@ -62,7 +59,7 @@ public class DashboardViewModel extends ViewModel {
         });
 
         // Optimized account fetch for the dashboard (real value, no monthly filtering)
-        accountsSource = Transformations.switchMap(familyIdSource, accountRepository::getAccounts);
+        LiveData<List<Account>> accountsSource = Transformations.switchMap(familyIdSource, accountRepository::getAccounts);
 
         accountsLoaded = Transformations.map(accountsSource, accounts -> {
             if (accounts != null) {

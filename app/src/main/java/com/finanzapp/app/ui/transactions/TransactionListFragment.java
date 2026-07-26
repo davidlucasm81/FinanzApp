@@ -683,8 +683,14 @@ public class TransactionListFragment extends Fragment {
         }
 
         static class ViewHolder extends RecyclerView.ViewHolder {
-            TextView tvDate, tvCategory, tvDescription, tvAmount, tvAccount, tvCreator, tvPaymentMethod;
-            View vCategoryColor;
+            final TextView tvDate;
+            final TextView tvCategory;
+            final TextView tvDescription;
+            final TextView tvAmount;
+            final TextView tvAccount;
+            final TextView tvCreator;
+            final TextView tvPaymentMethod;
+            final View vCategoryColor;
 
             ViewHolder(View itemView) {
                 super(itemView);

@@ -9,8 +9,6 @@ import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
-import java.util.List;
-
 public class NotificationRepository {
     private final FirebaseFirestore db;
 

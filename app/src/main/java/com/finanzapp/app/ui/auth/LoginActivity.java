@@ -9,6 +9,7 @@ import android.widget.Toast;
 import com.finanzapp.app.R;
 
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.credentials.Credential;
@@ -90,7 +91,7 @@ public class LoginActivity extends AppCompatActivity {
                 .addCredentialOption(googleIdOption)
                 .build();
 
-        credentialManager.getCredentialAsync(this, request, null, ContextCompat.getMainExecutor(this), new androidx.credentials.CredentialManagerCallback<GetCredentialResponse, GetCredentialException>() {
+        credentialManager.getCredentialAsync(this, request, null, ContextCompat.getMainExecutor(this), new androidx.credentials.CredentialManagerCallback<>() {
             @Override
             public void onResult(GetCredentialResponse result) {
                 Log.d(TAG, "CredentialManager onResult");
@@ -121,7 +122,7 @@ public class LoginActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onError(GetCredentialException e) {
+            public void onError(@NonNull GetCredentialException e) {
                 Log.e(TAG, "Credential Manager error", e);
                 if (!(e instanceof androidx.credentials.exceptions.GetCredentialCancellationException)) {
                     Toast.makeText(LoginActivity.this, getString(R.string.error_google_specific, e.getMessage()), Toast.LENGTH_SHORT).show();

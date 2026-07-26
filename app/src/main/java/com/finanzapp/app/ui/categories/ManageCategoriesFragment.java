@@ -10,8 +10,6 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.finanzapp.app.R;
-
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -231,9 +229,11 @@ public class ManageCategoriesFragment extends Fragment {
         }
 
         static class ViewHolder extends RecyclerView.ViewHolder {
-            TextView tvName, tvType;
-            View viewColor;
-            ImageButton btnEdit, btnDelete;
+            final TextView tvName;
+            final TextView tvType;
+            final View viewColor;
+            final ImageButton btnEdit;
+            final ImageButton btnDelete;
 
             ViewHolder(View itemView) {
                 super(itemView);

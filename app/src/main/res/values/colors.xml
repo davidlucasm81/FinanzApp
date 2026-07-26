@@ -16,20 +16,16 @@
     <color name="error">#B00020</color>
     <color name="on_error">#FFFFFF</color>
     <color name="success">#2E7D32</color>
-    <color name="warning">#F57C00</color>
 
     <!-- Background and Surface Colors (Light Mode) -->
     <color name="background_light">#F8F9FA</color>
     <color name="surface_light">#FFFFFF</color>
     <color name="on_surface">#212121</color>
-    <color name="on_background">#212121</color>
 
     <!-- Neutral / Grays -->
     <color name="gray_100">#F5F5F5</color>
-    <color name="gray_200">#EEEEEE</color>
     <color name="gray_300">#E0E0E0</color>
     <color name="gray_600">#757575</color>
-    <color name="gray_800">#424242</color>
     <color name="gray_900">#212121</color>
 
     <!-- Background and Surface Colors (Dark Mode) -->

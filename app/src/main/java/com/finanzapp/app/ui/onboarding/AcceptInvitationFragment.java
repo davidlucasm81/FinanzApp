@@ -25,6 +25,8 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.WriteBatch;
 
+import java.util.Objects;
+
 public class AcceptInvitationFragment extends Fragment {
     private FragmentAcceptInvitationBinding binding;
     private String invitationId;
@@ -100,7 +102,7 @@ public class AcceptInvitationFragment extends Fragment {
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     if (!queryDocumentSnapshots.isEmpty() && queryDocumentSnapshots.getDocuments().get(0).getReference().getParent().getParent() != null) {
                         invitationId = queryDocumentSnapshots.getDocuments().get(0).getId();
-                        familyId = queryDocumentSnapshots.getDocuments().get(0).getReference().getParent().getParent().getId();
+                        familyId = Objects.requireNonNull(queryDocumentSnapshots.getDocuments().get(0).getReference().getParent().getParent()).getId();
                         setButtonsEnabled(true);
                     } else {
                         Toast.makeText(requireContext(), R.string.error_invitation_unavailable, Toast.LENGTH_LONG).show();

@@ -19,9 +19,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.finanzapp.app.MainActivity;
 import com.finanzapp.app.FinanzAppApplication;
-import com.finanzapp.app.R;
 import com.finanzapp.app.data.model.FamilyMembership;
-import com.finanzapp.app.data.repository.AuthRepository;
 import com.finanzapp.app.data.repository.FamilyRepository;
 import com.finanzapp.app.ui.onboarding.OnboardingActivity;
 import com.finanzapp.app.util.Result;

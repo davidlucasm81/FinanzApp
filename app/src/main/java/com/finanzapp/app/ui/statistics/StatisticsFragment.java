@@ -557,9 +557,11 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         }
 
         class ViewHolder extends RecyclerView.ViewHolder {
-            View vColor;
-            TextView tvName, tvPercentage, tvAmount;
-            com.google.android.material.progressindicator.LinearProgressIndicator progressBar;
+            final View vColor;
+            final TextView tvName;
+            final TextView tvPercentage;
+            final TextView tvAmount;
+            final com.google.android.material.progressindicator.LinearProgressIndicator progressBar;
 
             ViewHolder(View itemView) {
                 super(itemView);

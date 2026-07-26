@@ -23,9 +23,7 @@ public class AuthViewModel extends ViewModel {
 
     public void loginWithCredential(AuthCredential credential) {
         authResult.setValue(new Result.Loading<>());
-        authRepository.signInWithCredential(credential, result -> {
-            authResult.postValue(result);
-        });
+        authRepository.signInWithCredential(credential, authResult::postValue);
     }
 
     public boolean isLoggedIn() {

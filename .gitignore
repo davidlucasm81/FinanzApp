@@ -27,5 +27,4 @@ google-services.json
 app/release/*
 
 keystore.properties
-   *.jks
-   *.keystore
+

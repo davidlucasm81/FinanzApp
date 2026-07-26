@@ -37,7 +37,6 @@ public class MemberListFragment extends Fragment {
     private FamilyViewModel viewModel;
     private MemberAdapter adapter;
     private String familyId;
-    private androidx.recyclerview.widget.RecyclerView rvMembers;
     private Button btnInvite;
     private TextView tvEmpty;
     
@@ -75,7 +74,7 @@ public class MemberListFragment extends Fragment {
         ViewModelFactory factory = new ViewModelFactory(appContainer);
         viewModel = new ViewModelProvider(this, factory).get(FamilyViewModel.class);
 
-        rvMembers = requireView().findViewById(com.finanzapp.app.R.id.rv_members);
+        androidx.recyclerview.widget.RecyclerView rvMembers = requireView().findViewById(R.id.rv_members);
         btnInvite = requireView().findViewById(com.finanzapp.app.R.id.btn_invite);
         tvEmpty = requireView().findViewById(com.finanzapp.app.R.id.tv_empty);
 

@@ -1,5 +1,7 @@
 package com.finanzapp.app.data.importer;
 
+import androidx.annotation.NonNull;
+
 import com.finanzapp.app.data.model.ImportResult;
 import com.finanzapp.app.data.model.ImportedRow;
 import com.google.firebase.Timestamp;
@@ -14,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 public class CsvTransactionParser {
     private static final String EXPECTED_HEADER = "Fecha Concepto Categoría Valor Tipo Método Cuenta";
@@ -84,18 +87,7 @@ public class CsvTransactionParser {
         double amount;
         try {
             // Clean currency symbols, quotes, thousands separators and handle decimal comma
-            String cleanedValue = valueStr.replace("\"", "")
-                    .replace("€", "")
-                    .replace("$", "")
-                    .replace(".", "") // Assume dot is thousands separator if comma is present later
-                    .replace(",", ".") // Replace decimal comma with dot
-                    .trim();
-            
-            // Re-check: if there were no commas but dots, the previous replace(".") might have broken it
-            // if it was "289.06". Let's use a more defensive approach.
-            if (!valueStr.contains(",") && valueStr.contains(".")) {
-                cleanedValue = valueStr.replace("\"", "").replace("€", "").replace("$", "").trim();
-            }
+            String cleanedValue = getString(valueStr);
 
             amount = Math.abs(Double.parseDouble(cleanedValue));
         } catch (NumberFormatException e) {
@@ -120,7 +112,24 @@ public class CsvTransactionParser {
             description = "Importado sin descripción";
         }
 
-        return new ImportedRow(new Timestamp(date), description, categoryName, amount, type, paymentMethod, accountName, lineNumber);
+        return new ImportedRow(new Timestamp(Objects.requireNonNull(date)), description, categoryName, amount, type, paymentMethod, accountName, lineNumber);
+    }
+
+    @NonNull
+    private static String getString(String valueStr) {
+        String cleanedValue = valueStr.replace("\"", "")
+                .replace("€", "")
+                .replace("$", "")
+                .replace(".", "") // Assume dot is thousands separator if comma is present later
+                .replace(",", ".") // Replace decimal comma with dot
+                .trim();
+
+        // Re-check: if there were no commas but dots, the previous replace(".") might have broken it
+        // if it was "289.06". Let's use a more defensive approach.
+        if (!valueStr.contains(",") && valueStr.contains(".")) {
+            cleanedValue = valueStr.replace("\"", "").replace("€", "").replace("$", "").trim();
+        }
+        return cleanedValue;
     }
 
     private List<String> splitRespectingQuotes(String line, char delimiter) {
@@ -147,10 +156,16 @@ public class CsvTransactionParser {
         String normalized = method.toLowerCase().replaceAll("[áàäâ]", "a").replaceAll("[éèëê]", "e")
                 .replaceAll("[íìïî]", "i").replaceAll("[óòöô]", "o").replaceAll("[úùüû]", "u");
 
-        if (normalized.equals("tarjeta")) return "tarjeta";
-        if (normalized.equals("efectivo")) return "efectivo";
-        if (normalized.equals("transferencia")) return "transferencia";
-        if (normalized.equals("bizum")) return "bizum";
+        switch (normalized) {
+            case "tarjeta":
+                return "tarjeta";
+            case "efectivo":
+                return "efectivo";
+            case "transferencia":
+                return "transferencia";
+            case "bizum":
+                return "bizum";
+        }
         if (normalized.contains("restaurante")) return "tarjeta_restaurante";
         if (normalized.contains("transporte")) return "tarjeta_transporte";
         if (normalized.contains("domiciliacion")) return "domiciliacion_bancaria";

@@ -6,16 +6,11 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import com.finanzapp.app.R;
 
 
 import androidx.annotation.NonNull;
@@ -105,22 +100,20 @@ public class AddEditCategoryDialogFragment extends DialogFragment {
             tilColor.getEditText().setText(selectedColor);
         }
 
-        btnPickColor.setOnClickListener(v -> {
-            new ColorPickerDialog.Builder(requireContext())
-                    .setTitle(getString(R.string.dialog_category_color))
-                    .setColorShape(ColorShape.CIRCLE)
-                    .setDefaultColor(selectedColor)
-                    .setColorListener((color, colorHex) -> {
-                        selectedColor = colorHex;
-                        updatePreviewColor();
-                        if (tilColor.getEditText() != null) {
-                            isUpdatingColorFromText = true;
-                            tilColor.getEditText().setText(selectedColor);
-                            isUpdatingColorFromText = false;
-                        }
-                    })
-                    .show();
-        });
+        btnPickColor.setOnClickListener(v -> new ColorPickerDialog.Builder(requireContext())
+                .setTitle(getString(R.string.dialog_category_color))
+                .setColorShape(ColorShape.CIRCLE)
+                .setDefaultColor(selectedColor)
+                .setColorListener((color, colorHex) -> {
+                    selectedColor = colorHex;
+                    updatePreviewColor();
+                    if (tilColor.getEditText() != null) {
+                        isUpdatingColorFromText = true;
+                        tilColor.getEditText().setText(selectedColor);
+                        isUpdatingColorFromText = false;
+                    }
+                })
+                .show());
 
         if (tilColor.getEditText() != null) {
             tilColor.getEditText().addTextChangedListener(new TextWatcher() {

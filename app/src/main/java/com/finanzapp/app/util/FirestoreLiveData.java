@@ -38,7 +38,7 @@ public class FirestoreLiveData<T> extends LiveData<T> {
         this.isList = false;
     }
 
-    private final EventListener<QuerySnapshot> queryListener = new EventListener<QuerySnapshot>() {
+    private final EventListener<QuerySnapshot> queryListener = new EventListener<>() {
         @Override
         public void onEvent(QuerySnapshot value, com.google.firebase.firestore.FirebaseFirestoreException error) {
             if (error != null) return;
@@ -52,7 +52,7 @@ public class FirestoreLiveData<T> extends LiveData<T> {
         }
     };
 
-    private final EventListener<DocumentSnapshot> docListener = new EventListener<DocumentSnapshot>() {
+    private final EventListener<DocumentSnapshot> docListener = new EventListener<>() {
         @Override
         public void onEvent(DocumentSnapshot value, com.google.firebase.firestore.FirebaseFirestoreException error) {
             if (error != null) return;

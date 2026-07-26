@@ -7,8 +7,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
-import com.finanzapp.app.R;
-
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -43,13 +41,9 @@ public class PrivacyConsentFragment extends Fragment {
 
         binding.tvPrivacyPolicy.setText(Html.fromHtml(getString(R.string.privacy_policy_text), Html.FROM_HTML_MODE_LEGACY));
 
-        binding.cbAcceptPrivacy.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            binding.btnContinue.setEnabled(isChecked);
-        });
+        binding.cbAcceptPrivacy.setOnCheckedChangeListener((buttonView, isChecked) -> binding.btnContinue.setEnabled(isChecked));
 
-        binding.btnContinue.setOnClickListener(v -> {
-            viewModel.acceptPrivacyPolicy();
-        });
+        binding.btnContinue.setOnClickListener(v -> viewModel.acceptPrivacyPolicy());
 
         binding.btnSignOut.setOnClickListener(v -> {
             viewModel.signOut();

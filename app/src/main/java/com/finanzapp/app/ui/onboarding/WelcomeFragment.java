@@ -14,7 +14,6 @@ import androidx.navigation.Navigation;
 
 import com.bumptech.glide.Glide;
 
-import com.finanzapp.app.R;
 import android.widget.Toast;
 
 import com.finanzapp.app.FinanzAppApplication;

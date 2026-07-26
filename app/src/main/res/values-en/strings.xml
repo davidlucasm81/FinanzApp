@@ -11,18 +11,15 @@
     <string name="nav_accounts">Accounts</string>
     <string name="nav_statistics">Statistics</string>
     <string name="nav_members">Members</string>
-    <string name="nav_requests">Requests</string>
     <string name="nav_family">Family</string>
     <string name="nav_family_settings">Family Settings</string>
     <string name="nav_manage_categories">Manage Categories</string>
     <string name="nav_invite">Invite</string>
     <string name="nav_privacy">Privacy</string>
     <string name="nav_settings">Settings</string>
-    <string name="welcome_greeting">Hello!</string>
     <string name="net_position">Net Position</string>
     <string name="dashboard_placeholder">Your accounts and transactions will appear here</string>
     <string name="amount_placeholder">0.00</string>
-    <string name="desc_settings">Settings</string>
     <string name="desc_edit_account">Edit account</string>
     <string name="desc_delete_account">Delete account</string>
     <string name="desc_import_csv">Import CSV</string>
@@ -43,7 +40,6 @@
     <string name="invitation_alert_text">You have been invited to join the family unit <b>%1$s</b>.</string>
     <string name="accept_button">Join now</string>
     <string name="reject_button">No, thanks</string>
-    <string name="pending_invitation_label">Pending invitation</string>
     <string name="pending_tag">PENDING</string>
     <string name="options_desc">Options</string>
     <string name="menu_make_admin">Make admin</string>
@@ -80,16 +76,11 @@
 
     <!-- Statistics -->
     <string name="stats_title">Statistics</string>
-    <string name="stats_summary_period">Period Summary</string>
     <string name="stats_income">Income</string>
     <string name="stats_expense">Expenses</string>
-    <string name="stats_variation">Variation</string>
-    <string name="stats_variation_vs_previous">expense variation vs previous month</string>
-    <string name="stats_average_expense">Average Expense</string>
     <string name="stats_monthly_evolution">Monthly Evolution</string>
     <string name="stats_category_distribution">Category Distribution</string>
     <string name="category_others">Others</string>
-    <string name="stats_net_history">Net History</string>
     <string name="date_filter_all">Full history</string>
     <string name="date_filter_clear_desc">Clear filter</string>
     <string name="date_filter_select_period">Select period</string>
@@ -117,7 +108,6 @@
     <string name="privacy_consent_content_description">Privacy icon</string>
     <string name="btn_sign_out">Sign out</string>
     <string name="settings_export_data">Download my data (JSON)</string>
-    <string name="settings_export_success">Data ready to download</string>
     <string name="settings_export_error">Error preparing download</string>
     <string name="stats_empty_title">No transactions</string>
     <string name="stats_empty_subtitle">No data for the selected period</string>
@@ -192,7 +182,6 @@
     <string name="label_confirm">Confirm</string>
     <string name="label_profile">Profile</string>
     <string name="label_name">Name</string>
-    <string name="label_delete_account">Delete account</string>
     <string name="label_family_settings_title">Family settings</string>
     <string name="label_save">Save</string>
     <string name="label_manage_categories_btn">Manage categories</string>
@@ -266,15 +255,6 @@
     <string name="error_identify_family">Error: Could not identify family</string>
     <string name="msg_request_cancelled">Request cancelled</string>
     <string name="label_invitation_sent">Invitation sent</string>
-    <string name="label_import_empty_file">The file is empty.</string>
-    <string name="label_import_delimiter_error">Could not detect delimiter (expected: tab, comma or semicolon).</string>
-    <string name="label_import_row_error">Row %1$d: %2$s</string>
-    <string name="label_import_columns_error">Insufficient number of columns (expected 7).</string>
-    <string name="label_import_date_error">Invalid date format (expected dd/MM/yyyy).</string>
-    <string name="label_import_value_error">Invalid numeric value: %1$s</string>
-    <string name="label_import_type_error">Unknown type (expected: Ingreso or Gasto).</string>
-    <string name="label_import_method_error">Unrecognized payment method: %1$s</string>
-    <string name="label_import_no_description">Imported without description</string>
     <string name="dialog_edit_account">Edit account</string>
     <string name="dialog_delete_account">Delete account</string>
     <string name="dialog_edit_transaction">Edit Transaction</string>
@@ -293,7 +273,6 @@
     <string name="label_add_account_title">Add account</string>
     <string name="label_borrar">Delete</string>
     <string name="label_expulsar">Expel</string>
-    <string name="ok">OK</string>
     <string name="error_field_required">Field required</string>
     <string name="error_name_required">Name required</string>
     <string name="error_category_type_required">Select at least one type</string>

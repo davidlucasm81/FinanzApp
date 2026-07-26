@@ -76,22 +76,22 @@ public class AccountViewModel extends ViewModel {
 
     public void createAccount(String familyId, Account account) {
         createResult.setValue(new Result.Loading<>());
-        accountRepository.createAccount(familyId, account, result -> createResult.postValue(result));
+        accountRepository.createAccount(familyId, account, createResult::postValue);
     }
 
     public void updateAccount(String familyId, Account account) {
         updateResult.setValue(new Result.Loading<>());
-        accountRepository.updateAccount(familyId, account, result -> updateResult.postValue(result));
+        accountRepository.updateAccount(familyId, account, updateResult::postValue);
     }
 
     public void archiveAccount(String familyId, String accountId, boolean active) {
         archiveResult.setValue(new Result.Loading<>());
-        accountRepository.archiveAccount(familyId, accountId, active, result -> archiveResult.postValue(result));
+        accountRepository.archiveAccount(familyId, accountId, active, archiveResult::postValue);
     }
 
     public void deleteAccount(String familyId, String accountId) {
         deleteResult.setValue(new Result.Loading<>());
-        accountRepository.deleteAccount(familyId, accountId, result -> deleteResult.postValue(result));
+        accountRepository.deleteAccount(familyId, accountId, deleteResult::postValue);
     }
 
     private String lastAccountsFamilyId;

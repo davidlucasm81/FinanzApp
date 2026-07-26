@@ -1,7 +1,6 @@
 package com.finanzapp.app.data.repository;
 
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
 
 import com.finanzapp.app.data.firebase.FirestorePaths;
 import com.finanzapp.app.data.model.Category;
@@ -10,9 +9,7 @@ import com.finanzapp.app.util.Result;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,7 +39,7 @@ public class CategoryRepository {
         activeListeners.clear();
     }
 
-    public LiveData<List<Category>> getCategories(String familyId) {
+    public LiveData getCategories(String familyId) {
         if (categoriesCache.containsKey(familyId)) {
             return categoriesCache.get(familyId);
         }

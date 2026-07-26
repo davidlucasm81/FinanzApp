@@ -50,9 +50,7 @@ public class AuthRepository {
         this.db = FirebaseFirestore.getInstance();
         this.firebaseUserLiveData = new MutableLiveData<>(auth.getCurrentUser());
 
-        auth.addAuthStateListener(firebaseAuth -> {
-            firebaseUserLiveData.setValue(firebaseAuth.getCurrentUser());
-        });
+        auth.addAuthStateListener(firebaseAuth -> firebaseUserLiveData.setValue(firebaseAuth.getCurrentUser()));
     }
 
     public LiveData<FirebaseUser> getCurrentUser() {
@@ -196,8 +194,7 @@ public class AuthRepository {
             if (!userDoc.exists()) {
                 throw new RuntimeException("Documento de usuario no existe en Firestore");
             }
-            User user = userDoc.toObject(User.class);
-            return user;
+            return userDoc.toObject(User.class);
         }).addOnSuccessListener(user -> {
             android.util.Log.d("AuthRepository", "User profile fetched, now fetching memberships...");
             fetchMembershipsAndTransactions(user, callback);
