@@ -134,7 +134,7 @@ public class TransactionRepository {
 
                     if (oldTransaction.getAccountId().equals(newTransaction.getAccountId())) {
                         // Same account, transactionCount doesn't change
-                        double newAmount = newTransaction.getAmount();
+                        double newAmount = Math.abs(newTransaction.getAmount());
                         double newBalanceChange = "income".equals(newTransaction.getType()) ? newAmount : -newAmount;
                         oldAccount.setCurrentBalance(oldAccount.getCurrentBalance() + newBalanceChange);
 
@@ -144,7 +144,7 @@ public class TransactionRepository {
                         Account newAccount = firestoreTransaction.get(newAccountRef).toObject(Account.class);
                         if (newAccount == null) throw new RuntimeException("New account not found");
 
-                        double newAmount = newTransaction.getAmount();
+                        double newAmount = Math.abs(newTransaction.getAmount());
                         double newBalanceChange = "income".equals(newTransaction.getType()) ? newAmount : -newAmount;
                         newAccount.setCurrentBalance(newAccount.getCurrentBalance() + newBalanceChange);
                         

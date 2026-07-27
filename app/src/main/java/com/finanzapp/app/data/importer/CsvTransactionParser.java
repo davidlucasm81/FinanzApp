@@ -156,16 +156,10 @@ public class CsvTransactionParser {
         String normalized = method.toLowerCase().replaceAll("[áàäâ]", "a").replaceAll("[éèëê]", "e")
                 .replaceAll("[íìïî]", "i").replaceAll("[óòöô]", "o").replaceAll("[úùüû]", "u");
 
-        switch (normalized) {
-            case "tarjeta":
-                return "tarjeta";
-            case "efectivo":
-                return "efectivo";
-            case "transferencia":
-                return "transferencia";
-            case "bizum":
-                return "bizum";
-        }
+        if (normalized.contains("tarjeta")) return "tarjeta";
+        if (normalized.contains("efectivo")) return "efectivo";
+        if (normalized.contains("transferencia")) return "transferencia";
+        if (normalized.contains("bizum")) return "bizum";
         if (normalized.contains("restaurante")) return "tarjeta_restaurante";
         if (normalized.contains("transporte")) return "tarjeta_transporte";
         if (normalized.contains("domiciliacion")) return "domiciliacion_bancaria";

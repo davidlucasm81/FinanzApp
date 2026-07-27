@@ -185,7 +185,7 @@ public class AccountRepository {
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful() && task.getResult().exists()) {
                         Account account = task.getResult().toObject(Account.class);
-                        if (account != null && account.getTransactionCount() > 0) {
+                        if (account != null && account.getTransactionCount() != null && account.getTransactionCount() > 0) {
                             callback.onResult(new Result.Error<>(new Exception("No se puede eliminar una cuenta con movimientos. Archívala en su lugar.")));
                         } else {
                             db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS)

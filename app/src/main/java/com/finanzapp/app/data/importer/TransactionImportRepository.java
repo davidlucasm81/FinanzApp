@@ -98,6 +98,7 @@ public class TransactionImportRepository {
 
         Map<String, Double> accountDeltas = new HashMap<>();
         Map<String, Double> initialBalanceDeltas = new HashMap<>();
+        Map<String, Long> transactionCountDeltas = new HashMap<>();
         Timestamp now = Timestamp.now();
 
         for (ImportedRow row : rows) {
@@ -110,6 +111,7 @@ public class TransactionImportRepository {
                 account.setName(row.getAccountName());
                 account.setInitialBalance(0);
                 account.setCurrentBalance(0);
+                account.setTransactionCount(0L);
                 account.setActive(true);
                 account.setCreatedBy(uid);
                 account.setCreatedAt(now);
@@ -174,14 +176,24 @@ public class TransactionImportRepository {
             result.setImportedCount(result.getImportedCount() + 1);
             incrementOperation(batches, operationCount, db);
 
-            // Accumulate delta for account current balance
+            // Accumulate delta for account current balance and transaction count
             accountDeltas.put(account.getId(), accountDeltas.getOrDefault(account.getId(), 0.0) + delta);
+            transactionCountDeltas.compute(account.getId(), (k, v) -> (v == null ? 0L : v) + 1);
         }
 
         // Add balance increments to batches
         for (Map.Entry<String, Double> entry : accountDeltas.entrySet()) {
             DocumentReference accRef = db.collection(FirestorePaths.getAccountsPath(familyId)).document(entry.getKey());
-            batches.get(batches.size() - 1).update(accRef, "currentBalance", FieldValue.increment(entry.getValue()));
+            
+            Map<String, Object> updates = new HashMap<>();
+            updates.put("currentBalance", FieldValue.increment(entry.getValue()));
+            
+            Long countDelta = transactionCountDeltas.get(entry.getKey());
+            if (countDelta != null && countDelta > 0) {
+                updates.put("transactionCount", FieldValue.increment(countDelta));
+            }
+            
+            batches.get(batches.size() - 1).update(accRef, updates);
             
             // If there's an initial balance delta, update it too
             Double initialDelta = initialBalanceDeltas.get(entry.getKey());
