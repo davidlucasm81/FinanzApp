@@ -81,6 +81,12 @@
     <string name="label_method">Method</string>
     <string name="label_date_range">Date range</string>
 
+    <string name="stats_savings_rate">Savings rate</string>
+    <string name="stats_payment_methods">Breakdown by payment method</string>
+    <string name="stats_top_expenses">Top expenses of the period</string>
+    <string name="stats_by_member">Expense by member</string>
+    <string name="savings_rate_desc">% saved relative to income</string>
+
     <!-- Statistics -->
     <string name="stats_title">Statistics</string>
     <string name="stats_income">Income</string>

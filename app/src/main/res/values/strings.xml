@@ -81,6 +81,12 @@
     <string name="label_method">Método</string>
     <string name="label_date_range">Rango de fechas</string>
 
+    <string name="stats_savings_rate">Tasa de ahorro</string>
+    <string name="stats_payment_methods">Desglose por método de pago</string>
+    <string name="stats_top_expenses">Mayores gastos del periodo</string>
+    <string name="stats_by_member">Gasto por miembro</string>
+    <string name="savings_rate_desc">% ahorrado respecto a los ingresos</string>
+
     <!-- Statistics -->
     <string name="stats_title">Estadísticas</string>
     <string name="stats_income">Ingresos</string>

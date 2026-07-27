@@ -20,13 +20,20 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.finanzapp.app.FinanzAppApplication;
 import com.finanzapp.app.R;
+import com.finanzapp.app.data.model.Category;
 import com.finanzapp.app.data.model.DashboardCategorySummary;
+import com.finanzapp.app.data.model.Member;
+import com.finanzapp.app.data.model.MemberExpenseSummary;
+import com.finanzapp.app.data.model.PaymentMethodSummary;
+import com.finanzapp.app.data.model.Transaction;
+import com.finanzapp.app.ui.transactions.TransactionAdapter;
 import com.finanzapp.app.data.model.statistics.MonthlySummary;
 import com.finanzapp.app.databinding.FragmentStatisticsBinding;
 import com.finanzapp.app.util.ChartUtils;
 import com.finanzapp.app.viewmodel.StatisticsViewModel;
 import com.finanzapp.app.viewmodel.ViewModelFactory;
 import com.github.mikephil.charting.charts.CombinedChart;
+import com.github.mikephil.charting.charts.HorizontalBarChart;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.BarDataSet;
@@ -37,8 +44,10 @@ import com.github.mikephil.charting.data.PieData;
 import com.github.mikephil.charting.data.PieDataSet;
 import com.github.mikephil.charting.data.PieEntry;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
+import com.github.mikephil.charting.formatter.PercentFormatter;
 import com.github.mikephil.charting.highlight.Highlight;
 import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
+import com.github.mikephil.charting.utils.ColorTemplate;
 import com.google.android.material.datepicker.MaterialDatePicker;
 
 import java.text.NumberFormat;
@@ -50,8 +59,10 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Currency;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import androidx.navigation.Navigation;
 
@@ -61,6 +72,16 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
     private StatisticsViewModel viewModel;
     private String currentCurrencyCode = "EUR";
     private LegendAdapter legendAdapter;
+    private PaymentMethodLegendAdapter methodLegendAdapter;
+    private MemberExpenseLegendAdapter memberLegendAdapter;
+    private TransactionAdapter topExpensesAdapter;
+    private final Map<String, String> methodLabels = new HashMap<>();
+    private final Map<String, String> categoryNames = new HashMap<>();
+    private final Map<String, String> categoryColors = new HashMap<>();
+    private final Map<String, String> accountNames = new HashMap<>();
+    private final Map<String, String> memberNames = new HashMap<>();
+
+    private List<MonthlySummary> monthlyDataList = new ArrayList<>();
 
     @Nullable
     @Override
@@ -94,6 +115,42 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         legendAdapter = new LegendAdapter();
         binding.rvCategoryLegend.setLayoutManager(new LinearLayoutManager(requireContext()));
         binding.rvCategoryLegend.setAdapter(legendAdapter);
+
+        methodLegendAdapter = new PaymentMethodLegendAdapter();
+        binding.rvPaymentMethodLegend.setLayoutManager(new LinearLayoutManager(requireContext()));
+        binding.rvPaymentMethodLegend.setAdapter(methodLegendAdapter);
+
+        memberLegendAdapter = new MemberExpenseLegendAdapter();
+        binding.rvMemberExpenses.setLayoutManager(new LinearLayoutManager(requireContext()));
+        binding.rvMemberExpenses.setAdapter(memberLegendAdapter);
+
+        methodLabels.put("tarjeta", getString(R.string.method_card));
+        methodLabels.put("efectivo", getString(R.string.method_cash));
+        methodLabels.put("transferencia", getString(R.string.method_transfer));
+        methodLabels.put("bizum", getString(R.string.method_bizum));
+        methodLabels.put("tarjeta_restaurante", getString(R.string.method_restaurant_card));
+        methodLabels.put("tarjeta_transporte", getString(R.string.method_transport_card));
+        methodLabels.put("domiciliacion_bancaria", getString(R.string.method_direct_debit));
+
+        topExpensesAdapter = new TransactionAdapter(new ArrayList<>(), categoryNames, categoryColors, accountNames, memberNames, methodLabels, new TransactionAdapter.OnTransactionClickListener() {
+            @Override
+            public void onTransactionClick(Transaction t) {
+                Bundle args = new Bundle();
+                com.finanzapp.app.util.Result<com.finanzapp.app.data.model.User> userResult = viewModel.getUserData().getValue();
+                String familyId = null;
+                if (userResult instanceof com.finanzapp.app.util.Result.Success) {
+                    familyId = ((com.finanzapp.app.util.Result.Success<com.finanzapp.app.data.model.User>) userResult).getData().getFamilyId();
+                }
+                args.putString("familyId", familyId);
+                args.putSerializable("transaction", t);
+                Navigation.findNavController(requireView()).navigate(R.id.action_statisticsFragment_to_addEditTransactionFragment, args);
+            }
+
+            @Override
+            public void onTransactionLongClick(Transaction t) {}
+        });
+        binding.rvTopExpenses.setLayoutManager(new LinearLayoutManager(requireContext()));
+        binding.rvTopExpenses.setAdapter(topExpensesAdapter);
     }
 
     private void setupCharts() {
@@ -107,11 +164,13 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         binding.monthlyChart.setExtraOffsets(10f, 20f, 10f, 10f); // Increase top offset for bar values
 
         ChartUtils.setupPieChart(binding.categoryPieChart);
-        binding.categoryPieChart.setUsePercentValues(true);
-        binding.categoryPieChart.setDrawHoleEnabled(false);
-        binding.categoryPieChart.getLegend().setEnabled(false);
-        binding.categoryPieChart.setDrawEntryLabels(false);
+        binding.categoryPieChart.setUsePercentValues(false); // Show currency values
+        ChartUtils.setupPieChart(binding.paymentMethodPieChart);
+        binding.paymentMethodPieChart.setUsePercentValues(true);
+        
         binding.categoryPieChart.setOnChartValueSelectedListener(this);
+        binding.paymentMethodPieChart.setOnChartValueSelectedListener(this);
+        binding.monthlyChart.setOnChartValueSelectedListener(this);
     }
 
     private void setupClickListeners() {
@@ -120,25 +179,18 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
     }
 
     private void showDateRangePicker() {
-        MaterialDatePicker<androidx.core.util.Pair<Long, Long>> picker = MaterialDatePicker.Builder.dateRangePicker()
+        MaterialDatePicker<Pair<Long, Long>> picker = MaterialDatePicker.Builder.dateRangePicker()
                 .setTitleText(R.string.date_filter_select_period)
+                .setSelection(viewModel.getDateRange().getValue())
                 .build();
 
         picker.addOnPositiveButtonClickListener(selection -> {
-            if (selection.first != null && selection.second != null) {
-                // Ensure the end date is the end of the day with millisecond precision
-                LocalDate endDate = Instant.ofEpochMilli(selection.second)
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDate();
-                long endOfDay = endDate.atTime(LocalTime.MAX)
-                        .atZone(ZoneId.systemDefault())
-                        .toInstant()
-                        .toEpochMilli();
-                viewModel.setDateRange(selection.first, endOfDay);
+            if (selection != null) {
+                viewModel.setDateRange(selection.first, selection.second);
             }
         });
 
-        picker.show(getChildFragmentManager(), "date_range_picker");
+        picker.show(getChildFragmentManager(), "DATE_PICKER");
     }
 
     private void setupObservers() {
@@ -155,7 +207,8 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
 
         viewModel.getFamilyData().observe(getViewLifecycleOwner(), result -> {
             if (result instanceof com.finanzapp.app.util.Result.Success) {
-                currentCurrencyCode = ((com.finanzapp.app.util.Result.Success<com.finanzapp.app.data.model.Family>) result).getData().getCurrencyCode();
+                com.finanzapp.app.data.model.Family family = ((com.finanzapp.app.util.Result.Success<com.finanzapp.app.data.model.Family>) result).getData();
+                currentCurrencyCode = family.getCurrencyCode();
             }
         });
 
@@ -190,12 +243,77 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
             } else {
                 binding.llEmptyState.setVisibility(View.GONE);
                 binding.scrollView.setVisibility(View.VISIBLE);
+                monthlyDataList = evolution;
                 updateMonthlyChart(evolution);
             }
         });
         
         viewModel.getCategoryDistribution().observe(getViewLifecycleOwner(), this::updatePieChart);
-        // El ranking y la matriz se han eliminado por decisión de UX
+
+        viewModel.getSavingsRate().observe(getViewLifecycleOwner(), this::updateSavingsRate);
+        viewModel.getPaymentMethodDistribution().observe(getViewLifecycleOwner(), this::updatePaymentMethodChart);
+        viewModel.getTopExpenses().observe(getViewLifecycleOwner(), expenses -> {
+            if (expenses != null) {
+                topExpensesAdapter.updateTransactions(expenses);
+            }
+        });
+        viewModel.getMemberExpenseDistribution().observe(getViewLifecycleOwner(), distribution -> {
+            if (distribution != null) {
+                memberNames.clear();
+                for (MemberExpenseSummary s : distribution) {
+                    memberNames.put(s.getUid(), s.getDisplayName());
+                }
+                updateMemberChart(distribution);
+                
+                // Refresh top expenses adapter to show correct names
+                List<Transaction> current = viewModel.getTopExpenses().getValue();
+                if (current != null) {
+                    topExpensesAdapter.notifyDataSetChanged();
+                }
+            }
+        });
+
+        viewModel.getAllCategories().observe(getViewLifecycleOwner(), categories -> {
+            if (categories != null) {
+                categoryNames.clear();
+                categoryColors.clear();
+                for (Category c : categories) {
+                    categoryNames.put(c.getId(), c.getName());
+                    categoryColors.put(c.getId(), c.getColor());
+                }
+                List<Transaction> current = viewModel.getTopExpenses().getValue();
+                if (current != null) {
+                    topExpensesAdapter.updateTransactions(current);
+                }
+            }
+        });
+    }
+
+    private void updateSavingsRate(Double rate) {
+        if (rate == null) {
+            binding.tvSavingsRate.setText("---");
+            binding.progressSavingsRate.setProgress(0);
+            binding.progressSavingsRate.setVisibility(View.INVISIBLE);
+            return;
+        }
+
+        binding.tvSavingsRate.setText(String.format(Locale.getDefault(), "%.1f%%", rate));
+        binding.progressSavingsRate.setVisibility(View.VISIBLE);
+        
+        int progress = (int) Math.max(0, Math.min(100, rate));
+        binding.progressSavingsRate.setProgress(progress);
+
+        int color;
+        if (rate >= 20) {
+            color = ContextCompat.getColor(requireContext(), R.color.success);
+        } else if (rate >= 0) {
+            color = ContextCompat.getColor(requireContext(), R.color.warning);
+        } else {
+            color = ContextCompat.getColor(requireContext(), R.color.error);
+            binding.progressSavingsRate.setProgress(100); // Fill the bar for negative
+        }
+        binding.tvSavingsRate.setTextColor(color);
+        binding.progressSavingsRate.setIndicatorColor(color);
     }
 
     private void updateVariationIndicator(TextView tvVariation, ImageView ivIcon, Double variation, boolean isIncome) {
@@ -215,25 +333,23 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         int errorColor = ContextCompat.getColor(requireContext(), R.color.error);
 
         if (isIncome) {
-            // Income: positive variation is good (green up), negative is bad (red down)
             if (variation > 0) {
                 tvVariation.setTextColor(successColor);
-                ivIcon.setImageResource(R.drawable.ic_expense); // UP arrow
+                ivIcon.setImageResource(R.drawable.ic_expense);
                 ivIcon.setColorFilter(successColor);
             } else {
                 tvVariation.setTextColor(errorColor);
-                ivIcon.setImageResource(R.drawable.ic_income); // DOWN arrow
+                ivIcon.setImageResource(R.drawable.ic_income);
                 ivIcon.setColorFilter(errorColor);
             }
         } else {
-            // Expense/Variation: positive variation is bad (red up), negative is good (green down)
             if (variation > 0) {
                 tvVariation.setTextColor(errorColor);
-                ivIcon.setImageResource(R.drawable.ic_expense); // UP arrow
+                ivIcon.setImageResource(R.drawable.ic_expense);
                 ivIcon.setColorFilter(errorColor);
             } else {
                 tvVariation.setTextColor(successColor);
-                ivIcon.setImageResource(R.drawable.ic_income); // DOWN arrow
+                ivIcon.setImageResource(R.drawable.ic_income);
                 ivIcon.setColorFilter(successColor);
             }
         }
@@ -268,50 +384,27 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         expenseSet.setDrawValues(true);
 
         CombinedData combinedData = getCombinedData(data, incomeSet, expenseSet);
-
+        binding.monthlyChart.getXAxis().setValueFormatter(new IndexAxisValueFormatter(labels));
         binding.monthlyChart.setData(combinedData);
-        XAxis xAxis = binding.monthlyChart.getXAxis();
-        xAxis.setValueFormatter(new IndexAxisValueFormatter(labels));
-        xAxis.setCenterAxisLabels(true);
-        xAxis.setAxisMinimum(0f);
-        xAxis.setAxisMaximum(combinedData.getXMax() + 1.1f);
-        xAxis.setLabelCount(data.size());
-        xAxis.setTextSize(12f);
-        
-        binding.monthlyChart.getAxisLeft().setAxisMinimum(0f);
-        binding.monthlyChart.getAxisLeft().setTextSize(12f);
-        binding.monthlyChart.getAxisLeft().setSpaceTop(25f); // More space for labels
-        binding.monthlyChart.getLegend().setTextSize(14f);
-
-        // Zoom and Scroll configuration: Show 3 months
-        binding.monthlyChart.setVisibleXRangeMaximum(3f); 
-        binding.monthlyChart.moveViewToX(data.size() - 3f);
-
         binding.monthlyChart.invalidate();
     }
 
-    @NonNull
     private CombinedData getCombinedData(List<MonthlySummary> data, BarDataSet incomeSet, BarDataSet expenseSet) {
         BarData barData = new BarData(incomeSet, expenseSet);
-        barData.setValueFormatter(new com.github.mikephil.charting.formatter.ValueFormatter() {
-            @Override
-            public String getFormattedValue(float value) {
-                if (value == 0) return "";
-                return formatCurrency(value, currentCurrencyCode, 0);
-            }
-        });
-
-        float groupSpace = 0.08f;
-        float barSpace = 0.03f;
-        float barWidth = 0.43f;
+        float groupSpace = 0.2f;
+        float barSpace = 0.05f;
+        float barWidth = 0.35f;
 
         barData.setBarWidth(barWidth);
-        if (data.size() > 1) {
-            barData.groupBars(0, groupSpace, barSpace);
-        }
+        barData.groupBars(0f, groupSpace, barSpace);
 
         CombinedData combinedData = new CombinedData();
         combinedData.setData(barData);
+
+        binding.monthlyChart.getXAxis().setAxisMinimum(0f);
+        binding.monthlyChart.getXAxis().setAxisMaximum(data.size());
+        binding.monthlyChart.getXAxis().setCenterAxisLabels(true);
+
         return combinedData;
     }
 
@@ -329,9 +422,6 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
             totalAmount += summary.getAmount();
         }
 
-        // Dynamic Grouping strategy:
-        // 1. Minimum percentage threshold (3%)
-        // 2. Maximum number of slices in chart (8)
         final double MIN_PERCENTAGE = 3.0;
         final int MAX_SLICES = 8;
         
@@ -350,19 +440,14 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
             }
         }
 
-        // If we still have too many slices, move the smallest ones to "Others"
         while (visibleCategories.size() > (othersAmount > 0 ? MAX_SLICES - 1 : MAX_SLICES)) {
-            // Data is already sorted by amount descending in ViewModel, so the last one is the smallest
             DashboardCategorySummary smallest = visibleCategories.remove(visibleCategories.size() - 1);
             othersAmount += smallest.getAmount();
             othersCategoryIds.add(smallest.getCategoryId());
         }
 
-        // Add main categories to entries
         for (DashboardCategorySummary summary : visibleCategories) {
-            double percentage = (totalAmount > 0) ? (summary.getAmount() / totalAmount) * 100.0 : 0;
-            String label = String.format(Locale.getDefault(), "%s (%.1f%%)", 
-                    summary.getCategoryName(), percentage);
+            String label = summary.getCategoryName();
             PieEntry entry = new PieEntry((float) summary.getAmount(), label);
             entry.setData(summary.getCategoryId());
             entries.add(entry);
@@ -374,16 +459,10 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         }
 
         if (othersAmount > 0) {
-            double othersPercentage = (othersAmount / totalAmount) * 100.0;
-            String label = String.format(Locale.getDefault(), "%s (%.1f%%)", 
-                    getString(R.string.category_others), othersPercentage);
+            String label = getString(R.string.category_others);
             PieEntry entry = new PieEntry((float) othersAmount, label);
-            // We pass a joined string or special flag for navigation if needed, 
-            // but usually "Others" slice navigation is ambiguous. 
-            // We'll leave data null or handle it in onValueSelected.
             entry.setData("GROUPED_OTHERS:" + String.join(",", othersCategoryIds)); 
             entries.add(entry);
-            // Use a darker gray in Dark Mode for better contrast with white text
             colors.add(isDarkMode() ? Color.DKGRAY : Color.LTGRAY);
         }
 
@@ -392,7 +471,6 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         dataSet.setSliceSpace(3f);
         dataSet.setSelectionShift(5f);
         
-        // Label configuration: only percentages inside
         dataSet.setXValuePosition(PieDataSet.ValuePosition.INSIDE_SLICE);
         dataSet.setYValuePosition(PieDataSet.ValuePosition.INSIDE_SLICE);
         dataSet.setValueLineColor(isDarkMode() ? Color.WHITE : Color.BLACK);
@@ -400,11 +478,67 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         PieData pieData = getPieData(dataSet);
 
         binding.categoryPieChart.setData(pieData);
-        binding.categoryPieChart.setMinAngleForSlices(0f); // Disable minimum angle since we grouped small ones
+        binding.categoryPieChart.setMinAngleForSlices(0f);
         binding.categoryPieChart.invalidate();
 
-        // Update custom legend with FULL data
         legendAdapter.updateData(data);
+    }
+
+    private void updatePaymentMethodChart(List<PaymentMethodSummary> data) {
+        if (data == null || data.isEmpty()) {
+            binding.paymentMethodPieChart.clear();
+            return;
+        }
+
+        List<PieEntry> entries = new ArrayList<>();
+        List<Integer> colors = new ArrayList<>();
+
+        for (int i = 0; i < data.size(); i++) {
+            PaymentMethodSummary summary = data.get(i);
+            String label = methodLabels.getOrDefault(summary.getMethodId(), summary.getMethodId());
+            PieEntry entry = new PieEntry((float) summary.getAmount(), label);
+            entry.setData("METHOD:" + summary.getMethodId());
+            entries.add(entry);
+            colors.add(getPaymentMethodColor(summary.getMethodId()));
+        }
+
+        PieDataSet dataSet = new PieDataSet(entries, "");
+        dataSet.setColors(colors);
+        dataSet.setSliceSpace(3f);
+        dataSet.setSelectionShift(5f);
+
+        PieData pieData = new PieData(dataSet);
+        pieData.setValueFormatter(new PercentFormatter(binding.paymentMethodPieChart));
+        pieData.setValueTextSize(10f);
+        pieData.setValueTextColor(isDarkMode() ? Color.WHITE : Color.BLACK);
+
+        binding.paymentMethodPieChart.setData(pieData);
+        binding.paymentMethodPieChart.invalidate();
+
+        methodLegendAdapter.updateData(data);
+    }
+
+    private int getPaymentMethodColor(String methodId) {
+        switch (methodId) {
+            case "bizum": return Color.parseColor("#00CCFF");
+            case "tarjeta": return Color.parseColor("#3F51B5");
+            case "efectivo": return Color.parseColor("#4CAF50");
+            case "transferencia": return Color.parseColor("#FF9800");
+            case "tarjeta_restaurante": return Color.parseColor("#E91E63");
+            case "tarjeta_transporte": return Color.parseColor("#9C27B0");
+            case "domiciliacion_bancaria": return Color.parseColor("#607D8B");
+            default: return Color.GRAY;
+        }
+    }
+
+    private void updateMemberChart(List<MemberExpenseSummary> data) {
+        if (data == null || data.isEmpty()) {
+            binding.rvMemberExpenses.setVisibility(View.GONE);
+            return;
+        }
+
+        binding.rvMemberExpenses.setVisibility(View.VISIBLE);
+        memberLegendAdapter.updateData(data);
     }
 
     @NonNull
@@ -413,52 +547,68 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         pieData.setValueFormatter(new com.github.mikephil.charting.formatter.ValueFormatter() {
             @Override
             public String getFormattedValue(float value) {
-                // Show label only for values >= 2% to avoid overlap in small slices
-                if (value < 2.0f) return "";
-                return String.format(Locale.getDefault(), "%.1f%%", value);
+                return formatCurrency(value, currentCurrencyCode, 0);
             }
         });
-        pieData.setValueTextSize(10f);
-        pieData.setValueTextColor(isDarkMode() ? Color.WHITE : Color.BLACK);
+        pieData.setValueTextColor(Color.WHITE);
+        pieData.setValueTextSize(11f);
         return pieData;
     }
 
     @Override
     public void onValueSelected(Entry e, Highlight h) {
-        if (e == null || e.getData() == null) return;
-        navigateToTransactions((String) e.getData());
-        
-        // Deselect the slice after navigation (if the user returns)
-        binding.categoryPieChart.highlightValues(null);
+        if (e.getData() instanceof String) {
+            String data = (String) e.getData();
+            if (data.startsWith("GROUPED_OTHERS:")) return;
+            
+            if (data.startsWith("METHOD:")) {
+                String method = data.substring(7);
+                navigateToTransactions(null, method, null, null, null, null);
+            } else {
+                // Category ID
+                navigateToTransactions(data, null, null, null, null, null);
+            }
+        } else if (e instanceof BarEntry) {
+            // Index 0 is Income (success color), Index 1 is Expense (error color) in combined bar logic
+            String type = null;
+            if (h.getDataSetIndex() == 0) type = "expense";
+            else if (h.getDataSetIndex() == 1) type = "income";
+
+            if (type != null) {
+                int index = (int) e.getX();
+                if (index >= 0 && index < monthlyDataList.size()) {
+                    MonthlySummary period = monthlyDataList.get(index);
+                    navigateToTransactions(null, null, type, null, period.getStartDateMillis(), period.getEndDateMillis());
+                } else {
+                    navigateToTransactions(null, null, type, null, null, null);
+                }
+            }
+        }
     }
 
-    private void navigateToTransactions(String categoryId) {
-        Pair<Long, Long> range = viewModel.getDateRange().getValue();
-        
+    private void navigateToTransactions(String categoryId, String paymentMethod, String type, String memberUid, Long startMillis, Long endMillis) {
         Bundle args = new Bundle();
-        if (categoryId != null && categoryId.startsWith("GROUPED_OTHERS:")) {
-            String[] ids = categoryId.substring("GROUPED_OTHERS:".length()).split(",");
-            args.putString("preselectedCategoryId", "GROUPED_OTHERS");
-            args.putStringArray("preselectedCategoryIds", ids);
-        } else {
-            args.putString("preselectedCategoryId", categoryId);
-        }
+        if (categoryId != null) args.putString("preselectedCategoryId", categoryId);
+        if (paymentMethod != null) args.putString("preselectedMethod", paymentMethod);
+        if (type != null) args.putString("preselectedType", type);
+        if (memberUid != null) args.putString("preselectedMemberUid", memberUid);
         
-        if (range != null) {
-            args.putLong("preselectedStartDateMillis", range.first);
-            args.putLong("preselectedEndDateMillis", range.second);
+        if (startMillis != null && endMillis != null) {
+            args.putLong("preselectedStartDateMillis", startMillis);
+            args.putLong("preselectedEndDateMillis", endMillis);
         } else {
-            args.putLong("preselectedStartDateMillis", -1L);
-            args.putLong("preselectedEndDateMillis", -1L);
+            Pair<Long, Long> range = viewModel.getDateRange().getValue();
+            if (range != null) {
+                args.putLong("preselectedStartDateMillis", range.first);
+                args.putLong("preselectedEndDateMillis", range.second);
+            }
         }
         
         Navigation.findNavController(requireView()).navigate(R.id.action_statisticsFragment_to_transactionListFragment, args);
     }
 
     @Override
-    public void onNothingSelected() {
-        // No action needed
-    }
+    public void onNothingSelected() {}
 
     private boolean isDarkMode() {
         if (getContext() == null) return false;
@@ -492,36 +642,8 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         private List<DashboardCategorySummary> items = new ArrayList<>();
 
         public void updateData(List<DashboardCategorySummary> newItems) {
-            DiffUtil.DiffResult result = DiffUtil.calculateDiff(new DiffUtil.Callback() {
-                @Override
-                public int getOldListSize() {
-                    return items.size();
-                }
-
-                @Override
-                public int getNewListSize() {
-                    return newItems.size();
-                }
-
-                @Override
-                public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
-                    return items.get(oldItemPosition).getCategoryId().equals(
-                            newItems.get(newItemPosition).getCategoryId());
-                }
-
-                @Override
-                public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
-                    DashboardCategorySummary oldItem = items.get(oldItemPosition);
-                    DashboardCategorySummary newItem = newItems.get(newItemPosition);
-                    return oldItem.getAmount() == newItem.getAmount() &&
-                            oldItem.getPercentage() == newItem.getPercentage() &&
-                            oldItem.getCategoryName().equals(newItem.getCategoryName()) &&
-                            oldItem.getCategoryColor().equals(newItem.getCategoryColor());
-                }
-            });
-
             this.items = new ArrayList<>(newItems);
-            result.dispatchUpdatesTo(this);
+            notifyDataSetChanged();
         }
 
         @NonNull
@@ -548,7 +670,115 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
                 holder.progressBar.setIndicatorColor(Color.GRAY);
             }
 
-            holder.itemView.setOnClickListener(v -> navigateToTransactions(item.getCategoryId()));
+            holder.itemView.setOnClickListener(v -> navigateToTransactions(item.getCategoryId(), null, null, null, null, null));
+        }
+
+        @Override
+        public int getItemCount() {
+            return items.size();
+        }
+
+        class ViewHolder extends RecyclerView.ViewHolder {
+            final View vColor;
+            final TextView tvName;
+            final TextView tvPercentage;
+            final TextView tvAmount;
+            final com.google.android.material.progressindicator.LinearProgressIndicator progressBar;
+
+            ViewHolder(View itemView) {
+                super(itemView);
+                vColor = itemView.findViewById(R.id.v_category_color);
+                tvName = itemView.findViewById(R.id.tv_category_name);
+                tvPercentage = itemView.findViewById(R.id.tv_category_percentage);
+                tvAmount = itemView.findViewById(R.id.tv_category_amount);
+                progressBar = itemView.findViewById(R.id.progress_category);
+            }
+        }
+    }
+
+    private class PaymentMethodLegendAdapter extends RecyclerView.Adapter<PaymentMethodLegendAdapter.ViewHolder> {
+        private List<PaymentMethodSummary> items = new ArrayList<>();
+
+        public void updateData(List<PaymentMethodSummary> newItems) {
+            this.items = new ArrayList<>(newItems);
+            notifyDataSetChanged();
+        }
+
+        @NonNull
+        @Override
+        public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_statistics_legend, parent, false);
+            return new ViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+            PaymentMethodSummary item = items.get(position);
+            String label = methodLabels.getOrDefault(item.getMethodId(), item.getMethodId());
+            holder.tvName.setText(label);
+            holder.tvAmount.setText(formatCurrency(item.getAmount(), currentCurrencyCode, 2));
+            holder.tvPercentage.setText(String.format(Locale.getDefault(), "%.1f%%", item.getPercentage()));
+            holder.progressBar.setProgress((int) item.getPercentage());
+
+            int color = getPaymentMethodColor(item.getMethodId());
+            holder.vColor.setBackgroundTintList(android.content.res.ColorStateList.valueOf(color));
+            holder.progressBar.setIndicatorColor(color);
+
+            holder.itemView.setOnClickListener(v -> navigateToTransactions(null, item.getMethodId(), null, null, null, null));
+        }
+
+        @Override
+        public int getItemCount() {
+            return items.size();
+        }
+
+        class ViewHolder extends RecyclerView.ViewHolder {
+            final View vColor;
+            final TextView tvName;
+            final TextView tvPercentage;
+            final TextView tvAmount;
+            final com.google.android.material.progressindicator.LinearProgressIndicator progressBar;
+
+            ViewHolder(View itemView) {
+                super(itemView);
+                vColor = itemView.findViewById(R.id.v_category_color);
+                tvName = itemView.findViewById(R.id.tv_category_name);
+                tvPercentage = itemView.findViewById(R.id.tv_category_percentage);
+                tvAmount = itemView.findViewById(R.id.tv_category_amount);
+                progressBar = itemView.findViewById(R.id.progress_category);
+            }
+        }
+    }
+
+    private class MemberExpenseLegendAdapter extends RecyclerView.Adapter<MemberExpenseLegendAdapter.ViewHolder> {
+        private List<MemberExpenseSummary> items = new ArrayList<>();
+
+        public void updateData(List<MemberExpenseSummary> newItems) {
+            this.items = new ArrayList<>(newItems);
+            notifyDataSetChanged();
+        }
+
+        @NonNull
+        @Override
+        public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_statistics_legend, parent, false);
+            return new ViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+            MemberExpenseSummary item = items.get(position);
+            holder.tvName.setText(item.getDisplayName());
+            holder.tvAmount.setText(formatCurrency(item.getAmount(), currentCurrencyCode, 2));
+            holder.tvPercentage.setText(String.format(Locale.getDefault(), "%.1f%%", item.getPercentage()));
+            holder.progressBar.setProgress((int) item.getPercentage());
+
+            int[] colorPalette = ColorTemplate.MATERIAL_COLORS;
+            int color = colorPalette[position % colorPalette.length];
+            holder.vColor.setBackgroundTintList(android.content.res.ColorStateList.valueOf(color));
+            holder.progressBar.setIndicatorColor(color);
+
+            holder.itemView.setOnClickListener(v -> navigateToTransactions(null, null, null, item.getUid(), null, null));
         }
 
         @Override

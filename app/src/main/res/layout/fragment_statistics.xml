@@ -118,7 +118,7 @@
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp"
+                android:layout_marginBottom="16dp"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="2dp"
                 app:cardBackgroundColor="?attr/colorSurface">
@@ -255,7 +255,69 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Distribution -->
+            <!-- Savings Rate Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cvSavingsRate"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:cardBackgroundColor="?attr/colorSurface">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/stats_savings_rate"
+                        android:textSize="12sp"
+                        android:textAllCaps="true"
+                        android:letterSpacing="0.1"
+                        android:textColor="?attr/android:textColorSecondary"/>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginTop="4dp">
+
+                        <TextView
+                            android:id="@+id/tvSavingsRate"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="---"
+                            android:textSize="28sp"
+                            android:textStyle="bold"
+                            android:textColor="?attr/colorOnSurface"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:text="@string/savings_rate_desc"
+                            android:textSize="12sp"
+                            android:textColor="?attr/android:textColorSecondary"/>
+                    </LinearLayout>
+
+                    <com.google.android.material.progressindicator.LinearProgressIndicator
+                        android:id="@+id/progressSavingsRate"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        app:trackThickness="8dp"
+                        app:trackCornerRadius="4dp"
+                        android:progress="0"
+                        app:trackColor="@color/gray_300" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Category Distribution -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -282,7 +344,7 @@
                     <com.github.mikephil.charting.charts.PieChart
                         android:id="@+id/categoryPieChart"
                         android:layout_width="match_parent"
-                        android:layout_height="350dp" />
+                        android:layout_height="300dp" />
 
                     <androidx.recyclerview.widget.RecyclerView
                         android:id="@+id/rvCategoryLegend"
@@ -294,11 +356,51 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- Payment Methods -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/stats_payment_methods"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnSurface"
+                android:layout_marginBottom="8dp" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:cardBackgroundColor="?attr/colorSurface">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <com.github.mikephil.charting.charts.PieChart
+                        android:id="@+id/paymentMethodPieChart"
+                        android:layout_width="match_parent"
+                        android:layout_height="250dp" />
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/rvPaymentMethodLegend"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:nestedScrollingEnabled="false"
+                        tools:listitem="@layout/item_statistics_legend"
+                        tools:itemCount="3" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Monthly Evolution -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/stats_monthly_evolution"
-                android:textSize="20sp"
+                android:textSize="16sp"
                 android:textStyle="bold"
                 android:textColor="?attr/colorOnSurface"
                 android:layout_marginBottom="8dp" />
@@ -306,7 +408,7 @@
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="350dp"
-                android:layout_marginBottom="16dp"
+                android:layout_marginBottom="24dp"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="2dp"
                 app:cardBackgroundColor="?attr/colorSurface">
@@ -315,6 +417,62 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:padding="16dp" />
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Top Expenses -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/stats_top_expenses"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnSurface"
+                android:layout_marginBottom="8dp" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:cardBackgroundColor="?attr/colorSurface">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvTopExpenses"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"
+                    android:padding="8dp"
+                    tools:listitem="@layout/item_transaction"
+                    tools:itemCount="5" />
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Expense by Member -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/stats_by_member"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnSurface"
+                android:layout_marginBottom="8dp" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:cardBackgroundColor="?attr/colorSurface">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvMemberExpenses"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"
+                    android:padding="16dp"
+                    tools:listitem="@layout/item_statistics_legend"
+                    tools:itemCount="3" />
             </com.google.android.material.card.MaterialCardView>
 
         </LinearLayout>

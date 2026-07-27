@@ -37,4 +37,7 @@
     <!-- Basic -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <color name="warning">#FBC02D</color>
+    <color name="on_warning">#000000</color>
 </resources>

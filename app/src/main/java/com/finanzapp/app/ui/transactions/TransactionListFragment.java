@@ -95,6 +95,9 @@ public class TransactionListFragment extends Fragment {
 
     private boolean isPreselectionApplied = false;
     private String preselectedCategoryId = null;
+    private String preselectedMethod = null;
+    private String preselectedType = null;
+    private String preselectedMemberUid = null;
     private long preselectedStartMillis = -1L;
     private long preselectedEndMillis = -1L;
 
@@ -116,6 +119,9 @@ public class TransactionListFragment extends Fragment {
 
         if (getArguments() != null) {
             preselectedCategoryId = getArguments().getString("preselectedCategoryId");
+            preselectedMethod = getArguments().getString("preselectedMethod");
+            preselectedType = getArguments().getString("preselectedType");
+            preselectedMemberUid = getArguments().getString("preselectedMemberUid");
             preselectedStartMillis = getArguments().getLong("preselectedStartDateMillis", -1L);
             preselectedEndMillis = getArguments().getLong("preselectedEndDateMillis", -1L);
             String[] ids = getArguments().getStringArray("preselectedCategoryIds");
@@ -531,6 +537,36 @@ public class TransactionListFragment extends Fragment {
             filterEndDate.setTimeInMillis(preselectedEndMillis);
         }
 
+        if (preselectedCategoryId != null) {
+            if ("GROUPED_OTHERS".equals(preselectedCategoryId)) {
+                // Already handled in spinner adapter setup
+            } else {
+                filterCategoryId = preselectedCategoryId;
+                for (int i = 0; i < allCategories.size(); i++) {
+                    if (allCategories.get(i).getId().equals(preselectedCategoryId)) {
+                        spinnerFilterCategory.setSelection(i + 1);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (preselectedMethod != null) {
+            filterMethod = preselectedMethod;
+            for (int i = 0; i < paymentMethodValues.length; i++) {
+                if (paymentMethodValues[i].equals(preselectedMethod)) {
+                    spinnerFilterMethod.setSelection(i + 1);
+                    break;
+                }
+            }
+        }
+
+        if (preselectedType != null) {
+            filterType = preselectedType;
+            if ("income".equals(preselectedType)) spinnerFilterType.setSelection(1);
+            else if ("expense".equals(preselectedType)) spinnerFilterType.setSelection(2);
+        }
+
         isPreselectionApplied = true;
         updateTransactions();
     }
@@ -564,6 +600,9 @@ public class TransactionListFragment extends Fragment {
                         List<Transaction> visibleTransactions = new ArrayList<>();
                         for (Transaction t : transactions) {
                             if (!archivedAccountIds.contains(t.getAccountId())) {
+                                if (preselectedMemberUid != null && !preselectedMemberUid.equals(t.getCreatedBy())) {
+                                    continue;
+                                }
                                 visibleTransactions.add(t);
                             }
                         }
@@ -689,154 +728,5 @@ public class TransactionListFragment extends Fragment {
         }
     }
 
-    private static class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.ViewHolder> {
-        interface OnTransactionClickListener {
-            void onTransactionClick(Transaction t);
-            void onTransactionLongClick(Transaction t);
-        }
 
-        private final List<Transaction> transactions;
-        private final Map<String, String> categoryNames;
-        private final Map<String, String> categoryColors;
-        private final Map<String, String> accountNames;
-        private final Map<String, String> memberNames;
-        private final Map<String, String> paymentMethodLabels;
-        private final OnTransactionClickListener listener;
-        private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd MMM yyyy", Locale.getDefault());
-        private final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(new Locale("es", "ES"));
-
-        TransactionAdapter(List<Transaction> transactions, Map<String, String> categoryNames,
-                           Map<String, String> categoryColors, Map<String, String> accountNames,
-                           Map<String, String> memberNames, Map<String, String> paymentMethodLabels,
-                           OnTransactionClickListener listener) {
-            this.transactions = transactions;
-            this.categoryNames = categoryNames;
-            this.categoryColors = categoryColors;
-            this.accountNames = accountNames;
-            this.memberNames = memberNames;
-            this.paymentMethodLabels = paymentMethodLabels;
-            this.listener = listener;
-        }
-
-        void updateTransactions(List<Transaction> newTransactions) {
-            DiffUtil.DiffResult result = DiffUtil.calculateDiff(new DiffUtil.Callback() {
-                @Override
-                public int getOldListSize() {
-                    return transactions.size();
-                }
-
-                @Override
-                public int getNewListSize() {
-                    return newTransactions.size();
-                }
-
-                @Override
-                public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
-                    return java.util.Objects.equals(transactions.get(oldItemPosition).getId(),
-                            newTransactions.get(newItemPosition).getId());
-                }
-
-                @Override
-                public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
-                    Transaction oldT = transactions.get(oldItemPosition);
-                    Transaction newT = newTransactions.get(newItemPosition);
-                    return Double.compare(oldT.getAmount(), newT.getAmount()) == 0 &&
-                            java.util.Objects.equals(oldT.getDate(), newT.getDate()) &&
-                            java.util.Objects.equals(oldT.getDescription(), newT.getDescription()) &&
-                            java.util.Objects.equals(oldT.getCategoryId(), newT.getCategoryId()) &&
-                            java.util.Objects.equals(oldT.getAccountId(), newT.getAccountId()) &&
-                            java.util.Objects.equals(oldT.getType(), newT.getType()) &&
-                            java.util.Objects.equals(oldT.getPaymentMethod(), newT.getPaymentMethod());
-                }
-            });
-
-            this.transactions.clear();
-            this.transactions.addAll(newTransactions);
-            result.dispatchUpdatesTo(this);
-        }
-
-        @NonNull
-        @Override
-        public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_transaction, parent, false);
-            return new ViewHolder(view);
-        }
-
-        @Override
-        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-            Transaction t = transactions.get(position);
-
-            holder.tvDate.setText(t.getDate() != null ? dateFormat.format(t.getDate().toDate()) : "");
-            holder.tvCategory.setText(categoryNames.getOrDefault(t.getCategoryId(), holder.itemView.getContext().getString(R.string.label_category)));
-            holder.tvDescription.setText(t.getDescription());
-            holder.tvAccount.setText(accountNames.getOrDefault(t.getAccountId(), holder.itemView.getContext().getString(R.string.label_account)));
-
-            int defaultCategoryColor = resolveColorPrimary(holder.itemView.getContext());
-            int categoryColor = parseColorSafe(categoryColors.get(t.getCategoryId()), defaultCategoryColor);
-            holder.tvCategory.setTextColor(categoryColor);
-            holder.vCategoryColor.setBackgroundTintList(android.content.res.ColorStateList.valueOf(categoryColor));
-
-            String methodLabel = paymentMethodLabels.getOrDefault(t.getPaymentMethod(), t.getPaymentMethod());
-            holder.tvPaymentMethod.setText(methodLabel != null ? methodLabel : "");
-
-            String creatorName = memberNames.getOrDefault(t.getCreatedBy(), "Usuario");
-            holder.tvCreator.setText(holder.itemView.getContext().getString(R.string.by_user, creatorName));
-
-            boolean isIncome = "income".equals(t.getType());
-            double amount = t.getAmount();
-            String amountStr = (isIncome ? "+" : "-") + currencyFormat.format(amount);
-            holder.tvAmount.setText(amountStr);
-            int amountColorRes = isIncome ? R.color.success : R.color.error;
-            holder.tvAmount.setTextColor(androidx.core.content.ContextCompat.getColor(holder.itemView.getContext(), amountColorRes));
-
-            holder.itemView.setOnClickListener(v -> listener.onTransactionClick(t));
-            holder.itemView.setOnLongClickListener(v -> {
-                listener.onTransactionLongClick(t);
-                return true;
-            });
-        }
-
-        @Override
-        public int getItemCount() {
-            return transactions.size();
-        }
-
-        private static int resolveColorPrimary(android.content.Context context) {
-            android.util.TypedValue typedValue = new android.util.TypedValue();
-            context.getTheme().resolveAttribute(android.R.attr.colorPrimary, typedValue, true);
-            return typedValue.data;
-        }
-
-        private static int parseColorSafe(String colorStr, int fallback) {
-            if (colorStr == null || colorStr.isEmpty()) return fallback;
-            try {
-                return android.graphics.Color.parseColor(colorStr);
-            } catch (IllegalArgumentException e) {
-                return fallback;
-            }
-        }
-
-        static class ViewHolder extends RecyclerView.ViewHolder {
-            final TextView tvDate;
-            final TextView tvCategory;
-            final TextView tvDescription;
-            final TextView tvAmount;
-            final TextView tvAccount;
-            final TextView tvCreator;
-            final TextView tvPaymentMethod;
-            final View vCategoryColor;
-
-            ViewHolder(View itemView) {
-                super(itemView);
-                tvDate = itemView.findViewById(R.id.tv_date);
-                tvCategory = itemView.findViewById(R.id.tv_category);
-                tvDescription = itemView.findViewById(R.id.tv_description);
-                tvAmount = itemView.findViewById(R.id.tv_amount);
-                tvAccount = itemView.findViewById(R.id.tv_account);
-                tvCreator = itemView.findViewById(R.id.tv_creator);
-                tvPaymentMethod = itemView.findViewById(R.id.tv_payment_method);
-                vCategoryColor = itemView.findViewById(R.id.v_category_color);
-            }
-        }
-    }
 }

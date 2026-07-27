@@ -10,10 +10,14 @@ import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
 
 import com.finanzapp.app.data.firebase.FirestorePaths;
+import com.finanzapp.app.R;
 import com.finanzapp.app.data.model.Account;
 import com.finanzapp.app.data.model.Category;
 import com.finanzapp.app.data.model.DashboardCategorySummary;
 import com.finanzapp.app.data.model.Family;
+import com.finanzapp.app.data.model.Member;
+import com.finanzapp.app.data.model.MemberExpenseSummary;
+import com.finanzapp.app.data.model.PaymentMethodSummary;
 import com.finanzapp.app.data.model.Transaction;
 import com.finanzapp.app.data.model.User;
 import com.finanzapp.app.data.model.statistics.MonthlySummary;
@@ -52,6 +56,7 @@ public class StatisticsViewModel extends ViewModel {
     private final LiveData<List<Account>> accountsSource;
     private final LiveData<List<Category>> categoriesSource;
     private final LiveData<List<Transaction>> transactionsSource;
+    private final LiveData<List<Member>> membersSource;
 
     private final MutableLiveData<Result<Boolean>> dataLoaded = new MutableLiveData<>(new Result.Loading<>());
     private final MutableLiveData<Result<User>> userData = new MutableLiveData<>();
@@ -61,9 +66,13 @@ public class StatisticsViewModel extends ViewModel {
     private final MutableLiveData<Double> currentMonthExpense = new MutableLiveData<>();
     private final MutableLiveData<Double> incomeVariationPercentage = new MutableLiveData<>();
     private final MutableLiveData<Double> variationPercentage = new MutableLiveData<>();
+    private final MutableLiveData<Double> savingsRate = new MutableLiveData<>();
 
     private final MutableLiveData<List<MonthlySummary>> monthlyEvolution = new MutableLiveData<>();
     private final MutableLiveData<List<DashboardCategorySummary>> categoryDistribution = new MutableLiveData<>();
+    private final MutableLiveData<List<PaymentMethodSummary>> paymentMethodDistribution = new MutableLiveData<>();
+    private final MutableLiveData<List<Transaction>> topExpenses = new MutableLiveData<>();
+    private final MutableLiveData<List<MemberExpenseSummary>> memberExpenseDistribution = new MutableLiveData<>();
     private final MutableLiveData<List<Category>> allCategories = new MutableLiveData<>();
 
     private final MediatorLiveData<Void> statsMediator = new MediatorLiveData<>();
@@ -73,10 +82,12 @@ public class StatisticsViewModel extends ViewModel {
     private Set<String> activeAccountIds = new HashSet<>();
     private List<Transaction> allTransactions = new ArrayList<>();
     private List<Category> latestCategories = new ArrayList<>();
+    private List<Member> latestMembers = new ArrayList<>();
 
     private boolean accountsResolved = false;
     private boolean categoriesResolved = false;
     private boolean transactionsResolved = false;
+    private boolean membersResolved = false;
 
     // Referencia estable para poder registrar/desregistrar el mismo Runnable
     private final Runnable signOutCleanup = this::stopListening;
@@ -105,6 +116,15 @@ public class StatisticsViewModel extends ViewModel {
 
         accountsSource = Transformations.switchMap(familyIdSource, accountRepository::getAccounts);
         categoriesSource = Transformations.switchMap(familyIdSource, categoryRepository::getCategories);
+        membersSource = Transformations.switchMap(familyIdSource, id -> {
+            MutableLiveData<List<Member>> live = new MutableLiveData<>();
+            familyRepository.getMembers(id, result -> {
+                if (result instanceof Result.Success) {
+                    live.postValue(((Result.Success<List<Member>>) result).getData());
+                }
+            });
+            return live;
+        });
         transactionsSource = Transformations.switchMap(familyIdSource, id -> {
             Pair<Long, Long> range = dateRange.getValue();
             if (range == null) {
@@ -151,11 +171,18 @@ public class StatisticsViewModel extends ViewModel {
             allTransactions = transactions != null ? transactions : new ArrayList<>();
             recomputeStatistics();
         });
+
+        statsMediator.addSource(membersSource, members -> {
+            membersResolved = true;
+            latestMembers = members != null ? members : new ArrayList<>();
+            recomputeStatistics();
+        });
         
         // MediatorLiveData must be observed to be active
         statsMediator.observeForever(statsObserver);
     }
 
+    public LiveData<Result<User>> getUserData() { return userData; }
     public LiveData<Result<Family>> getFamilyData() { return familyData; }
     public LiveData<Result<Boolean>> getDataLoaded() { return dataLoaded; }
     public LiveData<Pair<Long, Long>> getDateRange() { return dateRange; }
@@ -166,6 +193,12 @@ public class StatisticsViewModel extends ViewModel {
 
     public LiveData<List<MonthlySummary>> getMonthlyEvolution() { return monthlyEvolution; }
     public LiveData<List<DashboardCategorySummary>> getCategoryDistribution() { return categoryDistribution; }
+
+    public LiveData<List<Category>> getAllCategories() { return allCategories; }
+    public LiveData<Double> getSavingsRate() { return savingsRate; }
+    public LiveData<List<PaymentMethodSummary>> getPaymentMethodDistribution() { return paymentMethodDistribution; }
+    public LiveData<List<Transaction>> getTopExpenses() { return topExpenses; }
+    public LiveData<List<MemberExpenseSummary>> getMemberExpenseDistribution() { return memberExpenseDistribution; }
 
     public void setDateRange(Long start, Long end) {
         if (start == null || end == null) {
@@ -182,7 +215,7 @@ public class StatisticsViewModel extends ViewModel {
 
     private void recomputeStatistics() {
         // Wait until all sources have emitted at least once
-        if (!accountsResolved || !categoriesResolved || !transactionsResolved) {
+        if (!accountsResolved || !categoriesResolved || !transactionsResolved || !membersResolved) {
             return;
         }
 
@@ -225,6 +258,9 @@ public class StatisticsViewModel extends ViewModel {
 
         Map<String, MonthlySummaryBuilder> monthlyMap = new TreeMap<>();
         Map<String, Double> currentCategoryTotals = new HashMap<>();
+        Map<String, Double> currentMethodTotals = new HashMap<>();
+        Map<String, Double> currentMemberExpenseTotals = new HashMap<>();
+        List<Transaction> currentExpenses = new ArrayList<>();
 
         for (Transaction t : activeTransactions) {
             LocalDate date = t.getDate().toDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
@@ -234,10 +270,24 @@ public class StatisticsViewModel extends ViewModel {
                     currentIncome += t.getAmount();
                 } else {
                     currentExpense += t.getAmount();
+                    currentExpenses.add(t);
+
+                    // Category distribution
                     String categoryId = t.getCategoryId();
                     if (categoryId != null) {
-                        //noinspection DataFlowIssue
                         currentCategoryTotals.put(categoryId, currentCategoryTotals.getOrDefault(categoryId, 0.0) + t.getAmount());
+                    }
+
+                    // Payment method distribution
+                    String method = t.getPaymentMethod();
+                    if (method != null) {
+                        currentMethodTotals.put(method, currentMethodTotals.getOrDefault(method, 0.0) + t.getAmount());
+                    }
+
+                    // Member expense distribution
+                    String creator = t.getCreatedBy();
+                    if (creator != null) {
+                        currentMemberExpenseTotals.put(creator, currentMemberExpenseTotals.getOrDefault(creator, 0.0) + t.getAmount());
                     }
                 }
             } 
@@ -255,11 +305,22 @@ public class StatisticsViewModel extends ViewModel {
             MonthlySummaryBuilder builder = monthlyMap.computeIfAbsent(monthKey, k -> new MonthlySummaryBuilder(monthLabel));
             if ("income".equals(t.getType())) builder.income += t.getAmount();
             else builder.expense += t.getAmount();
+
+            long millis = t.getDate().toDate().getTime();
+            if (millis < builder.minMillis) builder.minMillis = millis;
+            if (millis > builder.maxMillis) builder.maxMillis = millis;
         }
 
         currentMonthIncome.postValue(currentIncome);
         currentMonthExpense.postValue(currentExpense);
         
+        // Savings rate
+        if (currentIncome > 0) {
+            savingsRate.postValue(((currentIncome - currentExpense) / currentIncome) * 100);
+        } else {
+            savingsRate.postValue(null);
+        }
+
         if (hasComparison) {
             if (previousIncome > 0) {
                 incomeVariationPercentage.postValue(((currentIncome - previousIncome) / previousIncome) * 100);
@@ -279,10 +340,11 @@ public class StatisticsViewModel extends ViewModel {
 
         List<MonthlySummary> evolution = new ArrayList<>();
         for (MonthlySummaryBuilder b : monthlyMap.values()) {
-            evolution.add(new MonthlySummary(b.label, b.income, b.expense));
+            evolution.add(new MonthlySummary(b.label, b.income, b.expense, b.minMillis, b.maxMillis));
         }
         monthlyEvolution.postValue(evolution);
 
+        // Categories distribution
         List<DashboardCategorySummary> distribution = new ArrayList<>();
         Map<String, Category> catMap = new HashMap<>();
         for (Category c : latestCategories) catMap.put(c.getId(), c);
@@ -297,6 +359,49 @@ public class StatisticsViewModel extends ViewModel {
         distribution.sort((s1, s2) -> Double.compare(s2.getAmount(), s1.getAmount()));
         categoryDistribution.postValue(distribution);
 
+        // Payment method distribution
+        List<PaymentMethodSummary> methodDistribution = new ArrayList<>();
+        String[] methodIds = {"tarjeta", "efectivo", "transferencia", "bizum", "tarjeta_restaurante", "tarjeta_transporte", "domiciliacion_bancaria"};
+        Map<String, Integer> methodLabelRes = new HashMap<>();
+        methodLabelRes.put("tarjeta", R.string.method_card);
+        methodLabelRes.put("efectivo", R.string.method_cash);
+        methodLabelRes.put("transferencia", R.string.method_transfer);
+        methodLabelRes.put("bizum", R.string.method_bizum);
+        methodLabelRes.put("tarjeta_restaurante", R.string.method_restaurant_card);
+        methodLabelRes.put("tarjeta_transporte", R.string.method_transport_card);
+        methodLabelRes.put("domiciliacion_bancaria", R.string.method_direct_debit);
+
+        for (String mId : methodIds) {
+            double amount = currentMethodTotals.getOrDefault(mId, 0.0);
+            if (amount > 0) {
+                double percentage = currentExpense > 0 ? (amount / currentExpense) * 100 : 0;
+                // We use fixed labels here because getContext().getString() is not available in ViewModel
+                // The Fragment will handle localization if needed, or we just pass the resId
+                // For simplicity in this implementation, we'll store methodId and percentage
+                methodDistribution.add(new PaymentMethodSummary(mId, "", amount, percentage));
+            }
+        }
+        methodDistribution.sort((s1, s2) -> Double.compare(s2.getAmount(), s1.getAmount()));
+        paymentMethodDistribution.postValue(methodDistribution);
+
+        // Top Expenses
+        currentExpenses.sort((t1, t2) -> Double.compare(t2.getAmount(), t1.getAmount()));
+        int limit = Math.min(5, currentExpenses.size());
+        topExpenses.postValue(new ArrayList<>(currentExpenses.subList(0, limit)));
+
+        // Member expense distribution
+        List<MemberExpenseSummary> memberDistribution = new ArrayList<>();
+        Map<String, String> memberNameMap = new HashMap<>();
+        for (Member m : latestMembers) memberNameMap.put(m.getUid(), m.getDisplayName());
+
+        for (Map.Entry<String, Double> entry : currentMemberExpenseTotals.entrySet()) {
+            String name = memberNameMap.getOrDefault(entry.getKey(), "Usuario");
+            double percentage = currentExpense > 0 ? (entry.getValue() / currentExpense) * 100 : 0;
+            memberDistribution.add(new MemberExpenseSummary(entry.getKey(), name, entry.getValue(), percentage));
+        }
+        memberDistribution.sort((s1, s2) -> Double.compare(s2.getAmount(), s1.getAmount()));
+        memberExpenseDistribution.postValue(memberDistribution);
+
         dataLoaded.postValue(new Result.Success<>(true));
     }
 
@@ -304,6 +409,8 @@ public class StatisticsViewModel extends ViewModel {
         final String label;
         double income = 0;
         double expense = 0;
+        long minMillis = Long.MAX_VALUE;
+        long maxMillis = Long.MIN_VALUE;
         MonthlySummaryBuilder(String label) { this.label = label; }
     }
 
