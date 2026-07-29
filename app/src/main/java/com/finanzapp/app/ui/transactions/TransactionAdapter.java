@@ -81,6 +81,7 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
                         Objects.equals(oldT.getCategoryId(), newT.getCategoryId()) &&
                         Objects.equals(oldT.getAccountId(), newT.getAccountId()) &&
                         Objects.equals(oldT.getType(), newT.getType()) &&
+                        Objects.equals(oldT.getCreatedBy(), newT.getCreatedBy()) &&
                         Objects.equals(oldT.getPaymentMethod(), newT.getPaymentMethod());
             }
         });
