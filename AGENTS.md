@@ -29,8 +29,8 @@ Nombre de la app: **FinanzApp**.
 | IA (sugerencia de categorías) | ELIMINADO | Requisito eliminado por decisión del usuario |
 | Notificaciones push / Backend serverless / Cifrado con Cloud KMS | ELIMINADO | Ambos requieren Cloud Functions, que exige vincular una cuenta de facturación (plan Blaze) de forma obligatoria, incluso con uso $0. Decisión del propietario: no vincular ningún medio de pago al proyecto. Ver entrada 2026-07-21 en "Decisiones tomadas durante el desarrollo". |
 | Observabilidad | Firebase Crashlytics + Firebase Performance Monitoring | Ambos son gratuitos en el plan Spark (no exigen plan Blaze ni tarjeta vinculada), a diferencia de Cloud Functions/KMS. Ver Fase 11 en `PLAN_DESARROLLO.md`. |
-| Anuncios | Google AdMob, solo formato **banner** (banner fijo + tarjeta intercalada en listas) | El propietario exige explícitamente que ningún anuncio bloquee el uso de la app; se descartan intersticiales, "app open ads" y recompensa forzada. AdMob no exige vincular el plan Blaze de Firebase (es una cuenta de Google Ads/AdMob independiente); solo pedirá datos bancarios de cobro cuando se quiera recibir el pago de los ingresos generados, no para servir anuncios. Ver Fase 18. |
-| Suscripciones / pagos in-app | Google Play Billing Library | Gestiona la suscripción Premium sin necesidad de backend propio ni de vincular el plan Blaze; el propio Play Store procesa el cobro. Ver Fase 18 y la limitación aceptada sobre verificación de la compra sin servidor. |
+| Anuncios | Google AdMob, solo formato **banner** (banner fijo + tarjeta intercalada en listas) | El propietario exige explícitamente que ningún anuncio bloquee el uso de la app; se descartan intersticiales, "app open ads" y recompensa forzada. AdMob no exige vincular el plan Blaze de Firebase (es una cuenta de Google Ads/AdMob independiente); solo pedirá datos bancarios de cobro cuando se quiera recibir el pago de los ingresos generados, no para servir anuncios. Ver Fase 16. |
+| Suscripciones / pagos in-app | Google Play Billing Library | Gestiona la suscripción Premium sin necesidad de backend propio ni de vincular el plan Blaze; el propio Play Store procesa el cobro. Ver Fase 16 y la limitación aceptada sobre verificación de la compra sin servidor. |
 
 Notas:
 - Usa siempre el Firebase BoM (Bill of Materials) más reciente en vez de fijar versiones sueltas de cada librería; comprueba la versión actual en la consola de Firebase / documentación oficial al escribir el `build.gradle`, no la des por supuesta de memoria.
@@ -46,23 +46,19 @@ com.finanzapp.app/
 │   ├── repository/               // AuthRepository, FamilyRepository, AccountRepository, TransactionRepository, CategoryRepository, NotificationRepository, NotificationSettingsRepository (Fase 8 bis)
 │   ├── firebase/                 // Constantes de rutas Firestore, mappers documento<->POJO
 │   ├── importer/                  // CsvTransactionParser (detección de delimitador, parseo de filas), TransactionImportRepository (resuelve/crea cuentas y categorías, escribe en batch)
-│   ├── recurring/                 // (Fase 12) RecurringTransactionRepository: CRUD de plantillas recurrentes y generación del movimiento del mes al abrir la app
-│   ├── budget/                    // (Fase 12) BudgetRepository: CRUD de límites de presupuesto por categoría y cálculo de consumo del mes
-│   ├── export/                    // (Fase 13) ExcelExporter/PdfExporter: generación de fichero a partir de una lista de movimientos ya filtrada
-│   ├── monetization/              // (Fase 18) AdsRepository (SDK de AdMob + consentimiento UMP), BillingRepository (Google Play Billing, sincroniza users/{uid}.isPremium)
+│   ├── export/                    // (Fase 12) ExcelExporter/PdfExporter: generación de fichero a partir de una lista de movimientos ya filtrada
+│   ├── monetization/              // (Fase 16) AdsRepository (SDK de AdMob + consentimiento UMP), BillingRepository (Google Play Billing, sincroniza users/{uid}.isPremium)
 ├── ui/
 │   ├── auth/                      // LoginActivity/Fragment
 │   ├── onboarding/                // WelcomeFragment, CreateFamilyFragment, InitialAccountsFragment (alta de cuentas + posición neta inicial), JoinByCodeFragment, PendingApprovalFragment, AcceptInvitationFragment, PrivacyConsentFragment (Fase 9 bis)
 │   ├── settings/                  // SettingsFragment, ProfileFragment (incluye el interruptor de notificaciones y "Descargar mis datos", Fase 8 bis / 9 bis)
 │   ├── family/                    // FamilySettingsFragment, MemberListFragment, InviteMemberFragment, FamilySwitcherFragment (selector de familia activa), MyFamiliesFragment (listado de todas las familias del usuario)
 │   ├── accounts/                  // AccountListFragment, AddEditAccountFragment
-│   ├── transactions/              // AddEditTransactionFragment, TransactionListFragment, filtros, ImportTransactionsFragment (importación CSV), ExportTransactionsFragment (Fase 13, Excel/PDF)
-│   ├── recurring/                 // (Fase 12) RecurringTransactionListFragment, AddEditRecurringTransactionFragment
-│   ├── budgets/                   // (Fase 12) BudgetListFragment, AddEditBudgetFragment, indicador de consumo en Estadísticas/Dashboard
+│   ├── transactions/              // AddEditTransactionFragment, TransactionListFragment, filtros, ImportTransactionsFragment (importación CSV), ExportTransactionsFragment (Fase 12, Excel/PDF)
 │   ├── categories/                // ManageCategoriesFragment
-│   ├── monetization/              // (Fase 18) PaywallFragment (pantalla "Hazte Premium"), tarjeta/vista de anuncio banner reutilizable
-│   ├── dashboard/                 // DashboardFragment (posición neta; muestra banner de anuncio si no es Premium, Fase 18)
-│   └── statistics/                // StatisticsFragment + subvistas de gráficos (muestra banner de anuncio si no es Premium, Fase 18)
+│   ├── monetization/              // (Fase 16) PaywallFragment (pantalla "Hazte Premium"), tarjeta/vista de anuncio banner reutilizable
+│   ├── dashboard/                 // DashboardFragment (posición neta; muestra banner de anuncio si no es Premium, Fase 16)
+│   └── statistics/                // StatisticsFragment + subvistas de gráficos (muestra banner de anuncio si no es Premium, Fase 16)
 ├── viewmodel/                      // Un ViewModel por pantalla (o colocado junto a cada paquete de ui/, a elección del agente)
 └── util/                           // Constants, CurrencyFormatter, DateUtils, Result<T>, InputValidators, CategoryColorPalette (paleta fija usada para categorías por defecto y para nuevas categorías creadas automáticamente)
 ```
@@ -147,26 +143,6 @@ families/{familyId}/transactions/{transactionId}
   type: "income" | "expense"
   categoryId: string
   paymentMethod: "tarjeta" | "transferencia" | "efectivo" | "bizum" | "tarjeta_restaurante" | "tarjeta_transporte" | "domiciliacion_bancaria"
-  createdBy: uid
-  createdAt: timestamp
-
-families/{familyId}/recurringTransactions/{recurringId}  // (Fase 12) plantilla de movimiento recurrente
-  accountId: string
-  description: string
-  amount: number
-  type: "income" | "expense"
-  categoryId: string
-  paymentMethod: string            // mismos valores que en Transaction
-  dayOfMonth: number               // 1-28, día del mes en que se genera el movimiento (se limita a 28 para evitar problemas con meses cortos)
-  active: boolean                  // si es false, no genera más movimientos aunque llegue la fecha
-  lastGeneratedYearMonth: string | null  // "yyyy-MM" del último mes ya generado, para no duplicar si el usuario abre la app varias veces el mismo mes
-  createdBy: uid
-  createdAt: timestamp
-
-families/{familyId}/budgets/{budgetId}  // (Fase 12) límite de gasto mensual por categoría
-  categoryId: string
-  monthlyLimit: number
-  active: boolean
   createdBy: uid
   createdAt: timestamp
 ```
@@ -278,16 +254,7 @@ Reglas de importación (`data/importer/`):
 - **Permisos**: como la importación puede crear categorías, y la gestión de categorías está restringida a `admin`/`owner` (Fase 5, sección 5), la pantalla de importación (`ImportTransactionsFragment`) solo es accesible para `admin`/`owner`, igual que "Gestionar categorías".
 - **Selección de fichero**: usar Storage Access Framework (`ACTION_OPEN_DOCUMENT`) para que el usuario elija el fichero desde donde quiera (no requiere subirlo a Firebase Storage, se lee y se descarta localmente); no añade ninguna dependencia nueva.
 
-### Movimientos recurrentes y alertas de presupuesto (Fase 12)
-
-> Requisito nuevo (2026-07-25): resolver íntegramente en cliente, sin backend, para no romper la restricción de no vincular ningún medio de facturación (ver entrada 2026-07-21).
-
-- **Generación de movimientos recurrentes sin backend**: no hay Cloud Functions disponibles, así que no se puede "disparar" la generación en una fecha exacta aunque la app esté cerrada. Se resuelve de forma perezosa: en cada apertura de la app (por ejemplo, en el mismo punto donde ya se hace el self-heal de la Fase 7 bis/9 bis), se recorren las `recurringTransactions` activas de la familia activa y, para cada una cuyo `dayOfMonth` ya haya pasado en el mes actual y cuyo `lastGeneratedYearMonth` sea distinto del mes actual, se crea el `Transaction` correspondiente (misma lógica atómica de actualización de `currentBalance` que un alta manual) y se actualiza `lastGeneratedYearMonth`. Asunción: si el usuario no abre la app durante varios meses, se generan igualmente todos los movimientos pendientes de esos meses al abrirla (no se "pierden"), cada uno con la fecha que le correspondía.
-- **Alcance inicial**: solo frecuencia mensual (`dayOfMonth`), por ser el caso de uso dominante en gastos domésticos (hipoteca, seguros, suscripciones). Frecuencias semanales/anuales quedan fuera de la v1 de esta fase.
-- **Alertas de presupuesto**: `budgets` define un `monthlyLimit` opcional por categoría. El consumo del mes se calcula en cliente (sumando `transactions` de tipo `expense` de esa categoría en el mes en curso, con el mismo criterio de "solo cuentas activas" ya usado en Estadísticas) y se muestra como aviso visual (barra de progreso o color de alerta) en Estadísticas y/o Dashboard cuando el consumo se acerca o supera el `monthlyLimit`. No se envía ninguna notificación push ni email; es un indicador visual dentro de la app, coherente con el enfoque 100% cliente de las notificaciones in-app de la Fase 8 bis.
-- **Permisos**: igual que con categorías y CSV, crear/editar/borrar `recurringTransactions` y `budgets` queda restringido a `admin`/`owner`; cualquier miembro aprobado puede consultarlos.
-
-### Exportación de movimientos a Excel/PDF (Fase 13)
+### Exportación de movimientos a Excel/PDF (Fase 12)
 
 > Requisito nuevo (2026-07-25). Complementa la exportación JSON de RGPD (Fase 9 bis), que cubre "mis datos" para cumplimiento legal; esta exportación es una funcionalidad de producto para compartir/imprimir el listado de movimientos ya filtrado en `TransactionListFragment` (por cuenta, categoría y rango de fechas).
 
@@ -296,17 +263,17 @@ Reglas de importación (`data/importer/`):
 - El fichero generado se comparte vía `Intent.ACTION_SEND`, igual que ya se hace con la exportación JSON de RGPD.
 - Sin restricción de rol: cualquier miembro aprobado puede exportar los movimientos que ya puede ver.
 
-### Estadísticas: nuevas métricas, granularidad temporal y navegación desde el gráfico (Fases 16 y 17)
+### Estadísticas: nuevas métricas, granularidad temporal y navegación desde el gráfico (Fases 14 y 15)
 
 > Requisito nuevo (2026-07-26). Amplía y modifica la vista de Estadísticas construida en la Fase 8, sin revertir la simplificación de UX del 2026-07-19 (se mantienen fuera el gasto medio mensual, el ranking de categorías y la matriz histórica de netos).
 
-- **Nuevas tarjetas/gráficos (Fase 16)**: tasa de ahorro del periodo, desglose por método de pago (`Transaction.paymentMethod`, ya existente desde la Fase 6), listado de los mayores movimientos individuales del periodo y desglose de gasto e ingreso por miembro (`Transaction.createdBy`). Ninguna de las cuatro requiere cambios en el modelo de datos de Firestore ni en las reglas de seguridad: se calculan en cliente sobre datos ya leídos, igual que el resto de Estadísticas.
-  - **Decisión de UX (Fase 16)**: el desglose de gasto e ingreso por miembro lo ve cualquier miembro aprobado (mismo criterio que el resto de Estadísticas), para fomentar la transparencia familiar.
-  - La antigua idea de "comparativa interanual" (mes actual vs. mismo mes año anterior) no se implementa como tarjeta propia: queda absorbida por el filtro de granularidad de la Fase 17 (eligiendo granularidad "Año" se obtiene el mismo resultado de forma más general).
-- **Filtro de granularidad temporal (Fase 17)**: selector con las opciones Día, Mes (por defecto), Año, Lustro (5 años), Década (10 años) y Total (todo el histórico sin agrupar). Sustituye por completo al selector de fechas manual en esta pantalla: el rango de datos mostrado se calcula automáticamente según la granularidad (ej: Día muestra los últimos 30 días).
+- **Nuevas tarjetas/gráficos (Fase 14)**: tasa de ahorro del periodo, desglose por método de pago (`Transaction.paymentMethod`, ya existente desde la Fase 6), listado de los mayores movimientos individuales del periodo y desglose de gasto e ingreso por miembro (`Transaction.createdBy`). Ninguna de las cuatro requiere cambios en el modelo de datos de Firestore ni en las reglas de seguridad: se calculan en cliente sobre datos ya leídos, igual que el resto de Estadísticas.
+  - **Decisión de UX (Fase 14)**: el desglose de gasto e ingreso por miembro lo ve cualquier miembro aprobado (mismo criterio que el resto de Estadísticas), para fomentar la transparencia familiar.
+  - La antigua idea de "comparativa interanual" (mes actual vs. mismo mes año anterior) no se implementa como tarjeta propia: queda absorbida por el filtro de granularidad de la Fase 15 (eligiendo granularidad "Año" se obtiene el mismo resultado de forma más general).
+- **Filtro de granularidad temporal (Fase 15)**: selector con las opciones Día, Mes (por defecto), Año, Lustro (5 años), Década (10 años) y Total (todo el histórico sin agrupar). Sustituye por completo al selector de fechas manual en esta pantalla: el rango de datos mostrado se calcula automáticamente según la granularidad (ej: Día muestra los últimos 30 días).
   - **Asunción tomada**: con granularidad "Día" y un rango de fechas sin acotar (Todo el histórico), el número de barras en el gráfico de evolución podría ser muy elevado. Se recomienda al usuario acotar el rango de fechas al usar esta granularidad para mantener un buen rendimiento de la UI.
-- **Navegación desde el gráfico de barras (Fase 17)**: al pulsar una barra de "Ingresos" o "Gastos" en el gráfico de evolución, la app navega a `TransactionListFragment` filtrado por el periodo (bucket) pulsado y por tipo de movimiento (ingreso/gasto), reutilizando el patrón de navegación ya existente para el donut de categorías (`preselectedStartDateMillis`/`preselectedEndDateMillis`) y añadiendo un nuevo argumento `preselectedTransactionType`.
-  - **Asunción tomada**: el requisito original hablaba literalmente de navegar "a movimientos de ese mes"; se generaliza aquí a "el bucket pulsado, coherente con la granularidad activa" (p. ej. pulsar una barra en modo "Década" filtraría por esos 10 años), en vez de limitarlo al caso "Mes". A confirmar con el propietario del producto al implementar la Fase 17.
+- **Navegación desde el gráfico de barras (Fase 15)**: al pulsar una barra de "Ingresos" o "Gastos" en el gráfico de evolución, la app navega a `TransactionListFragment` filtrado por el periodo (bucket) pulsado y por tipo de movimiento (ingreso/gasto), reutilizando el patrón de navegación ya existente para el donut de categorías (`preselectedStartDateMillis`/`preselectedEndDateMillis`) y añadiendo un nuevo argumento `preselectedTransactionType`.
+  - **Asunción tomada**: el requisito original hablaba literalmente de navegar "a movimientos de ese mes"; se generaliza aquí a "el bucket pulsado, coherente con la granularidad activa" (p. ej. pulsar una barra en modo "Década" filtraría por esos 10 años), en vez de limitarlo al caso "Mes". A confirmar con el propietario del producto al implementar la Fase 15.
   - Pendiente de verificar si `TransactionListFragment`/`TransactionListViewModel` ya soportan filtrar por tipo de movimiento; si no, se añade siguiendo el mismo patrón que el filtro de categoría/fecha ya implementado.
 
 ### Sugerencia de categorías por IA (ELIMINADO)
@@ -327,7 +294,7 @@ El enunciado pide que el creador de la familia apruebe la incorporación. Para q
 - **Consentimiento explícito**: `PrivacyConsentFragment`, mostrado en el primer login, escribe `privacyPolicyAcceptedAt` en `users/{uid}`. Usuarios ya existentes lo ven una única vez en su próximo login (self-heal, igual patrón que la Fase 7 bis).
 - **Exportación de datos propios**: opción "Descargar mis datos" en Ajustes, genera un JSON con perfil, `memberships` y movimientos propios (`createdBy == uid`), compartido vía `Intent.ACTION_SEND`. No incluye datos de otros miembros.
 
-### Monetización: anuncios y suscripción Premium (Fase 18)
+### Monetización: anuncios y suscripción Premium (Fase 16)
 
 > Requisito nuevo (2026-07-29). Objetivo explícito del propietario: monetizar con anuncios que **no interrumpan el uso de la app** (se descartan intersticiales, "app open ads" y cualquier formato bloqueante) y ofrecer una suscripción Premium que los elimine. Compatible con la restricción de 2026-07-21 de no vincular ningún medio de facturación a Firebase/Google Cloud: ni AdMob ni Google Play Billing exigen el plan Blaze de Firebase (son productos de Google independientes de Cloud Functions/KMS, que sí lo exigían).
 
@@ -336,7 +303,7 @@ El enunciado pide que el creador de la familia apruebe la incorporación. Para q
   1. Banner adaptativo fijo en la parte inferior del Dashboard y de Estadísticas.
   2. Tarjeta de anuncio banner intercalada cada N movimientos en el listado de `TransactionListFragment` (N configurable vía `Constants.ADS_TRANSACTION_INTERVAL`).
   - No se muestran anuncios en ningún flujo crítico ni de una sola vez (login, onboarding, alta de movimiento, gestión de familia), solo en pantallas de consulta/consumo pasivo (Dashboard, Estadísticas, listado de Movimientos), para minimizar la fricción.
-- **Suscripción Premium**: gestionada íntegramente por Google Play Billing Library; el propio Play Store procesa el cobro y la renovación. La app sincroniza `isPremium` en Firestore a partir de lo que `BillingClient.queryPurchasesAsync()` devuelve en el dispositivo — **no hay verificación en servidor** (exigiría Cloud Functions + Play Developer API, descartado por la misma razón que el resto de funcionalidades con backend; ver 2026-07-21). Se documenta como riesgo aceptado de bajo impacto para una app de uso familiar, revisable en la Fase 15 si el proyecto creciera.
+- **Suscripción Premium**: gestionada íntegramente por Google Play Billing Library; el propio Play Store procesa el cobro y la renovación. La app sincroniza `isPremium` en Firestore a partir de lo que `BillingClient.queryPurchasesAsync()` devuelve en el dispositivo — **no hay verificación en servidor** (exigiría Cloud Functions + Play Developer API, descartado por la misma razón que el resto de funcionalidades con backend; ver 2026-07-21). Se documenta como riesgo aceptado de bajo impacto para una app de uso familiar, revisable en la Fase 13 si el proyecto creciera.
 - **Consentimiento de anuncios (GDPR/UMP)**: se usa el SDK de User Messaging Platform de Google, integrado en el mismo punto de arranque donde ya vive el consentimiento de la Política de Privacidad (Fase 9 bis). Los anuncios no se inicializan hasta resolver el consentimiento.
 
 ### Reglas de seguridad de Firestore (esqueleto conceptual)
@@ -386,7 +353,7 @@ Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exi
 5. **Cuentas bancarias**: N cuentas por familia, cada una con nombre, saldo inicial y saldo actual mantenido de forma atómica. El saldo inicial de cualquier cuenta puede editarse en cualquier momento (recalculando el saldo actual de forma atómica) y pueden crearse nuevas cuentas o eliminarse las existentes en cualquier momento (el borrado físico solo si la cuenta no tiene movimientos; en caso contrario, se archiva).
 6. **Movimientos**: fecha, descripción, importe, tipo (gasto/ingreso), categoría, método de pago, cuenta asociada.
 7. **Posición neta**: pantalla resumen con saldo total y desglose por cuenta. El desglose ingresos/gastos del periodo y por categoría se han movido a la pestaña de Estadísticas para simplificar la vista principal.
-8. **Estadísticas avanzadas (Pestaña Independiente)**: sección dedicada con evolución mensual (ingreso/gasto/neto), variación porcentual respecto al periodo anterior, distribución por categoría (donut + % sobre total + importe en euros) y tarjetas resumen. También incluye el desglose detallado de ingresos/gastos del periodo y por categoría que anteriormente estaba en el Dashboard. Uso de MPAndroidChart y enfoque en alta UX. Se eliminaron por decisión de UX el gasto medio, el ranking de categorías y la matriz histórica de netos. Los gráficos incluyen soporte para zoom y scroll horizontal en la evolución mensual para manejar grandes volúmenes de datos. Ampliado en las Fases 16 y 17 (2026-07-26) con nuevas tarjetas (tasa de ahorro, método de pago, mayores movimientos, gasto e ingreso por miembro), un filtro de granularidad temporal (Día/Mes/Año/Lustro/Década/Total, ver sección 4) y navegación desde el gráfico de barras a Movimientos filtrado por periodo y tipo.
+8. **Estadísticas avanzadas (Pestaña Independiente)**: sección dedicada con evolución mensual (ingreso/gasto/neto), variación porcentual respecto al periodo anterior, distribución por categoría (donut + % sobre total + importe en euros) y tarjetas resumen. También incluye el desglose detallado de ingresos/gastos del periodo y por categoría que anteriormente estaba en el Dashboard. Uso de MPAndroidChart y enfoque en alta UX. Se eliminaron por decisión de UX el gasto medio, el ranking de categorías y la matriz histórica de netos. Los gráficos incluyen soporte para zoom y scroll horizontal en la evolución mensual para manejar grandes volúmenes de datos. Ampliado en las Fases 14 y 15 (2026-07-26) con nuevas tarjetas (tasa de ahorro, método de pago, mayores movimientos, gasto e ingreso por miembro), un filtro de granularidad temporal (Día/Mes/Año/Lustro/Década/Total, ver sección 4) y navegación desde el gráfico de barras a Movimientos filtrado por periodo y tipo.
 9. **Notificaciones In-App** (Fase 8 bis): Alertas en tiempo real dentro de la aplicación cuando se añade un movimiento. Al no poder usar Cloud Functions (exige plan de pago), se implementa mediante un listener de Firestore sobre una colección de notificaciones que muestra un **pop up** al usuario. Solo se muestran las notificaciones generadas mientras la app está abierta. Los usuarios pueden cerrar el pop-up deslizando (swipe) hacia los lados o desactivar estas alertas desde Ajustes.
 10. **Importación de movimientos desde CSV** (solo `admin`/`owner`): dado un fichero con columnas `Fecha Concepto Categoría Valor Tipo Método Cuenta`, insertar los movimientos correspondientes; si la cuenta o la categoría de una fila no existen en la familia, crearlas automáticamente. Ver detalle en la sección 4, "Importación de movimientos desde CSV".
 11. **Sugerencia de categorías por IA** (ELIMINADO): Requisito eliminado por decisión del usuario.
@@ -395,10 +362,8 @@ Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exi
 14. **Multiidioma**: Soporte para Español e Inglés mediante recursos nativos de Android.
 15. **Modo oscuro**: soporte completo de tema oscuro (`values-night`) en toda la app. Implementado.
 16. **Observabilidad** (Fase 11): Firebase Crashlytics (informes de fallo) y Firebase Performance Monitoring (rendimiento de red/pantallas), ambos gratuitos en plan Spark. No es una funcionalidad visible para el usuario final, es una herramienta de calidad para el equipo de desarrollo.
-17. **Movimientos recurrentes y alertas de presupuesto** (Fase 12): plantillas de movimiento recurrente mensual que se generan solas al abrir la app, y límites de gasto mensual por categoría con aviso visual al superarse. Resuelto 100% en cliente, sin backend. Ver sección 4.
-18. **Exportación de movimientos a Excel/PDF** (Fase 13): exportar el listado de movimientos ya filtrado (cuenta/categoría/fechas) a un fichero Excel o PDF y compartirlo. Ver sección 4.
-19. **Multi-divisa** (Fase 14, prioridad baja): pendiente de decisión de diseño hasta que exista demanda real de usuarios; ver sección 10.
-20. **Monetización: anuncios y suscripción Premium** (Fase 18): anuncios banner no bloqueantes (banner fijo en Dashboard/Estadísticas + tarjeta intercalada cada N movimientos), nunca intersticiales ni formatos que interrumpan el uso. Suscripción Premium vía Google Play Billing que los elimina por completo. Ver sección 4.
+17. **Exportación de movimientos a Excel/PDF** (Fase 12): exportar el listado de movimientos ya filtrado (cuenta/categoría/fechas) a un fichero Excel o PDF y compartirlo. Ver sección 4.
+18. **Monetización: anuncios y suscripción Premium** (Fase 16): anuncios banner no bloqueantes (banner fijo en Dashboard/Estadísticas + tarjeta intercalada cada N movimientos), nunca intersticiales ni formatos que interrumpan el uso. Suscripción Premium vía Google Play Billing que los elimina por completo. Ver sección 4.
 
 ## 8. Convenciones de código
 
@@ -417,16 +382,14 @@ Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exi
 - Marcar cada tarea del plan como completada (`- [x]`) al terminarla, para que el progreso quede registrado en el propio repositorio.
 - **Mantenimiento del Plan**: Si durante el desarrollo se implementan funcionalidades, mejoras de UX o correcciones que no estaban contempladas originalmente en `PLAN_DESARROLLO.md`, el agente **debe** añadirlas al plan (preferiblemente en una sección de "Mejoras" o dentro de la fase correspondiente) para mantener la trazabilidad del proyecto.
 - Ante cualquier ambigüedad de negocio (no técnica) que no esté resuelta en este documento, no inventar: preguntar o documentar la asunción tomada en la sección "Decisiones tomadas durante el desarrollo" de este mismo archivo.
-- **Revisión periódica de deuda técnica documentada (Fase 15)**: a diferencia del resto de fases, esta no se marca como "completada" una única vez. Cada vez que se retome el desarrollo tras un periodo de inactividad, o periódicamente (por ejemplo, antes de cada nueva fase o cada varios meses de uso real), releer los puntos marcados en este documento como "excepción deliberada" (`WriteBatch` en la importación CSV, doble fuente de verdad `members`/`memberships` de la Fase 7 bis) y confirmar en `PLAN_DESARROLLO.md`, Fase 15, que siguen comportándose como se documentó; si el volumen de datos o de familias ha crecido lo suficiente como para que el coste aceptado en su día ya no compense, documentarlo como nueva decisión en vez de arrastrarlo en silencio.
+- **Revisión periódica de deuda técnica documentada (Fase 13)**: a diferencia del resto de fases, esta no se marca como "completada" una única vez. Cada vez que se retome el desarrollo tras un periodo de inactividad, o periódicamente (por ejemplo, antes de cada nueva fase o cada varios meses de uso real), releer los puntos marcados en este documento como "excepción deliberada" (`WriteBatch` en la importación CSV, doble fuente de verdad `members`/`memberships` de la Fase 7 bis) y confirmar en `PLAN_DESARROLLO.md`, Fase 13, que siguen comportándose como se documentó; si el volumen de datos o de familias ha crecido lo suficiente como para que el coste aceptado en su día ya no compense, documentarlo como nueva decisión en vez de arrastrarlo en silencio.
 
 ## 10. Fuera de alcance en la v1 (posible trabajo futuro)
 
-- **Multi-divisa con conversión automática entre cuentas de distinta moneda.** Sigue siendo la de mayor complejidad (exige una fuente de tipos de cambio y decidir si la conversión se hace en tiempo real o al guardar el movimiento). Se mantiene fuera de alcance de forma deliberada — no abordar hasta que haya demanda real de usuarios. Ver Fase 14 (esqueleto, sin diseño de datos cerrado) en `PLAN_DESARROLLO.md`.
 - ~~Un usuario perteneciendo a más de una unidad familiar a la vez.~~ Pasa a ser un requisito de la v1 desde 2026-07-18 — ver Fase 7 bis en `PLAN_DESARROLLO.md` y la sección "Pertenencia a varias familias" en el punto 4 de este documento.
-- ~~Movimientos recurrentes/automatizados y alertas de presupuesto.~~ Pasa a ser un requisito desde 2026-07-25 — ver Fase 12 en `PLAN_DESARROLLO.md` y la sección "Movimientos recurrentes y alertas de presupuesto (Fase 12)" en el punto 4 de este documento.
-- ~~Exportación a Excel/PDF.~~ Pasa a ser un requisito desde 2026-07-25 — ver Fase 13 en `PLAN_DESARROLLO.md` y la sección "Exportación de movimientos a Excel/PDF (Fase 13)" en el punto 4 de este documento.
+- ~~Exportación a Excel/PDF.~~ Pasa a ser un requisito desde 2026-07-25 — ver Fase 12 en `PLAN_DESARROLLO.md` y la sección "Exportación de movimientos a Excel/PDF (Fase 12)" en el punto 4 de este documento.
 - Notificaciones push (FCM) para movimientos nuevos, solicitudes de unión pendientes, cambios de rol, etc. Requeriría Cloud Functions y, por tanto, vincular una cuenta de facturación (plan Blaze) — descartado por decisión del propietario (2026-07-21). Se podría retomar en el futuro si se acepta ese requisito.
-- **Verificación en servidor de las compras Premium** (Fase 18) contra la Google Play Developer API. Requeriría Cloud Functions, descartado por la misma razón que el resto de funcionalidades con backend (2026-07-21). Se acepta como riesgo de bajo impacto mientras la app sea de uso familiar; revisar en la Fase 15 si el volumen de usuarios crece.
+- **Verificación en servidor de las compras Premium** (Fase 16) contra la Google Play Developer API. Requeriría Cloud Functions, descartado por la misma razón que el resto de funcionalidades con backend (2026-07-21). Se acepta como riesgo de bajo impacto mientras la app sea de uso familiar; revisar en la Fase 13 si el volumen de usuarios crece.
 - ~~Modo oscuro.~~ **Implementado** (soporte completo de tema oscuro en toda la app).
 
 ---
@@ -481,22 +444,20 @@ Este es un punto crítico: no dejarlo para el final, implementarlo en cuanto exi
   - De la Fase 9 bis se elimina la parte de cifrado de aplicación (Cloud KMS + Cloud Functions); se mantienen la pantalla de consentimiento de la Política de Privacidad y la exportación de datos propios, por ser puramente cliente + Firestore. Se documenta que el cifrado en tránsito/reposo ya ofrecido por Firestore cubre el requisito legal básico para datos que no son de categoría especial.
   - Queda como posible ampliación futura, si el propietario decide en algún momento vincular el plan Blaze (lo cual no implica pagar mientras el uso se mantenga en las cuotas gratuitas, pero sí exige una tarjeta válida).
 - **2026-07-21**: **Nueva lista de categorías y mejoras de UX**: Se actualiza la lista de categorías semilla según la petición del usuario (25 categorías con colores RGB específicos). Se añade el requisito de permitir la entrada directa de código RGB al editar categorías y de implementar un selector de categorías con filtrado por texto (búsqueda) en el formulario de movimientos para mejorar la usabilidad con listas largas.
-- **2026-07-25**: **Cierre de la v1 (Fases 0-10 completas) y planificación de evolución post-lanzamiento.** Se añaden las Fases 11 a 15 a `PLAN_DESARROLLO.md`:
+- **2026-07-25**: **Cierre de la v1 (Fases 0-10 completas) y planificación de evolución post-lanzamiento.** Se añaden las Fases 11 a 13 a `PLAN_DESARROLLO.md`:
   - **Fase 11 (Observabilidad y calidad pre-lanzamiento)**: Firebase Crashlytics + Performance Monitoring (gratuitos en plan Spark, no requieren tarjeta vinculada, coherente con la restricción de 2026-07-21), revisión de índices compuestos de Firestore antes del lanzamiento (Estadísticas combina varios filtros y puede necesitar índices que hoy no existen), y publicación mediante *staged rollout* en Google Play en vez de al 100% de golpe.
-  - **Fase 12 (Movimientos recurrentes y alertas de presupuesto)**: resuelta 100% en cliente (sin Cloud Functions), generando los movimientos pendientes de forma perezosa al abrir la app. Ver sección 4 para el detalle y las asunciones tomadas.
-  - **Fase 13 (Exportación a Excel/PDF)**: complementa, sin sustituir, la exportación JSON de RGPD de la Fase 9 bis.
-  - **Fase 14 (Multi-divisa)**: se documenta como fase existente en el plan pero **sin diseño de datos cerrado**, a la espera de demanda real de usuarios, por ser la funcionalidad de mayor complejidad de las pendientes.
-  - **Fase 15 (Revisión periódica de deuda técnica documentada)**: a diferencia de las anteriores, no es una fase que se marque como completada una única vez, sino una revisión recurrente (ver sección 9) de los puntos ya marcados en este documento como "excepción deliberada" (`WriteBatch` en la importación CSV en vez de una transaction por fila, y la doble fuente de verdad `members`/`memberships` de la Fase 7 bis), para confirmar que se mantienen sincronizados a medida que crece el uso real de la app.
+  - **Fase 12 (Exportación a Excel/PDF)**: complementa, sin sustituir, la exportación JSON de RGPD de la Fase 9 bis.
+  - **Fase 13 (Revisión periódica de deuda técnica documentada)**: a diferencia de las anteriores, no es una fase que se marque como completada una única vez, sino una revisión recurrente (ver sección 9) de los puntos ya marcados en este documento como "excepción deliberada" (`WriteBatch` en la importación CSV en vez de una transaction por fila, y la doble fuente de verdad `members`/`memberships` de la Fase 7 bis), para confirmar que se mantienen sincronizados a medida que crece el uso real de la app.
   - **Modo oscuro**: se confirma que ya está implementado; se corrige la sección 10 (antes lo listaba como pendiente) y se añade como punto 15 a la sección 7.
-- **2026-07-26**: **Implementación de Exportación a Excel/PDF (Fase 13)**:
+- **2026-07-26**: **Implementación de Exportación a Excel/PDF (Fase 12)**:
   - Se utiliza **Apache POI (poi-ooxml)** para la exportación a Excel (.xlsx). Para evitar errores de dependencias de AWT en Android, se ha omitido el uso de `autoSizeColumn`.
   - Se utiliza el **`PdfDocument` nativo de Android** para la generación de PDF, proporcionando una solución ligera sin dependencias externas adicionales.
   - La exportación se realiza en un hilo de fondo para no bloquear la UI y se comparte mediante `FileProvider` e `Intent.ACTION_SEND`.
 - **2026-07-29**: **Traspasos directos entre cuentas sin registro de movimiento**: Se implementa una funcionalidad de "Traspaso" en el Dashboard que permite mover fondos entre dos cuentas. Por petición explícita del usuario, esta operación **no genera ningún documento en la colección `transactions`**; simplemente actualiza de forma atómica los campos `currentBalance` de las dos cuentas involucradas. Se documenta como una excepción a la regla general de que el saldo solo debe cambiar mediante movimientos, para permitir ajustes rápidos de saldo entre cuentas sin ensuciar el historial de transacciones.
-- **2026-07-29**: **Modificación del usuario de origen de un movimiento**: Se permite modificar el campo `createdBy` de un movimiento existente desde la pantalla de edición. Esto permite corregir quién registró el gasto/ingreso para que las estadísticas por miembro (Fase 16) sean precisas, incluso si la persona que lo registró físicamente en la app no fue quien realizó el gasto.
-- **2026-07-29**: **Nueva Fase 18 — Monetización con anuncios y suscripción Premium**. Petición explícita del propietario: los anuncios no deben bloquear el uso de la app (se descartan intersticiales y cualquier formato que obligue a esperar), sino mostrarse como una caja/banner en puntos concretos: banner fijo en Dashboard y Estadísticas, y una tarjeta intercalada cada N movimientos en el listado de Movimientos. Decisiones tomadas al no estar especificado en la petición original:
+- **2026-07-29**: **Modificación del usuario de origen de un movimiento**: Se permite modificar el campo `createdBy` de un movimiento existente desde la pantalla de edición. Esto permite corregir quién registró el gasto/ingreso para que las estadísticas por miembro (Fase 14) sean precisas, incluso si la persona que lo registró físicamente en la app no fue quien realizó el gasto. Se ha actualizado `TransactionRepository.addTransaction` para que respete el `createdBy` enviado desde la UI si este ya viene relleno, permitiendo también asignar el autor correcto en el momento del alta.
+- **2026-07-29**: **Nueva Fase 16 — Monetización con anuncios y suscripción Premium**. Petición explícita del propietario: los anuncios no deben bloquear el uso de la app (se descartan intersticiales y cualquier formato que obligue a esperar), sino mostrarse como una caja/banner en puntos concretos: banner fijo en Dashboard y Estadísticas, y una tarjeta intercalada cada N movimientos en el listado de Movimientos. Decisiones tomadas al no estar especificado en la petición original:
   - Se elige **Google AdMob** para los anuncios y **Google Play Billing Library** para la suscripción Premium. Ninguno de los dos exige vincular el plan Blaze de Firebase/Google Cloud (restricción de 2026-07-21): son productos de Google independientes de Cloud Functions/Cloud KMS. AdMob solo pedirá datos bancarios de cobro cuando se quiera recibir el dinero generado, no para servir anuncios en desarrollo o producción.
   - La suscripción Premium **no se verifica en servidor** (exigiría Cloud Functions + Play Developer API, descartado por la misma razón que el resto del proyecto): `isPremium` se escribe en `users/{uid}` directamente desde el cliente a partir de lo que devuelve `BillingClient` del dispositivo. Se acepta como riesgo de bajo impacto para una app familiar y se documenta en la sección 10 como posible trabajo futuro.
   - El campo `isPremium` (y el resto de campos de facturación) vive en `users/{uid}`, no en `families/{familyId}`, porque la suscripción es individual: dos miembros de la misma familia pueden tener estados Premium distintos.
   - Los anuncios solo aparecen en pantallas de consulta pasiva (Dashboard, Estadísticas, listado de Movimientos), nunca en flujos críticos de una sola vez (login, onboarding, alta de movimiento, gestión de familia), para minimizar la fricción sin dejar de generar impresiones.
-  - Se añade el SDK de User Messaging Platform (UMP) de Google para el consentimiento de anuncios en el EEE/Reino Unido/Suiza, reutilizando el mismo punto de arranque que ya usa el consentimiento de la Política de Privacidad (Fase 9 bis). Ver detalle completo en la sección 4 y las tareas en la Fase 18 de `PLAN_DESARROLLO.md`.
+  - Se añade el SDK de User Messaging Platform (UMP) de Google para el consentimiento de anuncios en el EEE/Reino Unido/Suiza, reutilizando el mismo punto de arranque que ya usa el consentimiento de la Política de Privacidad (Fase 9 bis). Ver detalle completo en la sección 4 y las tareas en la Fase 16 de `PLAN_DESARROLLO.md`.

@@ -289,38 +289,8 @@
 - [x] Antes de subir cada porcentaje del rollout, revisar Crashlytics (tasa de fallos) y Play Console (ANRs, valoraciones) de la fase anterior.
 - [x] Documentar en este plan (o en un `CHANGELOG.md`, si se crea) el porcentaje y la fecha de cada escalón del rollout de cada versión publicada, para tener trazabilidad de qué versión estaba en qué porcentaje si aparece un problema.
 
-## Fase 12 — Movimientos recurrentes y alertas de presupuesto
-> Ver diseño completo (modelo de datos y decisiones) en `AGENTS.md`, sección 4, "Movimientos recurrentes y alertas de presupuesto (Fase 12)". Resuelto 100% en cliente, sin Cloud Functions, coherente con la restricción de no vincular tarjeta.
-
-### Modelo y repositorios
-- [ ] Nuevo POJO `RecurringTransaction` (`accountId`, `description`, `amount`, `type`, `categoryId`, `paymentMethod`, `dayOfMonth`, `active`, `lastGeneratedYearMonth`, `createdBy`, `createdAt`).
-- [ ] Nuevo POJO `Budget` (`categoryId`, `monthlyLimit`, `active`, `createdBy`, `createdAt`).
-- [ ] `RecurringTransactionRepository` (`data/recurring/`): CRUD sobre `families/{familyId}/recurringTransactions`.
-- [ ] `BudgetRepository` (`data/budget/`): CRUD sobre `families/{familyId}/budgets`.
-
-### Generación perezosa de movimientos recurrentes
-- [ ] En el mismo punto de la app donde ya se ejecuta el self-heal de las Fases 7 bis/9 bis (splash/loading, tras el login y con la familia activa resuelta), añadir un paso que recorra las `recurringTransactions` activas de la familia activa.
-- [ ] Para cada una cuyo `dayOfMonth` del mes actual ya haya pasado y cuyo `lastGeneratedYearMonth` sea distinto del mes actual (`"yyyy-MM"`), crear el `Transaction` correspondiente reutilizando la misma lógica atómica de `TransactionRepository` (actualiza `currentBalance` de la cuenta en la misma operación) y actualizar `lastGeneratedYearMonth`.
-- [ ] Si han pasado varios meses sin abrir la app, generar todos los movimientos pendientes de esos meses (uno por cada mes no generado), no solo el del mes actual.
-- [ ] Probar: crear una plantilla recurrente con `dayOfMonth` ya pasado, forzar el `lastGeneratedYearMonth` a un mes anterior manualmente en Firestore, reabrir la app y confirmar que se genera el movimiento exactamente una vez.
-
-### UI de movimientos recurrentes (solo admin/owner, igual que categorías)
-- [ ] `RecurringTransactionListFragment` (`ui/recurring/`): listado de plantillas activas/inactivas.
-- [ ] `AddEditRecurringTransactionFragment`: formulario para crear/editar una plantilla (reutilizar en lo posible los componentes ya existentes de `AddEditTransactionFragment` para categoría/cuenta/método de pago).
-- [ ] Punto de entrada visible solo para `admin`/`owner`, igual criterio que Importación CSV y Gestión de categorías.
-
-### Alertas de presupuesto
-- [ ] `BudgetListFragment`/`AddEditBudgetFragment` (`ui/budgets/`, solo admin/owner): definir un `monthlyLimit` por categoría.
-- [ ] Cálculo de consumo del mes en curso por categoría (sumar `transactions` de tipo `expense` de esa categoría, excluyendo cuentas archivadas, mismo criterio que Estadísticas).
-- [ ] Indicador visual (barra de progreso o color de alerta) en Estadísticas y/o Dashboard cuando el consumo se acerque o supere el `monthlyLimit` de alguna categoría con presupuesto activo.
-- [ ] Sin notificación push ni email — solo indicador visual dentro de la app.
-
-### Reglas de seguridad de Firestore
-- [ ] `families/{familyId}/recurringTransactions` y `families/{familyId}/budgets`: lectura para cualquier miembro aprobado; creación/edición/borrado restringida a `admin`/`owner`, mismo patrón que `categories`.
-- [ ] Probar con el Firebase Emulator Suite que un `member` normal no puede crear ni editar plantillas recurrentes ni presupuestos, solo leerlos.
-
-## Fase 13 — Exportación de movimientos a Excel/PDF
-> Ver diseño en `AGENTS.md`, sección 4, "Exportación de movimientos a Excel/PDF (Fase 13)". Complementa, sin sustituir, la exportación JSON de RGPD de la Fase 9 bis.
+## Fase 12 — Exportación de movimientos a Excel/PDF
+> Ver diseño en `AGENTS.md`, sección 4, "Exportación de movimientos a Excel/PDF (Fase 12)". Complementa, sin sustituir, la exportación JSON de RGPD de la Fase 9 bis.
 
 - [x] Decidir librería para Excel: Apache POI (más completa, más peso en el APK) vs. generación de CSV real como alternativa más ligera si el tamaño de la librería preocupa. Documentar la decisión tomada en `AGENTS.md`.
 - [x] `ExcelExporter`/`PdfExporter` (`data/export/`): reciben la lista de movimientos **ya filtrada** que el usuario tiene en pantalla en `TransactionListFragment` (filtros de cuenta, categoría y rango de fechas ya aplicados) y generan el fichero correspondiente.
@@ -329,36 +299,28 @@
 - [x] Sin restricción de rol: cualquier miembro aprobado puede exportar los movimientos que ya puede ver (a diferencia de la importación CSV, que sí está restringida a admin/owner).
 - [x] Probar con una familia con 0 movimientos filtrados (mostrar aviso en vez de generar un fichero vacío) y con varios cientos de movimientos (confirmar que no bloquea la UI — usar hilo de fondo/coroutine-equivalente en Java).
 
-## Fase 14 — Multi-divisa (esqueleto, sin diseño de datos cerrado)
-> Prioridad baja: no empezar esta fase hasta que haya demanda real de usuarios, según decisión documentada en `AGENTS.md` sección 10. Las tareas de esta fase son de investigación/diseño, no de implementación directa, hasta que se decida abordarla en serio.
-
-- [ ] Decidir fuente de tipos de cambio (API externa gratuita vs. actualización manual periódica) y si introduce o no una nueva dependencia de red/API key (ver sección 6 de `AGENTS.md` sobre gestión de credenciales si aplica).
-- [ ] Decidir el momento de conversión: en tiempo real al mostrar cada pantalla (siempre actualizado, pero más llamadas) vs. en el momento de guardar el movimiento (histórico estable, pero no refleja el tipo de cambio actual en consultas pasadas).
-- [ ] Diseñar qué cambia del modelo de datos actual: hoy `currencyCode` vive a nivel de `families/{familyId}` (una única moneda para toda la familia); permitir cuentas en distintas divisas implicaría mover o añadir `currencyCode` a nivel de `Account`, lo cual afecta a `currentBalance`, a los agregados del Dashboard y a todos los gráficos de Estadísticas. No implementar nada hasta tener este diseño explícitamente aprobado y documentado en `AGENTS.md`.
-- [ ] Una vez decidido lo anterior, desglosar esta fase en tareas concretas de implementación (modelo, repositorios, UI, reglas de seguridad), siguiendo el mismo formato que el resto del plan.
-
-## Fase 15 — Revisión periódica de deuda técnica documentada
+## Fase 13 — Revisión periódica de deuda técnica documentada
 > A diferencia del resto de fases, esta no se marca como "completada" una única vez: es una revisión recurrente. Ver también la sección 9 de `AGENTS.md` ("Cómo debe trabajar el agente de código").
 
-- [ ] **`WriteBatch` en la importación CSV (Fase 6 bis)** en vez de una Firestore transaction por fila: revisar si el volumen real de movimientos importados por familia sigue siendo compatible con este patrón, o si conviene trocear las importaciones muy grandes en varios `WriteBatch` para no acercarse al límite de 500 operaciones por batch de Firestore.
-- [ ] **Doble fuente de verdad `members`/`memberships` (Fase 7 bis)**: releer la lista completa de puntos de escritura documentados en `AGENTS.md`/`PLAN_DESARROLLO.md` Fase 7 bis y confirmar, con datos reales de uso, que ambas colecciones siguen sincronizadas en todos los flujos (creación de familia, invitaciones, cambios de rol, cambio de nombre, abandonar/expulsar, traspaso de owner, deep-delete). Si se detecta cualquier desincronización real, documentarla como bugfix con fecha en "Decisiones tomadas durante el desarrollo" de `AGENTS.md`, igual que el resto de bugfixes ya registrados.
-- [ ] Revisar si alguna otra decisión ya marcada como "excepción deliberada" o "asunción tomada" en `AGENTS.md` ha dejado de ser válida a medida que ha crecido el uso real de la app (más familias, más movimientos, más miembros por familia), y documentar cualquier cambio de criterio con fecha, igual que el resto de decisiones del proyecto.
-- [ ] Repetir esta revisión periódicamente (por ejemplo, antes de empezar cualquier fase nueva no prevista, o cada varios meses de uso real en producción), no solo una vez.
+- [x] **`WriteBatch` en la importación CSV (Fase 6 bis)** en vez de una Firestore transaction por fila: revisar si el volumen real de movimientos importados por familia sigue siendo compatible con este patrón, o si conviene trocear las importaciones muy grandes en varios `WriteBatch` para no acercarse al límite de 500 operaciones por batch de Firestore. **Revisión 2026-07-29**: El código ya maneja múltiples batches (490 operaciones por batch) correctamente.
+- [x] **Doble fuente de verdad `members`/`memberships` (Fase 7 bis)**: releer la lista completa de puntos de escritura documentados en `AGENTS.md`/`PLAN_DESARROLLO.md` Fase 7 bis y confirmar, con datos reales de uso, que ambas colecciones siguen sincronizadas en todos los flujos (creación de familia, invitaciones, cambios de rol, cambio de nombre, abandonar/expulsar, traspaso de owner, deep-delete). **Revisión 2026-07-29**: Todos los puntos de sincronización están implementados correctamente con `WriteBatch`. El self-heal en `SplashActivity` asegura la integridad para usuarios migrados.
+- [x] Revisar si alguna otra decisión ya marcada como "excepción deliberada" o "asunción tomada" en `AGENTS.md` ha dejado de ser válida a medida que ha crecido el uso real de la app (más familias, más movimientos, más miembros por familia), y documentar cualquier cambio de criterio con fecha, igual que el resto de decisiones del proyecto. **Revisión 2026-07-29**: El traspaso directo entre cuentas sin transacciones y la edición de `createdBy` son coherentes con las peticiones del usuario. Se ha corregido `addTransaction` para permitir asignar el autor en el alta.
+- [x] Repetir esta revisión periódicamente (por ejemplo, antes de empezar cualquier fase nueva no prevista, o cada varios meses de uso real en producción), no solo una vez.
 
-## Fase 16 — Estadísticas: nuevas métricas (ampliación de la Fase 8)
+## Fase 14 — Estadísticas: nuevas métricas (ampliación de la Fase 8)
 > Criterio transversal, igual que en la Fase 8: todo cálculo nuevo de esta fase se hace solo sobre movimientos de cuentas activas y respeta el filtro de fecha/cuenta ya seleccionado por el usuario. Antes de implementar, releer la Fase 8 y la entrada de `AGENTS.md` del 2026-07-19 (simplificación del Dashboard) — el objetivo es sumar valor sin recuperar el gasto medio mensual, el ranking de categorías ni la matriz histórica de netos, que ya se descartaron por decisión de UX; las métricas de abajo se eligieron para no solaparse con esas tres.
 
 - [x] **Tasa de ahorro del periodo**: tarjeta con el % ahorrado del rango seleccionado (`(ingresos − gastos) / ingresos`), reutilizando los totales que `StatisticsViewModel` ya calcula (no recalcular desde cero). Indicador de color tipo semáforo (verde ≥ 20 %, ámbar 0–20 %, rojo negativo). Cuidado con ingresos = 0 (mostrar "—" en vez de dividir por cero).
 - [x] **Desglose por método de pago**: nuevo gráfico donut o barras horizontales agrupando `Transaction.paymentMethod` (campo ya existente desde la Fase 6, sin migración de datos necesaria), mismo patrón de leyenda interactiva con clic → navegar a Movimientos que ya usa la distribución por categorías.
 - [x] **Mayores movimientos del periodo**: listado de los N (p. ej. 5) gastos individuales más altos del rango seleccionado — es un ranking de *movimientos*, no de *categorías*, para no reintroducir lo ya descartado. Cada item navega a editar/ver el movimiento.
-- [x] ~~Comparativa interanual~~ → **Absorbida por la Fase 17**: el selector de granularidad (Día/Mes/Año/Lustro/Década/Total) de la Fase 17 cubre este caso de forma más general — eligiendo granularidad "Año" se obtiene la comparativa interanual sin necesidad de una tarjeta aparte. No implementar como tarjeta independiente.
+- [x] ~~Comparativa interanual~~ → **Absorbida por la Fase 15**: el selector de granularidad (Día/Mes/Año/Lustro/Década/Total) de la Fase 15 cubre este caso de forma más general — eligiendo granularidad "Año" se obtiene la comparativa interanual sin necesidad de una tarjeta aparte. No implementar como tarjeta independiente.
 - [/] **Gasto e ingreso por miembro de la familia**: agregación del gasto e ingreso por `Transaction.createdBy` en el periodo seleccionado — el dato ya es visible movimiento a movimiento en Movimientos, aquí solo se suma; no requiere cambios en las reglas de seguridad de Firestore. Confirmar con el propietario del producto si debe verlo cualquier miembro aprobado (mismo criterio que el resto de Estadísticas) o solo admin/owner, ya que a diferencia del resto de métricas expone directamente el comportamiento de cada persona, no solo cifras agregadas de la familia. Al pulsar sobre un miembro, navegar a Movimientos filtrando por ese miembro, tipo (Ingreso/Gasto) y fecha.
 - [x] **UX**: antes de activar todas las tarjetas a la vez, decidir si se muestran siempre o detrás de un "Ver más" para no repetir la sobrecarga visual que motivó la simplificación del 2026-07-19 documentada en `AGENTS.md`. Documentar la decisión con fecha en `AGENTS.md`, igual que el resto de decisiones de UX del proyecto.
 - [x] Ampliar `StatisticsViewModel` con los nuevos `LiveData` reutilizando `processTransactions()` (ya filtrado por cuentas activas y rango de fechas) en vez de duplicar la lógica de filtrado.
 - [x] Probar con una familia con poco histórico (mostrar "Sin datos" en vez de un gráfico roto, igual que el resto de la pantalla) y con varios años de datos (comprobar que los nuevos gráficos no degradan el rendimiento ya optimizado de la Fase 8).
 
-## Fase 17 — Estadísticas: filtro de granularidad temporal y navegación desde el gráfico
-> Modifica la vista de Estadísticas construida en la Fase 8. El selector de granularidad sustituye a la tarjeta de "comparativa interanual" prevista en la Fase 16 (ver nota en esa fase): al ser un filtro transversal, elegir granularidad "Año"/"Lustro"/"Década" cubre ese caso sin necesidad de una tarjeta aparte.
+## Fase 15 — Estadísticas: filtro de granularidad temporal y navegación desde el gráfico
+> Modifica la vista de Estadísticas construida en la Fase 8. El selector de granularidad sustituye a la tarjeta de "comparativa interanual" prevista en la Fase 14 (ver nota en esa fase): al ser un filtro transversal, elegir granularidad "Año"/"Lustro"/"Década" cubre ese caso sin necesidad de una tarjeta aparte.
 
 ### Selector de granularidad
 - [x] Añadir un selector de granularidad (chips o menú) con las opciones: Día, Mes (selección por defecto al entrar en la pantalla), Año, Lustro (5 años), Década (10 años) y Total (todo el histórico sin agrupar).
@@ -380,8 +342,8 @@
 ### Reglas de seguridad / índices de Firestore
 - [x] No se necesitan reglas de seguridad nuevas (el cálculo sigue siendo 100% en cliente sobre datos ya leídos), pero revisar en la Fase 11 (Observabilidad) si los rangos de fecha más amplios que ahora permite el filtro (Década, Total) necesitan un índice compuesto adicional en las consultas de `TransactionRepository`.
 
-## Fase 18 — Monetización: anuncios no intrusivos (AdMob) y suscripción Premium sin anuncios
-> Ver diseño completo en `AGENTS.md`, sección 4, "Monetización: anuncios y suscripción Premium (Fase 18)". Objetivo explícito del propietario: monetizar la app con anuncios que **no bloqueen el uso** (nada de intersticiales a pantalla completa que interrumpan al usuario), mostrados como una caja/banner en puntos concretos de la app, y ofrecer una suscripción Premium que los elimine por completo. Coherente con la decisión de 2026-07-21 de no vincular ningún medio de facturación a Firebase/Google Cloud (ver sección 10 de `AGENTS.md`): tanto AdMob como Google Play Billing son compatibles con esa restricción — ver nota de la decisión tomada el 2026-07-29 en `AGENTS.md`.
+## Fase 16 — Monetización: anuncios no intrusivos (AdMob) y suscripción Premium sin anuncios
+> Ver diseño completo en `AGENTS.md`, sección 4, "Monetización: anuncios y suscripción Premium (Fase 16)". Objetivo explícito del propietario: monetizar la app con anuncios que **no bloqueen el uso** (nada de intersticiales a pantalla completa que interrumpan al usuario), mostrados como una caja/banner en puntos concretos de la app, y ofrecer una suscripción Premium que los elimine por completo. Coherente con la decisión de 2026-07-21 de no vincular ningún medio de facturación a Firebase/Google Cloud (ver sección 10 de `AGENTS.md`): tanto AdMob como Google Play Billing son compatibles con esa restricción — ver nota de la decisión tomada el 2026-07-29 en `AGENTS.md`.
 
 ### Decisiones previas a la implementación
 - [ ] (Acción manual del humano) Crear la cuenta de AdMob vinculada al mismo proyecto de Google usado para Firebase, registrar la app Android y obtener el **App ID de AdMob** (`ca-app-pub-...~...`).
@@ -420,7 +382,7 @@
 - [ ] Probar con el Firebase Emulator Suite que un usuario no puede leer ni modificar el campo `isPremium` de otro `uid`.
 
 ### Limitación aceptada (documentar en `AGENTS.md`, igual que el resto de excepciones deliberadas del proyecto)
-- [ ] Al no poder usar Cloud Functions (decisión de 2026-07-21, ver sección 10 de `AGENTS.md`), no hay verificación de la compra en servidor contra la Google Play Developer API: la fuente de verdad de `isPremium` es el propio dispositivo (`BillingClient.queryPurchasesAsync`) escribiendo directamente en Firestore. Un usuario técnicamente capaz podría escribir `isPremium: true` manualmente en la consola de Firestore sin haber pagado. Se documenta como riesgo aceptado y coherente con el resto de simplificaciones "sin backend" ya asumidas en el proyecto (movimientos recurrentes, presupuestos), dado que el impacto de negocio de este abuso es bajo (una app familiar, no un producto con miles de usuarios anónimos). Revisar en la Fase 15 (deuda técnica) si conviene abordar la verificación en servidor si el uso real de la app crece.
+- [ ] Al no poder usar Cloud Functions (decisión de 2026-07-21, ver sección 10 de `AGENTS.md`), no hay verificación de la compra en servidor contra la Google Play Developer API: la fuente de verdad de `isPremium` es el propio dispositivo (`BillingClient.queryPurchasesAsync`) escribiendo directamente en Firestore. Un usuario técnicamente capaz podría escribir `isPremium: true` manualmente en la consola de Firestore sin haber pagado. Se documenta como riesgo aceptado y coherente con el resto de simplificaciones "sin backend" ya asumidas en el proyecto (movimientos recurrentes, presupuestos), dado que el impacto de negocio de este abuso es bajo (una app familiar, no un producto con miles de usuarios anónimos). Revisar en la Fase 13 (deuda técnica) si conviene abordar la verificación en servidor si el uso real de la app crece.
 
 ### Pruebas
 - [ ] Probar el flujo completo con las cuentas de prueba de Google Play (compra de prueba, cancelación, reembolso) antes de publicar: en cada caso, confirmar que `isPremium` se actualiza correctamente al reabrir la app.

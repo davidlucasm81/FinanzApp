@@ -65,7 +65,9 @@ public class TransactionRepository {
             return;
         }
 
-        transaction.setCreatedBy(uid);
+        if (transaction.getCreatedBy() == null) {
+            transaction.setCreatedBy(uid);
+        }
         transaction.setCreatedAt(Timestamp.now());
 
         DocumentReference transactionRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.TRANSACTIONS).document();
