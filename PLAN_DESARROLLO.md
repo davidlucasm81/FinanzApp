@@ -153,6 +153,12 @@
 - [x] (Movido a Fase 8) **Nuevo requisito de UX (2026-07-17): navegación desde el desglose por categoría a Movimientos, con filtros preaplicados.**
 - [x] **Simplificación del Dashboard (2026-07-19)**: Eliminación del selector de fechas y desgloses de ingresos/gastos y categorías, centralizando estas funciones en la pestaña de Estadísticas.
 
+## Fase 7 tris — Traspasos entre cuentas (sin movimientos)
+- [x] **Traspaso de fondos**: Implementar un botón en el Dashboard para mover dinero entre dos cuentas de la familia.
+- [x] **Sin registro de movimiento**: El traspaso debe actualizar directamente los saldos (`currentBalance`) de ambas cuentas involucradas en una única transacción atómica de Firestore, **sin crear ningún documento en la colección `transactions`**, por petición explícita del usuario.
+- [x] **UI de traspaso**: Crear un diálogo o pantalla que permita seleccionar la cuenta de origen, la cuenta de destino y el importe a traspasar. El selector de cuentas debe mostrar solo las cuentas activas.
+- [x] **Validaciones**: Verificar que las cuentas de origen y destino son distintas y que el importe es positivo.
+
 ## Fase 7 bis — Pertenencia a varias familias
 > Requisito nuevo (2026-07-18): un usuario deja de estar limitado a una única familia. **Restricción explícita del propietario: no se modifica ningún campo ni colección ya existente.** `users/{uid}.familyId` conserva su nombre (solo cambia su significado, de "la única familia" a "la familia activa") y `families/{familyId}/members/{uid}` no gana ningún campo nuevo (ni `uid` ni `familyName`). La funcionalidad se construye añadiendo, sin tocar nada de lo anterior, la subcolección `users/{uid}/memberships/{familyId}`. Ver el diseño completo en `AGENTS.md`, sección 4 "Pertenencia a varias familias (Fase 7 bis)" y sección 5 (reglas nuevas), y las asunciones tomadas en la entrada correspondiente de "Decisiones tomadas durante el desarrollo" (entrada del 2026-07-18 marcada como "corrección"). Depende de que Fases 1-7 ya funcionen (reutiliza `CreateFamilyFragment`, `JoinByCodeFragment`, `AcceptInvitationFragment`, `FamilySettingsFragment`, y toda la lógica de abandonar familia de la Fase 3).
 

@@ -67,6 +67,11 @@ public class DashboardFragment extends Fragment {
 
         binding.btnTransactions.setOnClickListener(v -> NavHostFragment.findNavController(this).navigate(com.finanzapp.app.R.id.action_dashboardFragment_to_transactionListFragment));
 
+        binding.btnTransfer.setOnClickListener(v -> {
+            TransferFundsDialogFragment.newInstance()
+                    .show(getChildFragmentManager(), "TransferFunds");
+        });
+
         binding.llFamilySelector.setOnClickListener(v -> {
             if (currentFamilyId != null) {
                 FamilySwitcherFragment.newInstance(currentFamilyId)

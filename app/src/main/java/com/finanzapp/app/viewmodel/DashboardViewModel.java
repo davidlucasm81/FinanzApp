@@ -13,6 +13,7 @@ import com.finanzapp.app.data.repository.AccountRepository;
 import com.finanzapp.app.data.repository.AuthRepository;
 import com.finanzapp.app.data.repository.FamilyRepository;
 import com.finanzapp.app.util.Result;
+import com.finanzapp.app.util.SingleLiveEvent;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
@@ -33,8 +34,10 @@ public class DashboardViewModel extends ViewModel {
     private final MutableLiveData<Result<User>> userData = new MutableLiveData<>();
     private final MutableLiveData<Double> netBalance = new MutableLiveData<>(0.0);
     private final MutableLiveData<List<Account>> accountsList = new MutableLiveData<>();
+    private final SingleLiveEvent<Result<String>> transferResult = new SingleLiveEvent<>();
 
     private final Set<String> migratingAccounts = new HashSet<>();
+    private final AccountRepository accountRepository;
     private ListenerRegistration userListener;
 
     // Referencia estable para poder registrar/desregistrar el mismo Runnable
@@ -49,6 +52,7 @@ public class DashboardViewModel extends ViewModel {
     public DashboardViewModel(AuthRepository authRepository, FamilyRepository familyRepository, AccountRepository accountRepository) {
         this.authRepository = authRepository;
         this.familyRepository = familyRepository;
+        this.accountRepository = accountRepository;
         authRepository.registerPreSignOutCleanup(signOutCleanup);
 
         // Reactive architecture
@@ -92,6 +96,17 @@ public class DashboardViewModel extends ViewModel {
     public LiveData<Result<User>> getUserData() { return userData; }
     public LiveData<Double> getNetBalance() { return netBalance; }
     public LiveData<List<Account>> getAccountsList() { return accountsList; }
+    public LiveData<Result<String>> getTransferResult() { return transferResult; }
+
+    public void transferFunds(String fromAccountId, String toAccountId, double amount) {
+        String familyId = familyIdSource.getValue();
+        if (familyId == null) return;
+
+        transferResult.setValue(new Result.Loading<>());
+        accountRepository.transferFunds(familyId, fromAccountId, toAccountId, amount, result -> {
+            transferResult.postValue(result);
+        });
+    }
 
     public void fetchDashboardData() {
         FirebaseUser currentUser = authRepository.getCurrentUser().getValue();

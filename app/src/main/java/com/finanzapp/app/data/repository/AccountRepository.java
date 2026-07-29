@@ -204,4 +204,36 @@ public class AccountRepository {
                     }
                 });
     }
+
+    public void transferFunds(String familyId, String fromAccountId, String toAccountId, double amount, SimpleCallback callback) {
+        if (fromAccountId.equals(toAccountId)) {
+            callback.onResult(new Result.Error<>(new Exception("Las cuentas de origen y destino deben ser distintas")));
+            return;
+        }
+
+        DocumentReference fromRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS).document(fromAccountId);
+        DocumentReference toRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS).document(toAccountId);
+
+        db.runTransaction(transaction -> {
+            Account fromAccount = transaction.get(fromRef).toObject(Account.class);
+            Account toAccount = transaction.get(toRef).toObject(Account.class);
+
+            if (fromAccount == null || toAccount == null) {
+                throw new RuntimeException("Una de las cuentas no existe");
+            }
+
+            // No validamos saldo insuficiente por petición del usuario (traspaso libre), 
+            // pero actualizamos ambos balances
+            transaction.update(fromRef, "currentBalance", fromAccount.getCurrentBalance() - amount);
+            transaction.update(toRef, "currentBalance", toAccount.getCurrentBalance() + amount);
+
+            return null;
+        }).addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                callback.onResult(new Result.Success<>("Traspaso completado con éxito"));
+            } else {
+                callback.onResult(new Result.Error<>(task.getException()));
+            }
+        });
+    }
 }

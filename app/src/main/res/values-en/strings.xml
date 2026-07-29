@@ -130,7 +130,13 @@
     <string name="categories_empty_subtitle">Tap + to add your first category</string>
     <string name="dashboard_my_accounts">My Accounts</string>
     <string name="dashboard_view_transactions">View Transactions</string>
+    <string name="dashboard_traspaso">Transfer</string>
     <string name="dashboard_family_selector_desc">Select family</string>
+    <string name="dialog_transfer_funds_title">Transfer between accounts</string>
+    <string name="label_from_account">From account</string>
+    <string name="label_to_account">To account</string>
+    <string name="btn_transfer">Perform transfer</string>
+    <string name="error_same_accounts">Accounts must be different</string>
 
     <!-- UI Components -->
     <string name="label_net_position_initial">Initial net position</string>

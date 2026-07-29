@@ -130,7 +130,13 @@
     <string name="categories_empty_subtitle">Pulsa + para añadir tu primera categoría</string>
     <string name="dashboard_my_accounts">Mis Cuentas</string>
     <string name="dashboard_view_transactions">Ver Movimientos</string>
+    <string name="dashboard_traspaso">Traspaso</string>
     <string name="dashboard_family_selector_desc">Seleccionar familia</string>
+    <string name="dialog_transfer_funds_title">Traspaso entre cuentas</string>
+    <string name="label_from_account">Desde la cuenta</string>
+    <string name="label_to_account">Hacia la cuenta</string>
+    <string name="btn_transfer">Realizar traspaso</string>
+    <string name="error_same_accounts">Las cuentas deben ser distintas</string>
 
     <!-- UI Components -->
     <string name="label_net_position_initial">Posición neta inicial</string>
