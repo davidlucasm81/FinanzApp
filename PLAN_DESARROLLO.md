@@ -223,7 +223,8 @@
 > Nota: Al no poder usar Cloud Functions (exige plan Blaze de pago) para disparar notificaciones push (FCM) de forma segura, se implementa un sistema de alertas in-app basado en un listener de Firestore. Esto permite notificar a los usuarios que tengan la app abierta.
 - [x] **Modelo de Notificación**: Crear subcolección `families/{familyId}/notifications`.
 - [x] **Emisión**: Actualizar `TransactionRepository` para que, al crear un movimiento con éxito, escriba también un documento en `notifications` con el resumen del movimiento.
-- [x] **Recepción**: Implementar un listener global (en `MainActivity` o mediante un `SharedViewModel`) que escuche esta colección y muestre un **pop up** in-app (diálogo o vista flotante) con los detalles del nuevo movimiento.
+- [x] **Recepción**: Implementar un listener global (en `MainActivity` o mediante un `SharedViewModel`) que escuche esta colección y muestre un **pop up** in-app (diálogo o vista flotante) con los detalles del nuevo movimiento. Solo se muestran notificaciones creadas después de que el usuario haya abierto la app (conexión activa).
+- [x] **Interacción**: Permitir cerrar las notificaciones in-app deslizando la ventana (swipe) a la izquierda o derecha.
 - [x] **Configuración**: Añadir interruptor "Notificar movimientos nuevos" en Ajustes de Perfil. Si está desactivado, el listener no muestra nada.
 - [x] **Limpieza**: (Opcional) Las notificaciones de más de 24h pueden ignorarse en la consulta del listener para no saturar.
 

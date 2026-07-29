@@ -27,6 +27,7 @@ public class NotificationViewModel extends ViewModel {
     private ListenerRegistration notificationListener;
     private String currentFamilyId;
     private String currentUserId;
+    private final com.google.firebase.Timestamp sessionStartTime;
 
     // Referencia estable para poder registrar/desregistrar el mismo Runnable
     private final Runnable signOutCleanup = this::stopListening;
@@ -34,6 +35,7 @@ public class NotificationViewModel extends ViewModel {
     public NotificationViewModel(AuthRepository authRepository, NotificationRepository notificationRepository) {
         this.authRepository = authRepository;
         this.notificationRepository = notificationRepository;
+        this.sessionStartTime = com.google.firebase.Timestamp.now();
         authRepository.registerPreSignOutCleanup(signOutCleanup);
 
         FirebaseUser firebaseUser = authRepository.getCurrentUser().getValue();
@@ -76,7 +78,7 @@ public class NotificationViewModel extends ViewModel {
         stopNotificationListener();
         if (currentFamilyId == null) return;
 
-        notificationListener = notificationRepository.listenToNotifications(currentFamilyId, notification -> {
+        notificationListener = notificationRepository.listenToNotifications(currentFamilyId, sessionStartTime, notification -> {
             Boolean enabled = notificationsEnabled.getValue();
             // Don't notify the creator of the notification
             if (enabled != null && enabled && !Objects.equals(notification.getCreatedBy(), currentUserId)) {

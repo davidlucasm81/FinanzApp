@@ -3,7 +3,10 @@ package com.finanzapp.app;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.MotionEvent;
+import android.view.VelocityTracker;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
@@ -110,6 +113,8 @@ public class MainActivity extends AppCompatActivity {
 
         tvTitle.setText(notification.getTitle());
         tvBody.setText(notification.getBody());
+
+        setupSwipeToDismiss(notificationView, root);
         
         root.addView(notificationView);
 
@@ -127,14 +132,17 @@ public class MainActivity extends AppCompatActivity {
         Runnable notificationRunnable = new Runnable() {
             @Override
             public void run() {
+                if (currentNotificationView != notificationView) return;
+
                 long elapsed = System.currentTimeMillis() - startTime;
                 if (elapsed >= NOTIFICATION_DURATION_MS) {
                     notificationView.animate().translationY(-500).setDuration(300).withEndAction(() -> {
-                        root.removeView(notificationView);
-                        if (currentNotificationView == notificationView)
+                        if (currentNotificationView == notificationView) {
+                            root.removeView(notificationView);
                             currentNotificationView = null;
-                        isShowingNotification = false;
-                        processNextNotification(); // Check for more notifications
+                            isShowingNotification = false;
+                            processNextNotification(); // Check for more notifications
+                        }
                     }).start();
                 } else {
                     int progress = (int) (100 - (elapsed * 100 / NOTIFICATION_DURATION_MS));
@@ -144,6 +152,111 @@ public class MainActivity extends AppCompatActivity {
             }
         };
         notificationHandler.post(notificationRunnable);
+    }
+
+    private void setupSwipeToDismiss(View view, ViewGroup parent) {
+        ViewConfiguration vc = ViewConfiguration.get(this);
+        int swipeThreshold = vc.getScaledTouchSlop();
+        int minVelocity = vc.getScaledMinimumFlingVelocity();
+        int maxVelocity = vc.getScaledMaximumFlingVelocity();
+
+        view.setOnTouchListener(new View.OnTouchListener() {
+            private float initialX;
+            private float initialTranslationX;
+            private VelocityTracker velocityTracker;
+            private boolean isSwiping = false;
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        initialX = event.getRawX();
+                        initialTranslationX = v.getTranslationX();
+                        if (velocityTracker == null) {
+                            velocityTracker = VelocityTracker.obtain();
+                        } else {
+                            velocityTracker.clear();
+                        }
+                        velocityTracker.addMovement(event);
+                        return true;
+
+                    case MotionEvent.ACTION_MOVE:
+                        if (velocityTracker != null) {
+                            velocityTracker.addMovement(event);
+                        }
+                        float deltaX = event.getRawX() - initialX;
+                        if (!isSwiping && Math.abs(deltaX) > swipeThreshold) {
+                            isSwiping = true;
+                        }
+
+                        if (isSwiping) {
+                            v.setTranslationX(initialTranslationX + deltaX);
+                            // Fade out as we swipe
+                            float alpha = 1.0f - (Math.abs(deltaX) / (v.getWidth() / 1.5f));
+                            v.setAlpha(Math.max(0.2f, alpha));
+                        }
+                        return true;
+
+                    case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_CANCEL:
+                        if (!isSwiping) {
+                            if (velocityTracker != null) {
+                                velocityTracker.recycle();
+                                velocityTracker = null;
+                            }
+                            v.performClick();
+                            return false;
+                        }
+
+                        float finalDeltaX = event.getRawX() - initialX;
+                        boolean dismiss = false;
+
+                        if (velocityTracker != null) {
+                            velocityTracker.addMovement(event);
+                            velocityTracker.computeCurrentVelocity(1000, maxVelocity);
+                            float velocityX = velocityTracker.getXVelocity();
+                            if (Math.abs(velocityX) > minVelocity) {
+                                dismiss = true;
+                            }
+                            velocityTracker.recycle();
+                            velocityTracker = null;
+                        }
+
+                        if (Math.abs(finalDeltaX) > v.getWidth() / 3f) {
+                            dismiss = true;
+                        }
+
+                        if (dismiss) {
+                            float targetX = finalDeltaX > 0 ? v.getWidth() : -v.getWidth();
+                            v.animate()
+                                    .translationX(targetX)
+                                    .alpha(0)
+                                    .setDuration(200)
+                                    .withEndAction(() -> dismissNotification(v, parent))
+                                    .start();
+                        } else {
+                            v.animate()
+                                    .translationX(initialTranslationX)
+                                    .alpha(1.0f)
+                                    .setDuration(200)
+                                    .start();
+                        }
+                        isSwiping = false;
+                        return true;
+                }
+                return false;
+            }
+        });
+    }
+
+    private void dismissNotification(View view, ViewGroup parent) {
+        if (currentNotificationView == view) {
+            notificationHandler.removeCallbacksAndMessages(null);
+            parent.removeView(view);
+            currentNotificationView = null;
+            isShowingNotification = false;
+            processNextNotification();
+        }
     }
 
     /**

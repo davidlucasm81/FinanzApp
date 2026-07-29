@@ -20,12 +20,12 @@ public class NotificationRepository {
         void onNotificationReceived(Notification notification);
     }
 
-    public ListenerRegistration listenToNotifications(String familyId, OnNotificationReceivedListener listener) {
-        // Listen to notifications created in the last minute to avoid old pop-ups
-        Timestamp oneMinuteAgo = new Timestamp(System.currentTimeMillis() / 1000 - 60, 0);
+    public ListenerRegistration listenToNotifications(String familyId, Timestamp since, OnNotificationReceivedListener listener) {
+        // Use the provided timestamp or default to one minute ago to avoid old pop-ups
+        Timestamp startTime = since != null ? since : new Timestamp(System.currentTimeMillis() / 1000 - 60, 0);
 
         return db.collection(FirestorePaths.getNotificationsPath(familyId))
-                .whereGreaterThan("createdAt", oneMinuteAgo)
+                .whereGreaterThan("createdAt", startTime)
                 .orderBy("createdAt", Query.Direction.DESCENDING)
                 .addSnapshotListener((value, error) -> {
                     if (error != null || value == null) {
