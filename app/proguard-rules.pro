@@ -13,3 +13,15 @@
 -keepattributes Signature
 -keepattributes InnerClasses
 -keepattributes EnclosingMethod
+
+# Rules to suppress warnings for missing classes (often from libraries like Apache POI)
+-dontwarn aQute.bnd.annotation.baseline.BaselineIgnore
+-dontwarn aQute.bnd.annotation.spi.ServiceConsumer
+-dontwarn aQute.bnd.annotation.spi.ServiceProvider
+-dontwarn edu.umd.cs.findbugs.annotations.Nullable
+-dontwarn edu.umd.cs.findbugs.annotations.SuppressFBWarnings
+-dontwarn java.awt.**
+-dontwarn javax.xml.stream.**
+-dontwarn net.sf.saxon.**
+-dontwarn org.apache.batik.**
+-dontwarn org.osgi.framework.**

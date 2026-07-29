@@ -342,19 +342,20 @@
 ### Reglas de seguridad / índices de Firestore
 - [x] No se necesitan reglas de seguridad nuevas (el cálculo sigue siendo 100% en cliente sobre datos ya leídos), pero revisar en la Fase 11 (Observabilidad) si los rangos de fecha más amplios que ahora permite el filtro (Década, Total) necesitan un índice compuesto adicional en las consultas de `TransactionRepository`.
 
-## Fase 16 — Monetización: anuncios no intrusivos (AdMob) y suscripción Premium sin anuncios
-> Ver diseño completo en `AGENTS.md`, sección 4, "Monetización: anuncios y suscripción Premium (Fase 16)". Objetivo explícito del propietario: monetizar la app con anuncios que **no bloqueen el uso** (nada de intersticiales a pantalla completa que interrumpan al usuario), mostrados como una caja/banner en puntos concretos de la app, y ofrecer una suscripción Premium que los elimine por completo. Coherente con la decisión de 2026-07-21 de no vincular ningún medio de facturación a Firebase/Google Cloud (ver sección 10 de `AGENTS.md`): tanto AdMob como Google Play Billing son compatibles con esa restricción — ver nota de la decisión tomada el 2026-07-29 en `AGENTS.md`.
+## Fase 16 — Monetización: anuncios y suscripción Premium segura
+> Ver diseño completo en `AGENTS.md`, sección 4, "Monetización: anuncios y suscripción Premium (Fase 16)". Objetivo explícito del propietario: monetizar la app con anuncios no intrusivos (caja/banner) y ofrecer una suscripción Premium que los elimine. La seguridad se garantiza mediante una combinación de **RevenueCat** (verificación gratuita en servidor), una **Whitelist** en Firestore (para acceso gratuito de familiares/desarrolladores) y **verificación RSA local** de firmas de Google Play.
 
 ### Decisiones previas a la implementación
-- [ ] (Acción manual del humano) Crear la cuenta de AdMob vinculada al mismo proyecto de Google usado para Firebase, registrar la app Android y obtener el **App ID de AdMob** (`ca-app-pub-...~...`).
-- [ ] (Acción manual del humano) Crear en AdMob los bloques de anuncio (*ad units*) de tipo **banner** necesarios (uno para Dashboard/Estadísticas, otro para la tarjeta insertada en el listado de Movimientos, o el mismo reutilizado — decidir al implementar).
-- [ ] (Acción manual del humano) Configurar en Google Play Console un producto de **suscripción** (p. ej. `premium_mensual`, `premium_anual`) dentro de la app ya publicada (requiere la app subida al menos como interna/cerrada).
+- [ ] (Acción manual del humano) Crear la cuenta de AdMob y configurar bloques de banner.
+- [ ] (Acción manual del humano) Crear cuenta en **RevenueCat** (Plan gratuito, no requiere tarjeta) y configurar el proyecto Android.
+- [ ] (Acción manual del humano) Crear la colección `premium_whitelist` en la consola de Firestore y añadir los emails autorizados como IDs de documentos.
+- [ ] (Acción manual del humano) Configurar productos de suscripción en Google Play Console y RevenueCat.
 - [ ] Añadir el App ID de AdMob y los IDs de los bloques de anuncio como recursos en `strings.xml`/`BuildConfig` (nunca hardcodeados en `.java`), siguiendo el mismo criterio de gestión de credenciales de la sección 6 de `AGENTS.md`. Usar los **ID de prueba oficiales de Google** durante todo el desarrollo y sustituirlos por los reales solo en la build de release.
 
 ### Modelo de datos y dependencias
-- [ ] Añadir a `users/{uid}` los campos `isPremium` (boolean, `false` por defecto), `premiumProductId`, `premiumPurchaseToken` y `premiumUpdatedAt`, tal como se documenta en la sección 4 de `AGENTS.md`.
-- [ ] Añadir dependencias: `com.google.android.gms:play-services-ads` (AdMob), `com.android.billingclient:billing` (Google Play Billing Library), `com.google.android.ump:user-messaging-platform` (SDK de consentimiento GDPR).
-- [ ] Nuevo paquete `data/monetization/`: `AdsRepository` (inicialización del SDK de AdMob, gestión del consentimiento UMP, exposición de si los anuncios deben cargarse) y `BillingRepository` (conexión con `BillingClient`, consulta y compra de la suscripción, sincronización de `isPremium` en Firestore).
+- [ ] Añadir a `users/{uid}` los campos `isPremium` (boolean), `premiumProductId`, `premiumPurchaseToken` y `premiumUpdatedAt`.
+- [ ] Añadir dependencias: `com.revenuecat.purchases:purchases` (RevenueCat), `com.google.android.gms:play-services-ads` (AdMob), `com.google.android.ump:user-messaging-platform` (GDPR).
+- [ ] Nuevo paquete `data/monetization/`: `AdsRepository` (AdMob) y `BillingRepository` (RevenueCat + Whitelist + RSA Local).
 - [ ] Nuevo POJO `PremiumStatus` (o ampliar `User`) que exponga `isPremium` como `LiveData` observable desde cualquier `ViewModel`/`Fragment` que deba decidir si mostrar u ocultar anuncios.
 
 ### Consentimiento (GDPR / UMP)
@@ -369,20 +370,21 @@
 - [ ] **Nunca** implementar anuncios intersticiales, de recompensa forzada, "app open ads" que bloqueen el arranque, ni cualquier formato que impida usar la app hasta completarse — requisito explícito del propietario para esta fase.
 - [ ] Si la carga de un anuncio falla (sin conexión, sin relleno del inventario de AdMob, etc.), ocultar el espacio reservado en vez de mostrar un hueco en blanco o un error visible al usuario.
 
-### Suscripción Premium (Google Play Billing)
-- [ ] `BillingRepository`: conectar con `BillingClient`, consultar los productos de suscripción disponibles (`queryProductDetailsAsync`) y lanzar el flujo de compra (`launchBillingFlow`) desde la nueva pantalla de Premium.
-- [ ] Al completarse una compra (`PurchasesUpdatedListener` + `acknowledgePurchase`), actualizar `users/{uid}.isPremium = true` junto con `premiumProductId`/`premiumPurchaseToken`/`premiumUpdatedAt` en Firestore.
-- [ ] Al abrir la app, `BillingRepository` consulta `queryPurchasesAsync` para detectar renovaciones, cancelaciones o expiraciones y mantener `isPremium` sincronizado — es la única fuente de verdad posible sin backend (ver limitación aceptada más abajo).
+### Suscripción Premium segura y Whitelist
+- [ ] **Verificación de Whitelist**: Implementar en `BillingRepository` la consulta a `premium_whitelist/{email}` para activar Premium automáticamente a familiares y desarrolladores.
+- [ ] **Integración con RevenueCat**: Configurar RevenueCat para gestionar las compras reales y verificar los recibos de forma segura en servidor.
+- [ ] **Verificación RSA Local**: Implementar `Security.verifyPurchase()` usando la clave pública de Play Console como capa de seguridad offline.
+- [ ] `BillingRepository`: sincronizar el estado `isPremium` en Firestore solo si la verificación (Whitelist, RevenueCat o RSA) es exitosa.
 - [ ] Botón "Restaurar compra" en la pantalla de Premium/Ajustes, para el caso de reinstalación o cambio de dispositivo con la misma cuenta de Google.
 - [ ] Nueva pantalla `PaywallFragment` (`ui/monetization/`): explica los beneficios de Premium (sin anuncios; dejar el resto de beneficios como texto configurable por si en el futuro se añaden más), precio obtenido dinámicamente de `ProductDetails` (nunca hardcodeado, varía por país/impuestos), botón de suscripción y botón de restaurar compra. Accesible desde Ajustes y desde un botón/enlace junto a cada anuncio banner ("Quitar anuncios").
 - [ ] En Ajustes, mostrar el estado actual ("Cuenta gratuita" / "Premium activo desde [fecha]") y, si es Premium, un enlace que abra la gestión de la suscripción en Google Play (`https://play.google.com/store/account/subscriptions?sku=...&package=...`).
 
 ### Reglas de seguridad de Firestore
-- [ ] `users/{uid}.isPremium`, `premiumProductId`, `premiumPurchaseToken`, `premiumUpdatedAt`: lectura restringida al propio usuario (mismo patrón ya existente para el resto de `users/{uid}`); escritura también restringida al propio usuario, ya que no hay backend que pueda verificar la compra de forma independiente — ver limitación aceptada abajo.
-- [ ] Probar con el Firebase Emulator Suite que un usuario no puede leer ni modificar el campo `isPremium` de otro `uid`.
+- [ ] `users/{uid}.isPremium`: añadir regla que solo permita poner el campo a `true` si el email del usuario existe en la colección `premium_whitelist` (o mediante verificación externa en el futuro).
+- [ ] `premium_whitelist`: restringir lectura solo al usuario autenticado (para verificar su propio email) y escritura solo a administradores (manual desde consola).
 
-### Limitación aceptada (documentar en `AGENTS.md`, igual que el resto de excepciones deliberadas del proyecto)
-- [ ] Al no poder usar Cloud Functions (decisión de 2026-07-21, ver sección 10 de `AGENTS.md`), no hay verificación de la compra en servidor contra la Google Play Developer API: la fuente de verdad de `isPremium` es el propio dispositivo (`BillingClient.queryPurchasesAsync`) escribiendo directamente en Firestore. Un usuario técnicamente capaz podría escribir `isPremium: true` manualmente en la consola de Firestore sin haber pagado. Se documenta como riesgo aceptado y coherente con el resto de simplificaciones "sin backend" ya asumidas en el proyecto (movimientos recurrentes, presupuestos), dado que el impacto de negocio de este abuso es bajo (una app familiar, no un producto con miles de usuarios anónimos). Revisar en la Fase 13 (deuda técnica) si conviene abordar la verificación en servidor si el uso real de la app crece.
+### Limitación de "No verificación en servidor" (RESUELTA)
+- [ ] Al usar RevenueCat, la limitación anterior se resuelve: RevenueCat verifica los recibos con Google de forma gratuita y sin servidor propio. La app ahora es inmune a cambios manuales en Firestore para activar el Premium si no hay un recibo o una entrada en la whitelist.
 
 ### Pruebas
 - [ ] Probar el flujo completo con las cuentas de prueba de Google Play (compra de prueba, cancelación, reembolso) antes de publicar: en cada caso, confirmar que `isPremium` se actualiza correctamente al reabrir la app.

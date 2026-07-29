@@ -147,6 +147,7 @@
     <string name="label_to_account">To account</string>
     <string name="btn_transfer">Perform transfer</string>
     <string name="error_same_accounts">Accounts must be different</string>
+    <string name="no_accounts_available">Not enough accounts available</string>
 
     <!-- UI Components -->
     <string name="label_net_position_initial">Initial net position</string>

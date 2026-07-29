@@ -147,6 +147,7 @@
     <string name="label_to_account">Hacia la cuenta</string>
     <string name="btn_transfer">Realizar traspaso</string>
     <string name="error_same_accounts">Las cuentas deben ser distintas</string>
+    <string name="no_accounts_available">No hay cuentas suficientes</string>
 
     <!-- UI Components -->
     <string name="label_net_position_initial">Posición neta inicial</string>

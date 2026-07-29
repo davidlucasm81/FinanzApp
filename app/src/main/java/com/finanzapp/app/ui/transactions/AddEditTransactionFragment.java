@@ -295,13 +295,22 @@ public class AddEditTransactionFragment extends Fragment {
     }
 
     private void saveTransaction() {
+        tilAmount.setError(null);
         String amountStr = tilAmount.getEditText() != null ? tilAmount.getEditText().getText().toString().trim() : "";
         if (amountStr.isEmpty()) {
             tilAmount.setError(getString(R.string.error_amount));
             return;
         }
-        // Replace comma with dot for parsing and ensure positive amount
-        double amount = Math.abs(Double.parseDouble(amountStr.replace(',', '.')));
+
+        double amount;
+        try {
+            // Replace comma with dot for parsing and ensure positive amount
+            amount = Math.abs(Double.parseDouble(amountStr.replace(',', '.')));
+        } catch (NumberFormatException e) {
+            tilAmount.setError(getString(R.string.error_invalid_format));
+            return;
+        }
+
         String description = tilDescription.getEditText() != null ? tilDescription.getEditText().getText().toString().trim() : "";
         
         if (spinnerAccount.getSelectedItem() == null) {

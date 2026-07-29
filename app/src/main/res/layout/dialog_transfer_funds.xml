@@ -1,102 +1,108 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="24dp">
-
-    <TextView
-        android:id="@+id/tv_dialog_title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/dialog_transfer_funds_title"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:textColor="?attr/colorOnSurface"
-        android:layout_marginBottom="24dp"/>
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/label_from_account"
-        android:textSize="14sp"
-        android:textColor="?attr/android:textColorSecondary"
-        android:layout_marginBottom="4dp"/>
-
-    <com.google.android.material.card.MaterialCardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        app:cardCornerRadius="8dp"
-        app:cardElevation="0dp"
-        app:cardBackgroundColor="?attr/colorSurface"
-        app:strokeWidth="1dp"
-        app:strokeColor="?attr/android:textColorSecondary">
-        <Spinner
-            android:id="@+id/spinner_from_account"
-            android:layout_width="match_parent"
-            android:layout_height="48dp" />
-    </com.google.android.material.card.MaterialCardView>
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/label_to_account"
-        android:textSize="14sp"
-        android:textColor="?attr/android:textColorSecondary"
-        android:layout_marginBottom="4dp"/>
-
-    <com.google.android.material.card.MaterialCardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        app:cardCornerRadius="8dp"
-        app:cardElevation="0dp"
-        app:cardBackgroundColor="?attr/colorSurface"
-        app:strokeWidth="1dp"
-        app:strokeColor="?attr/android:textColorSecondary">
-        <Spinner
-            android:id="@+id/spinner_to_account"
-            android:layout_width="match_parent"
-            android:layout_height="48dp" />
-    </com.google.android.material.card.MaterialCardView>
-
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/til_amount"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="@string/label_amount"
-        android:layout_marginBottom="24dp"
-        app:startIconDrawable="@drawable/ic_transfer">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="numberDecimal"
-            android:importantForAutofill="no" />
-    </com.google.android.material.textfield.TextInputLayout>
+    android:layout_height="wrap_content">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="end">
+        android:orientation="vertical"
+        android:padding="24dp">
 
-        <Button
-            android:id="@+id/btn_cancel"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
+        <TextView
+            android:id="@+id/tv_dialog_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/cancel_button"
-            android:layout_marginEnd="8dp"/>
+            android:text="@string/dialog_transfer_funds_title"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnSurface"
+            android:layout_marginBottom="24dp"/>
 
-        <Button
-            android:id="@+id/btn_transfer"
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/btn_transfer"/>
+            android:text="@string/label_from_account"
+            android:textSize="14sp"
+            android:textColor="?attr/android:textColorSecondary"
+            android:layout_marginBottom="4dp"/>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="?attr/colorSurface"
+            app:strokeWidth="1dp"
+            app:strokeColor="?attr/android:textColorSecondary">
+            <Spinner
+                android:id="@+id/spinner_from_account"
+                android:layout_width="match_parent"
+                android:layout_height="48dp" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/label_to_account"
+            android:textSize="14sp"
+            android:textColor="?attr/android:textColorSecondary"
+            android:layout_marginBottom="4dp"/>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="?attr/colorSurface"
+            app:strokeWidth="1dp"
+            app:strokeColor="?attr/android:textColorSecondary">
+            <Spinner
+                android:id="@+id/spinner_to_account"
+                android:layout_width="match_parent"
+                android:layout_height="48dp" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/til_amount"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/label_amount"
+            android:layout_marginBottom="24dp"
+            app:startIconDrawable="@drawable/ic_transfer">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="numberDecimal"
+                android:importantForAutofill="no" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="end">
+
+            <Button
+                android:id="@+id/btn_cancel"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/cancel_button"
+                android:layout_marginEnd="8dp"/>
+
+            <Button
+                android:id="@+id/btn_transfer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/btn_transfer"/>
+        </LinearLayout>
+
     </LinearLayout>
+</ScrollView>
 
-</LinearLayout>

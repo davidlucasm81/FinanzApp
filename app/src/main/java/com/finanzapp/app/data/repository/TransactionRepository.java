@@ -158,6 +158,9 @@ public class TransactionRepository {
                                 "transactionCount", FieldValue.increment(1));
                     }
 
+                    // Update the transaction document.
+                    // Important: newTransaction must have all fields correctly set from the UI,
+                    // including the possibly updated 'createdBy' field.
                     firestoreTransaction.set(transactionRef, newTransaction);
                     return null;
                 }).addOnSuccessListener(result -> callback.onResult(new Result.Success<>(true)))
