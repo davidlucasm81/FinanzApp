@@ -451,7 +451,35 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/stats_by_member"
+                android:text="@string/stats_expense_by_member"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnSurface"
+                android:layout_marginBottom="8dp" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:cardBackgroundColor="?attr/colorSurface">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvMemberExpenses"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"
+                    android:padding="16dp"
+                    tools:listitem="@layout/item_statistics_legend"
+                    tools:itemCount="3" />
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Income by Member -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/stats_income_by_member"
                 android:textSize="16sp"
                 android:textStyle="bold"
                 android:textColor="?attr/colorOnSurface"
@@ -466,7 +494,7 @@
                 app:cardBackgroundColor="?attr/colorSurface">
 
                 <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/rvMemberExpenses"
+                    android:id="@+id/rvMemberIncome"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:nestedScrollingEnabled="false"

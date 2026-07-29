@@ -93,6 +93,7 @@ public class TransactionListFragment extends Fragment {
     private String familyName = "";
     private List<Transaction> currentTransactions = new ArrayList<>();
 
+    private boolean isInitializing = false;
     private boolean isPreselectionApplied = false;
     private String preselectedCategoryId = null;
     private String preselectedMethod = null;
@@ -116,6 +117,8 @@ public class TransactionListFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+
+        isInitializing = true;
 
         if (getArguments() != null) {
             preselectedCategoryId = getArguments().getString("preselectedCategoryId");
@@ -194,6 +197,9 @@ public class TransactionListFragment extends Fragment {
 
         restoreFiltersFromViewModel();
         resolveFamilyId();
+
+        isInitializing = false;
+        updateTransactions();
     }
 
     private void restoreFiltersFromViewModel() {
@@ -252,7 +258,7 @@ public class TransactionListFragment extends Fragment {
                 if (position == 0) filterType = null;
                 else if (position == 1) filterType = "expense";
                 else filterType = "income";
-                updateTransactions();
+                if (!isInitializing) updateTransactions();
             }
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
@@ -286,7 +292,7 @@ public class TransactionListFragment extends Fragment {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 filterMethod = position == 0 ? null : paymentMethodValues[position - 1];
-                updateTransactions();
+                if (!isInitializing) updateTransactions();
             }
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
@@ -434,7 +440,7 @@ public class TransactionListFragment extends Fragment {
                             filterCategoryId = allCategories.get(position - 1).getId();
                             filterCategoryIds = null;
                         }
-                        updateTransactions();
+                        if (!isInitializing) updateTransactions();
                     }
                     @Override
                     public void onNothingSelected(AdapterView<?> parent) {}
@@ -484,7 +490,7 @@ public class TransactionListFragment extends Fragment {
                     @Override
                     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                         filterAccountId = position == 0 ? null : allAccounts.get(position - 1).getId();
-                        updateTransactions();
+                        if (!isInitializing) updateTransactions();
                     }
                     @Override
                     public void onNothingSelected(AdapterView<?> parent) {}
@@ -494,7 +500,7 @@ public class TransactionListFragment extends Fragment {
 
                 // Puede que ya hubiera movimientos pintados (sin filtrar por archivadas) antes de
                 // que se resolviera esta llamada; recalculamos para aplicar el filtro correctamente.
-                updateTransactions();
+                if (!isInitializing) updateTransactions();
             }
         });
 
@@ -513,7 +519,7 @@ public class TransactionListFragment extends Fragment {
             }
         });
 
-        updateTransactions();
+        if (!isInitializing) updateTransactions();
 
         viewModel.getOperationResult().observe(getViewLifecycleOwner(), result -> {
             if (result instanceof Result.Success) {
@@ -563,12 +569,12 @@ public class TransactionListFragment extends Fragment {
 
         if (preselectedType != null) {
             filterType = preselectedType;
-            if ("income".equals(preselectedType)) spinnerFilterType.setSelection(1);
-            else if ("expense".equals(preselectedType)) spinnerFilterType.setSelection(2);
+            if ("expense".equals(preselectedType)) spinnerFilterType.setSelection(1);
+            else if ("income".equals(preselectedType)) spinnerFilterType.setSelection(2);
         }
 
         isPreselectionApplied = true;
-        updateTransactions();
+        if (!isInitializing) updateTransactions();
     }
 
     private void updateTransactions() {

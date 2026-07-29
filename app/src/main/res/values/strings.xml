@@ -84,7 +84,9 @@
     <string name="stats_savings_rate">Tasa de ahorro</string>
     <string name="stats_payment_methods">Desglose por método de pago</string>
     <string name="stats_top_expenses">Mayores gastos del periodo</string>
-    <string name="stats_by_member">Gasto por miembro</string>
+    <string name="stats_expense_by_member">Gasto por miembro</string>
+    <string name="stats_income_by_member">Ingreso por miembro</string>
+    <string name="stats_by_member">Gasto e ingreso por miembro</string>
     <string name="savings_rate_desc">% ahorrado respecto a los ingresos</string>
 
     <!-- Statistics -->

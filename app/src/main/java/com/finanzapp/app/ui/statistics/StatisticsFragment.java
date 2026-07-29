@@ -23,7 +23,7 @@ import com.finanzapp.app.R;
 import com.finanzapp.app.data.model.Category;
 import com.finanzapp.app.data.model.DashboardCategorySummary;
 import com.finanzapp.app.data.model.Member;
-import com.finanzapp.app.data.model.MemberExpenseSummary;
+import com.finanzapp.app.data.model.MemberSummary;
 import com.finanzapp.app.data.model.PaymentMethodSummary;
 import com.finanzapp.app.data.model.Transaction;
 import com.finanzapp.app.ui.transactions.TransactionAdapter;
@@ -73,7 +73,8 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
     private String currentCurrencyCode = "EUR";
     private LegendAdapter legendAdapter;
     private PaymentMethodLegendAdapter methodLegendAdapter;
-    private MemberExpenseLegendAdapter memberLegendAdapter;
+    private MemberSummaryAdapter memberExpenseLegendAdapter;
+    private MemberSummaryAdapter memberIncomeLegendAdapter;
     private TransactionAdapter topExpensesAdapter;
     private final Map<String, String> methodLabels = new HashMap<>();
     private final Map<String, String> categoryNames = new HashMap<>();
@@ -120,9 +121,13 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         binding.rvPaymentMethodLegend.setLayoutManager(new LinearLayoutManager(requireContext()));
         binding.rvPaymentMethodLegend.setAdapter(methodLegendAdapter);
 
-        memberLegendAdapter = new MemberExpenseLegendAdapter();
+        memberExpenseLegendAdapter = new MemberSummaryAdapter("expense");
         binding.rvMemberExpenses.setLayoutManager(new LinearLayoutManager(requireContext()));
-        binding.rvMemberExpenses.setAdapter(memberLegendAdapter);
+        binding.rvMemberExpenses.setAdapter(memberExpenseLegendAdapter);
+
+        memberIncomeLegendAdapter = new MemberSummaryAdapter("income");
+        binding.rvMemberIncome.setLayoutManager(new LinearLayoutManager(requireContext()));
+        binding.rvMemberIncome.setAdapter(memberIncomeLegendAdapter);
 
         methodLabels.put("tarjeta", getString(R.string.method_card));
         methodLabels.put("efectivo", getString(R.string.method_cash));
@@ -260,16 +265,25 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         viewModel.getMemberExpenseDistribution().observe(getViewLifecycleOwner(), distribution -> {
             if (distribution != null) {
                 memberNames.clear();
-                for (MemberExpenseSummary s : distribution) {
+                for (MemberSummary s : distribution) {
                     memberNames.put(s.getUid(), s.getDisplayName());
                 }
-                updateMemberChart(distribution);
+                updateMemberExpenseChart(distribution);
                 
                 // Refresh top expenses adapter to show correct names
                 List<Transaction> current = viewModel.getTopExpenses().getValue();
                 if (current != null) {
                     topExpensesAdapter.notifyDataSetChanged();
                 }
+            }
+        });
+
+        viewModel.getMemberIncomeDistribution().observe(getViewLifecycleOwner(), distribution -> {
+            if (distribution != null) {
+                for (MemberSummary s : distribution) {
+                    memberNames.put(s.getUid(), s.getDisplayName());
+                }
+                updateMemberIncomeChart(distribution);
             }
         });
 
@@ -531,14 +545,24 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         }
     }
 
-    private void updateMemberChart(List<MemberExpenseSummary> data) {
+    private void updateMemberExpenseChart(List<MemberSummary> data) {
         if (data == null || data.isEmpty()) {
             binding.rvMemberExpenses.setVisibility(View.GONE);
             return;
         }
 
         binding.rvMemberExpenses.setVisibility(View.VISIBLE);
-        memberLegendAdapter.updateData(data);
+        memberExpenseLegendAdapter.updateData(data);
+    }
+
+    private void updateMemberIncomeChart(List<MemberSummary> data) {
+        if (data == null || data.isEmpty()) {
+            binding.rvMemberIncome.setVisibility(View.GONE);
+            return;
+        }
+
+        binding.rvMemberIncome.setVisibility(View.VISIBLE);
+        memberIncomeLegendAdapter.updateData(data);
     }
 
     @NonNull
@@ -750,10 +774,15 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         }
     }
 
-    private class MemberExpenseLegendAdapter extends RecyclerView.Adapter<MemberExpenseLegendAdapter.ViewHolder> {
-        private List<MemberExpenseSummary> items = new ArrayList<>();
+    private class MemberSummaryAdapter extends RecyclerView.Adapter<MemberSummaryAdapter.ViewHolder> {
+        private List<MemberSummary> items = new ArrayList<>();
+        private final String transactionType;
 
-        public void updateData(List<MemberExpenseSummary> newItems) {
+        public MemberSummaryAdapter(String transactionType) {
+            this.transactionType = transactionType;
+        }
+
+        public void updateData(List<MemberSummary> newItems) {
             this.items = new ArrayList<>(newItems);
             notifyDataSetChanged();
         }
@@ -767,7 +796,7 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
 
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-            MemberExpenseSummary item = items.get(position);
+            MemberSummary item = items.get(position);
             holder.tvName.setText(item.getDisplayName());
             holder.tvAmount.setText(formatCurrency(item.getAmount(), currentCurrencyCode, 2));
             holder.tvPercentage.setText(String.format(Locale.getDefault(), "%.1f%%", item.getPercentage()));
@@ -778,7 +807,7 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
             holder.vColor.setBackgroundTintList(android.content.res.ColorStateList.valueOf(color));
             holder.progressBar.setIndicatorColor(color);
 
-            holder.itemView.setOnClickListener(v -> navigateToTransactions(null, null, null, item.getUid(), null, null));
+            holder.itemView.setOnClickListener(v -> navigateToTransactions(null, null, transactionType, item.getUid(), null, null));
         }
 
         @Override

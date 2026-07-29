@@ -16,7 +16,7 @@ import com.finanzapp.app.data.model.Category;
 import com.finanzapp.app.data.model.DashboardCategorySummary;
 import com.finanzapp.app.data.model.Family;
 import com.finanzapp.app.data.model.Member;
-import com.finanzapp.app.data.model.MemberExpenseSummary;
+import com.finanzapp.app.data.model.MemberSummary;
 import com.finanzapp.app.data.model.PaymentMethodSummary;
 import com.finanzapp.app.data.model.Transaction;
 import com.finanzapp.app.data.model.User;
@@ -72,7 +72,8 @@ public class StatisticsViewModel extends ViewModel {
     private final MutableLiveData<List<DashboardCategorySummary>> categoryDistribution = new MutableLiveData<>();
     private final MutableLiveData<List<PaymentMethodSummary>> paymentMethodDistribution = new MutableLiveData<>();
     private final MutableLiveData<List<Transaction>> topExpenses = new MutableLiveData<>();
-    private final MutableLiveData<List<MemberExpenseSummary>> memberExpenseDistribution = new MutableLiveData<>();
+    private final MutableLiveData<List<MemberSummary>> memberExpenseDistribution = new MutableLiveData<>();
+    private final MutableLiveData<List<MemberSummary>> memberIncomeDistribution = new MutableLiveData<>();
     private final MutableLiveData<List<Category>> allCategories = new MutableLiveData<>();
 
     private final MediatorLiveData<Void> statsMediator = new MediatorLiveData<>();
@@ -198,7 +199,8 @@ public class StatisticsViewModel extends ViewModel {
     public LiveData<Double> getSavingsRate() { return savingsRate; }
     public LiveData<List<PaymentMethodSummary>> getPaymentMethodDistribution() { return paymentMethodDistribution; }
     public LiveData<List<Transaction>> getTopExpenses() { return topExpenses; }
-    public LiveData<List<MemberExpenseSummary>> getMemberExpenseDistribution() { return memberExpenseDistribution; }
+    public LiveData<List<MemberSummary>> getMemberExpenseDistribution() { return memberExpenseDistribution; }
+    public LiveData<List<MemberSummary>> getMemberIncomeDistribution() { return memberIncomeDistribution; }
 
     public void setDateRange(Long start, Long end) {
         if (start == null || end == null) {
@@ -260,6 +262,7 @@ public class StatisticsViewModel extends ViewModel {
         Map<String, Double> currentCategoryTotals = new HashMap<>();
         Map<String, Double> currentMethodTotals = new HashMap<>();
         Map<String, Double> currentMemberExpenseTotals = new HashMap<>();
+        Map<String, Double> currentMemberIncomeTotals = new HashMap<>();
         List<Transaction> currentExpenses = new ArrayList<>();
 
         for (Transaction t : activeTransactions) {
@@ -268,6 +271,12 @@ public class StatisticsViewModel extends ViewModel {
             if (!date.isBefore(rangeStart) && !date.isAfter(rangeEnd)) {
                 if ("income".equals(t.getType())) {
                     currentIncome += t.getAmount();
+
+                    // Member income distribution
+                    String creator = t.getCreatedBy();
+                    if (creator != null) {
+                        currentMemberIncomeTotals.put(creator, currentMemberIncomeTotals.getOrDefault(creator, 0.0) + t.getAmount());
+                    }
                 } else {
                     currentExpense += t.getAmount();
                     currentExpenses.add(t);
@@ -389,18 +398,27 @@ public class StatisticsViewModel extends ViewModel {
         int limit = Math.min(5, currentExpenses.size());
         topExpenses.postValue(new ArrayList<>(currentExpenses.subList(0, limit)));
 
-        // Member expense distribution
-        List<MemberExpenseSummary> memberDistribution = new ArrayList<>();
+        // Member distribution (Expense and Income)
         Map<String, String> memberNameMap = new HashMap<>();
         for (Member m : latestMembers) memberNameMap.put(m.getUid(), m.getDisplayName());
 
+        List<MemberSummary> expenseDistribution = new ArrayList<>();
         for (Map.Entry<String, Double> entry : currentMemberExpenseTotals.entrySet()) {
             String name = memberNameMap.getOrDefault(entry.getKey(), "Usuario");
             double percentage = currentExpense > 0 ? (entry.getValue() / currentExpense) * 100 : 0;
-            memberDistribution.add(new MemberExpenseSummary(entry.getKey(), name, entry.getValue(), percentage));
+            expenseDistribution.add(new MemberSummary(entry.getKey(), name, entry.getValue(), percentage));
         }
-        memberDistribution.sort((s1, s2) -> Double.compare(s2.getAmount(), s1.getAmount()));
-        memberExpenseDistribution.postValue(memberDistribution);
+        expenseDistribution.sort((s1, s2) -> Double.compare(s2.getAmount(), s1.getAmount()));
+        memberExpenseDistribution.postValue(expenseDistribution);
+
+        List<MemberSummary> incomeDistribution = new ArrayList<>();
+        for (Map.Entry<String, Double> entry : currentMemberIncomeTotals.entrySet()) {
+            String name = memberNameMap.getOrDefault(entry.getKey(), "Usuario");
+            double percentage = currentIncome > 0 ? (entry.getValue() / currentIncome) * 100 : 0;
+            incomeDistribution.add(new MemberSummary(entry.getKey(), name, entry.getValue(), percentage));
+        }
+        incomeDistribution.sort((s1, s2) -> Double.compare(s2.getAmount(), s1.getAmount()));
+        memberIncomeDistribution.postValue(incomeDistribution);
 
         dataLoaded.postValue(new Result.Success<>(true));
     }

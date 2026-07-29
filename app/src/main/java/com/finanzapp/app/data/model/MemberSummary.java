@@ -1,12 +1,12 @@
 package com.finanzapp.app.data.model;
 
-public class MemberExpenseSummary {
+public class MemberSummary {
     private final String uid;
     private final String displayName;
     private final double amount;
     private final double percentage;
 
-    public MemberExpenseSummary(String uid, String displayName, double amount, double percentage) {
+    public MemberSummary(String uid, String displayName, double amount, double percentage) {
         this.uid = uid;
         this.displayName = displayName;
         this.amount = amount;

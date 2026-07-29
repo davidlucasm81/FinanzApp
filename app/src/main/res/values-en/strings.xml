@@ -84,7 +84,9 @@
     <string name="stats_savings_rate">Savings rate</string>
     <string name="stats_payment_methods">Breakdown by payment method</string>
     <string name="stats_top_expenses">Top expenses of the period</string>
-    <string name="stats_by_member">Expense by member</string>
+    <string name="stats_expense_by_member">Expense by member</string>
+    <string name="stats_income_by_member">Income by member</string>
+    <string name="stats_by_member">Expense and income by member</string>
     <string name="savings_rate_desc">% saved relative to income</string>
 
     <!-- Statistics -->
