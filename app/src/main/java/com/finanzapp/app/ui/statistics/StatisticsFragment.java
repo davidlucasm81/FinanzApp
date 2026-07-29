@@ -14,7 +14,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.util.Pair;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.recyclerview.widget.DiffUtil;
+import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -22,19 +22,18 @@ import com.finanzapp.app.FinanzAppApplication;
 import com.finanzapp.app.R;
 import com.finanzapp.app.data.model.Category;
 import com.finanzapp.app.data.model.DashboardCategorySummary;
-import com.finanzapp.app.data.model.Member;
 import com.finanzapp.app.data.model.MemberSummary;
 import com.finanzapp.app.data.model.PaymentMethodSummary;
 import com.finanzapp.app.data.model.Transaction;
-import com.finanzapp.app.ui.transactions.TransactionAdapter;
-import com.finanzapp.app.data.model.statistics.MonthlySummary;
+import com.finanzapp.app.data.model.statistics.Granularity;
+import com.finanzapp.app.data.model.statistics.PeriodSummary;
 import com.finanzapp.app.databinding.FragmentStatisticsBinding;
+import com.finanzapp.app.ui.transactions.TransactionAdapter;
 import com.finanzapp.app.util.ChartUtils;
+import com.finanzapp.app.util.Result;
 import com.finanzapp.app.viewmodel.StatisticsViewModel;
 import com.finanzapp.app.viewmodel.ViewModelFactory;
 import com.github.mikephil.charting.charts.CombinedChart;
-import com.github.mikephil.charting.charts.HorizontalBarChart;
-import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.BarDataSet;
 import com.github.mikephil.charting.data.BarEntry;
@@ -48,23 +47,14 @@ import com.github.mikephil.charting.formatter.PercentFormatter;
 import com.github.mikephil.charting.highlight.Highlight;
 import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
 import com.github.mikephil.charting.utils.ColorTemplate;
-import com.google.android.material.datepicker.MaterialDatePicker;
 
 import java.text.NumberFormat;
-import java.text.SimpleDateFormat;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Currency;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-
-import androidx.navigation.Navigation;
 
 public class StatisticsFragment extends Fragment implements OnChartValueSelectedListener {
 
@@ -82,7 +72,7 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
     private final Map<String, String> accountNames = new HashMap<>();
     private final Map<String, String> memberNames = new HashMap<>();
 
-    private List<MonthlySummary> monthlyDataList = new ArrayList<>();
+    private List<PeriodSummary> periodDataList = new ArrayList<>();
 
     @Nullable
     @Override
@@ -107,6 +97,7 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         setupRecyclerView();
         setupCharts();
         setupClickListeners();
+        setupGranularitySelector();
         setupObservers();
 
         viewModel.init();
@@ -141,10 +132,10 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
             @Override
             public void onTransactionClick(Transaction t) {
                 Bundle args = new Bundle();
-                com.finanzapp.app.util.Result<com.finanzapp.app.data.model.User> userResult = viewModel.getUserData().getValue();
+                Result<com.finanzapp.app.data.model.User> userResult = viewModel.getUserData().getValue();
                 String familyId = null;
-                if (userResult instanceof com.finanzapp.app.util.Result.Success) {
-                    familyId = ((com.finanzapp.app.util.Result.Success<com.finanzapp.app.data.model.User>) userResult).getData().getFamilyId();
+                if (userResult instanceof Result.Success) {
+                    familyId = ((Result.Success<com.finanzapp.app.data.model.User>) userResult).getData().getFamilyId();
                 }
                 args.putString("familyId", familyId);
                 args.putSerializable("transaction", t);
@@ -179,31 +170,28 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
     }
 
     private void setupClickListeners() {
-        binding.cvDateRange.setOnClickListener(v -> showDateRangePicker());
-        binding.btnClearDateRange.setOnClickListener(v -> viewModel.setDateRange(null, null));
     }
 
-    private void showDateRangePicker() {
-        MaterialDatePicker<Pair<Long, Long>> picker = MaterialDatePicker.Builder.dateRangePicker()
-                .setTitleText(R.string.date_filter_select_period)
-                .setSelection(viewModel.getDateRange().getValue())
-                .build();
-
-        picker.addOnPositiveButtonClickListener(selection -> {
-            if (selection != null) {
-                viewModel.setDateRange(selection.first, selection.second);
-            }
+    private void setupGranularitySelector() {
+        binding.cgGranularity.setOnCheckedChangeListener((group, checkedId) -> {
+            Granularity g = Granularity.MONTH;
+            if (checkedId == R.id.chipDay) g = Granularity.DAY;
+            else if (checkedId == R.id.chipMonth) g = Granularity.MONTH;
+            else if (checkedId == R.id.chipYear) g = Granularity.YEAR;
+            else if (checkedId == R.id.chipLustrum) g = Granularity.LUSTRUM;
+            else if (checkedId == R.id.chipDecade) g = Granularity.DECADE;
+            else if (checkedId == R.id.chipTotal) g = Granularity.TOTAL;
+            viewModel.setGranularity(g);
         });
-
-        picker.show(getChildFragmentManager(), "DATE_PICKER");
     }
+
 
     private void setupObservers() {
         viewModel.getDataLoaded().observe(getViewLifecycleOwner(), result -> {
-            if (result instanceof com.finanzapp.app.util.Result.Success) {
+            if (result instanceof Result.Success) {
                 binding.progressBar.setVisibility(View.GONE);
                 binding.scrollView.setVisibility(View.VISIBLE);
-            } else if (result instanceof com.finanzapp.app.util.Result.Loading) {
+            } else if (result instanceof Result.Loading) {
                 binding.progressBar.setVisibility(View.VISIBLE);
                 binding.scrollView.setVisibility(View.GONE);
                 binding.llEmptyState.setVisibility(View.GONE);
@@ -211,59 +199,95 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         });
 
         viewModel.getFamilyData().observe(getViewLifecycleOwner(), result -> {
-            if (result instanceof com.finanzapp.app.util.Result.Success) {
-                com.finanzapp.app.data.model.Family family = ((com.finanzapp.app.util.Result.Success<com.finanzapp.app.data.model.Family>) result).getData();
+            if (result instanceof Result.Success) {
+                com.finanzapp.app.data.model.Family family = ((Result.Success<com.finanzapp.app.data.model.Family>) result).getData();
                 currentCurrencyCode = family.getCurrencyCode();
             }
         });
 
-        viewModel.getDateRange().observe(getViewLifecycleOwner(), range -> {
-            if (range == null) {
-                binding.tvDateRange.setText(R.string.date_filter_all);
-                binding.btnClearDateRange.setVisibility(View.GONE);
-            } else {
-                SimpleDateFormat sdf = new SimpleDateFormat("dd MMM", new Locale("es", "ES"));
-                String text = sdf.format(new Date(range.first)) + " - " + sdf.format(new Date(range.second));
-                binding.tvDateRange.setText(text);
-                binding.btnClearDateRange.setVisibility(View.VISIBLE);
+        viewModel.getGranularity().observe(getViewLifecycleOwner(), granularity -> {
+            if (granularity == null) return;
+            int chipId = R.id.chipMonth;
+            switch (granularity) {
+                case DAY: chipId = R.id.chipDay; break;
+                case MONTH: chipId = R.id.chipMonth; break;
+                case YEAR: chipId = R.id.chipYear; break;
+                case LUSTRUM: chipId = R.id.chipLustrum; break;
+                case DECADE: chipId = R.id.chipDecade; break;
+                case TOTAL: chipId = R.id.chipTotal; break;
             }
+            binding.cgGranularity.check(chipId);
         });
 
-        viewModel.getCurrentMonthIncome().observe(getViewLifecycleOwner(), income -> 
-                binding.tvTotalIncome.setText(formatCurrency(income, currentCurrencyCode, 2)));
+        viewModel.getCurrentMonthIncome().observe(getViewLifecycleOwner(), income -> {
+            if (income == null || income == 0) {
+                binding.tvTotalIncome.setText(R.string.no_data_dash);
+            } else {
+                binding.tvTotalIncome.setText(formatCurrency(income, currentCurrencyCode, 2));
+            }
+        });
 
         viewModel.getIncomeVariationPercentage().observe(getViewLifecycleOwner(), variation -> 
             updateVariationIndicator(binding.tvIncomeVariation, binding.ivIncomeVariationIcon, variation, true));
         
-        viewModel.getCurrentMonthExpense().observe(getViewLifecycleOwner(), expense -> 
-                binding.tvTotalExpense.setText(formatCurrency(expense, currentCurrencyCode, 2)));
+        viewModel.getCurrentMonthExpense().observe(getViewLifecycleOwner(), expense -> {
+            if (expense == null || expense == 0) {
+                binding.tvTotalExpense.setText(R.string.no_data_dash);
+            } else {
+                binding.tvTotalExpense.setText(formatCurrency(expense, currentCurrencyCode, 2));
+            }
+        });
 
         viewModel.getVariationPercentage().observe(getViewLifecycleOwner(), variation -> 
             updateVariationIndicator(binding.tvExpenseVariation, binding.ivExpenseVariationIcon, variation, false));
 
-        viewModel.getMonthlyEvolution().observe(getViewLifecycleOwner(), evolution -> {
+        viewModel.getPeriodEvolution().observe(getViewLifecycleOwner(), evolution -> {
             if (evolution == null || evolution.isEmpty()) {
-                binding.scrollView.setVisibility(View.GONE);
-                binding.llEmptyState.setVisibility(View.VISIBLE);
+                binding.monthlyChart.clear();
+                periodDataList = new ArrayList<>();
             } else {
-                binding.llEmptyState.setVisibility(View.GONE);
-                binding.scrollView.setVisibility(View.VISIBLE);
-                monthlyDataList = evolution;
-                updateMonthlyChart(evolution);
+                periodDataList = evolution;
+                updatePeriodChart(evolution);
             }
         });
         
-        viewModel.getCategoryDistribution().observe(getViewLifecycleOwner(), this::updatePieChart);
+        viewModel.getCategoryDistribution().observe(getViewLifecycleOwner(), distribution -> {
+            if (distribution == null || distribution.isEmpty()) {
+                binding.categoryPieChart.clear();
+                legendAdapter.updateData(new ArrayList<>());
+            } else {
+                updatePieChart(distribution);
+            }
+        });
 
         viewModel.getSavingsRate().observe(getViewLifecycleOwner(), this::updateSavingsRate);
-        viewModel.getPaymentMethodDistribution().observe(getViewLifecycleOwner(), this::updatePaymentMethodChart);
+        viewModel.getPaymentMethodDistribution().observe(getViewLifecycleOwner(), distribution -> {
+            if (distribution == null || distribution.isEmpty()) {
+                binding.paymentMethodPieChart.clear();
+                methodLegendAdapter.updateData(new ArrayList<>());
+            } else {
+                updatePaymentMethodChart(distribution);
+            }
+        });
         viewModel.getTopExpenses().observe(getViewLifecycleOwner(), expenses -> {
-            if (expenses != null) {
+            if (expenses == null || expenses.isEmpty()) {
+                topExpensesAdapter.updateTransactions(new ArrayList<>());
+                binding.tvEmptyTopExpenses.setVisibility(View.VISIBLE);
+                binding.rvTopExpenses.setVisibility(View.GONE);
+            } else {
                 topExpensesAdapter.updateTransactions(expenses);
+                binding.tvEmptyTopExpenses.setVisibility(View.GONE);
+                binding.rvTopExpenses.setVisibility(View.VISIBLE);
             }
         });
         viewModel.getMemberExpenseDistribution().observe(getViewLifecycleOwner(), distribution -> {
-            if (distribution != null) {
+            if (distribution == null || distribution.isEmpty()) {
+                memberExpenseLegendAdapter.updateData(new ArrayList<>());
+                binding.rvMemberExpenses.setVisibility(View.GONE);
+                binding.tvEmptyMemberExpenses.setVisibility(View.VISIBLE);
+            } else {
+                binding.tvEmptyMemberExpenses.setVisibility(View.GONE);
+                binding.rvMemberExpenses.setVisibility(View.VISIBLE);
                 memberNames.clear();
                 for (MemberSummary s : distribution) {
                     memberNames.put(s.getUid(), s.getDisplayName());
@@ -279,7 +303,13 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         });
 
         viewModel.getMemberIncomeDistribution().observe(getViewLifecycleOwner(), distribution -> {
-            if (distribution != null) {
+            if (distribution == null || distribution.isEmpty()) {
+                memberIncomeLegendAdapter.updateData(new ArrayList<>());
+                binding.rvMemberIncome.setVisibility(View.GONE);
+                binding.tvEmptyMemberIncome.setVisibility(View.VISIBLE);
+            } else {
+                binding.tvEmptyMemberIncome.setVisibility(View.GONE);
+                binding.rvMemberIncome.setVisibility(View.VISIBLE);
                 for (MemberSummary s : distribution) {
                     memberNames.put(s.getUid(), s.getDisplayName());
                 }
@@ -369,7 +399,7 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         }
     }
 
-    private void updateMonthlyChart(List<MonthlySummary> data) {
+    private void updatePeriodChart(List<PeriodSummary> data) {
         if (data.isEmpty()) return;
 
         List<BarEntry> incomeEntries = new ArrayList<>();
@@ -377,10 +407,10 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         List<String> labels = new ArrayList<>();
 
         for (int i = 0; i < data.size(); i++) {
-            MonthlySummary summary = data.get(i);
+            PeriodSummary summary = data.get(i);
             incomeEntries.add(new BarEntry(i, (float) summary.getIncome()));
             expenseEntries.add(new BarEntry(i, (float) summary.getExpense()));
-            labels.add(summary.getMonthLabel());
+            labels.add(summary.getLabel());
         }
 
         int textColor = isDarkMode() ? Color.WHITE : Color.BLACK;
@@ -403,7 +433,7 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         binding.monthlyChart.invalidate();
     }
 
-    private CombinedData getCombinedData(List<MonthlySummary> data, BarDataSet incomeSet, BarDataSet expenseSet) {
+    private CombinedData getCombinedData(List<PeriodSummary> data, BarDataSet incomeSet, BarDataSet expenseSet) {
         BarData barData = new BarData(incomeSet, expenseSet);
         float groupSpace = 0.2f;
         float barSpace = 0.05f;
@@ -593,18 +623,16 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
                 navigateToTransactions(data, null, null, null, null, null);
             }
         } else if (e instanceof BarEntry) {
-            // Index 0 is Income (success color), Index 1 is Expense (error color) in combined bar logic
+            // Index 0 is Income (success color), Index 1 is Expense (error color)
             String type = null;
-            if (h.getDataSetIndex() == 0) type = "expense";
-            else if (h.getDataSetIndex() == 1) type = "income";
+            if (h.getDataSetIndex() == 0) type = "income";
+            else if (h.getDataSetIndex() == 1) type = "expense";
 
             if (type != null) {
                 int index = (int) e.getX();
-                if (index >= 0 && index < monthlyDataList.size()) {
-                    MonthlySummary period = monthlyDataList.get(index);
+                if (index >= 0 && index < periodDataList.size()) {
+                    PeriodSummary period = periodDataList.get(index);
                     navigateToTransactions(null, null, type, null, period.getStartDateMillis(), period.getEndDateMillis());
-                } else {
-                    navigateToTransactions(null, null, type, null, null, null);
                 }
             }
         }

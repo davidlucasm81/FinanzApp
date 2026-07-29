@@ -89,15 +89,23 @@
     <string name="stats_by_member">Gasto e ingreso por miembro</string>
     <string name="savings_rate_desc">% ahorrado respecto a los ingresos</string>
 
+    <string name="stats_granularity_day">Día</string>
+    <string name="stats_granularity_month">Mes</string>
+    <string name="stats_granularity_year">Año</string>
+    <string name="stats_granularity_lustrum">Lustro</string>
+    <string name="stats_granularity_decade">Década</string>
+    <string name="stats_granularity_total">Total</string>
+
     <!-- Statistics -->
     <string name="stats_title">Estadísticas</string>
     <string name="stats_income">Ingresos</string>
     <string name="stats_expense">Gastos</string>
-    <string name="stats_monthly_evolution">Evolución Mensual</string>
+    <string name="stats_evolution">Evolución</string>
     <string name="stats_category_distribution">Distribución por Categorías</string>
     <string name="category_others">Otros</string>
     <string name="date_filter_all">Todo el histórico</string>
     <string name="date_filter_clear_desc">Limpiar filtro</string>
+    <string name="no_data_dash">---</string>
     <string name="date_filter_select_period">Seleccionar periodo</string>
     <string name="date_filter_this_month">Este mes</string>
     <string name="privacy_consent_title">Privacidad y Seguridad</string>

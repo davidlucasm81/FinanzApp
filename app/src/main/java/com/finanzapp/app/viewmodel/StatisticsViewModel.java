@@ -6,11 +6,12 @@ import androidx.core.util.Pair;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
 
-import com.finanzapp.app.data.firebase.FirestorePaths;
 import com.finanzapp.app.R;
+import com.finanzapp.app.data.firebase.FirestorePaths;
 import com.finanzapp.app.data.model.Account;
 import com.finanzapp.app.data.model.Category;
 import com.finanzapp.app.data.model.DashboardCategorySummary;
@@ -20,7 +21,8 @@ import com.finanzapp.app.data.model.MemberSummary;
 import com.finanzapp.app.data.model.PaymentMethodSummary;
 import com.finanzapp.app.data.model.Transaction;
 import com.finanzapp.app.data.model.User;
-import com.finanzapp.app.data.model.statistics.MonthlySummary;
+import com.finanzapp.app.data.model.statistics.Granularity;
+import com.finanzapp.app.data.model.statistics.PeriodSummary;
 import com.finanzapp.app.data.repository.AccountRepository;
 import com.finanzapp.app.data.repository.AuthRepository;
 import com.finanzapp.app.data.repository.CategoryRepository;
@@ -38,7 +40,9 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.TextStyle;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -68,7 +72,8 @@ public class StatisticsViewModel extends ViewModel {
     private final MutableLiveData<Double> variationPercentage = new MutableLiveData<>();
     private final MutableLiveData<Double> savingsRate = new MutableLiveData<>();
 
-    private final MutableLiveData<List<MonthlySummary>> monthlyEvolution = new MutableLiveData<>();
+    private final MutableLiveData<Granularity> granularity = new MutableLiveData<>(Granularity.MONTH);
+    private final MutableLiveData<List<PeriodSummary>> periodEvolution = new MutableLiveData<>();
     private final MutableLiveData<List<DashboardCategorySummary>> categoryDistribution = new MutableLiveData<>();
     private final MutableLiveData<List<PaymentMethodSummary>> paymentMethodDistribution = new MutableLiveData<>();
     private final MutableLiveData<List<Transaction>> topExpenses = new MutableLiveData<>();
@@ -77,7 +82,7 @@ public class StatisticsViewModel extends ViewModel {
     private final MutableLiveData<List<Category>> allCategories = new MutableLiveData<>();
 
     private final MediatorLiveData<Void> statsMediator = new MediatorLiveData<>();
-    private final androidx.lifecycle.Observer<Void> statsObserver = v -> {};
+    private final Observer<Void> statsObserver = v -> {};
 
     private ListenerRegistration userListener;
     private Set<String> activeAccountIds = new HashSet<>();
@@ -99,16 +104,7 @@ public class StatisticsViewModel extends ViewModel {
         this.authRepository = authRepository;
         authRepository.registerPreSignOutCleanup(signOutCleanup);
 
-        // Default range: current month
-        LocalDate firstOfMonth = LocalDate.now().withDayOfMonth(1);
-        LocalDate lastOfMonth = firstOfMonth.plusMonths(1).minusDays(1);
-
-        long start = firstOfMonth.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
-        long end = lastOfMonth.atTime(LocalTime.MAX).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-
-        dateRange.setValue(new Pair<>(start, end));
-
-        // Reactive architecture to avoid leaks
+        // reactive architecture to avoid leaks
         familyData = Transformations.switchMap(familyIdSource, id -> {
             MutableLiveData<Result<Family>> live = new MutableLiveData<>();
             familyRepository.getFamily(id, live::postValue);
@@ -127,19 +123,11 @@ public class StatisticsViewModel extends ViewModel {
             return live;
         });
         transactionsSource = Transformations.switchMap(familyIdSource, id -> {
-            Pair<Long, Long> range = dateRange.getValue();
-            if (range == null) {
-                LocalDate startLimit = LocalDate.now().minusMonths(11).withDayOfMonth(1);
-                ZonedDateTime zdt = startLimit.atStartOfDay(ZoneId.systemDefault());
-                Timestamp timestamp = new Timestamp(Date.from(zdt.toInstant()));
-                return transactionRepository.getTransactions(id, null, null, null, null, timestamp, null);
-            } else {
-                LocalDate startDate = Instant.ofEpochMilli(range.first).atZone(ZoneId.systemDefault()).toLocalDate();
-                LocalDate compareStart = startDate.minusMonths(1).withDayOfMonth(1);
-                ZonedDateTime zdt = compareStart.atStartOfDay(ZoneId.systemDefault());
-                Timestamp timestamp = new Timestamp(Date.from(zdt.toInstant()));
-                return transactionRepository.getTransactions(id, null, null, null, null, timestamp, null);
-            }
+            // Fetch everything since 2000 to cover any selection including "Total"
+            LocalDate startLimit = LocalDate.of(2000, 1, 1);
+            ZonedDateTime zdt = startLimit.atStartOfDay(ZoneId.systemDefault());
+            Timestamp timestamp = new Timestamp(Date.from(zdt.toInstant()));
+            return transactionRepository.getTransactions(id, null, null, null, null, timestamp, null);
         });
 
         setupObservers();
@@ -178,6 +166,8 @@ public class StatisticsViewModel extends ViewModel {
             latestMembers = members != null ? members : new ArrayList<>();
             recomputeStatistics();
         });
+
+        statsMediator.addSource(granularity, g -> recomputeStatistics());
         
         // MediatorLiveData must be observed to be active
         statsMediator.observeForever(statsObserver);
@@ -192,7 +182,8 @@ public class StatisticsViewModel extends ViewModel {
     public LiveData<Double> getIncomeVariationPercentage() { return incomeVariationPercentage; }
     public LiveData<Double> getVariationPercentage() { return variationPercentage; }
 
-    public LiveData<List<MonthlySummary>> getMonthlyEvolution() { return monthlyEvolution; }
+    public LiveData<Granularity> getGranularity() { return granularity; }
+    public LiveData<List<PeriodSummary>> getPeriodEvolution() { return periodEvolution; }
     public LiveData<List<DashboardCategorySummary>> getCategoryDistribution() { return categoryDistribution; }
 
     public LiveData<List<Category>> getAllCategories() { return allCategories; }
@@ -202,16 +193,9 @@ public class StatisticsViewModel extends ViewModel {
     public LiveData<List<MemberSummary>> getMemberExpenseDistribution() { return memberExpenseDistribution; }
     public LiveData<List<MemberSummary>> getMemberIncomeDistribution() { return memberIncomeDistribution; }
 
-    public void setDateRange(Long start, Long end) {
-        if (start == null || end == null) {
-            dateRange.setValue(null);
-        } else {
-            dateRange.setValue(new Pair<>(start, end));
-        }
-        // Re-trigger transactions fetch
-        String currentId = familyIdSource.getValue();
-        if (currentId != null) {
-            familyIdSource.setValue(currentId);
+    public void setGranularity(Granularity g) {
+        if (g != null && g != granularity.getValue()) {
+            granularity.setValue(g);
         }
     }
 
@@ -234,31 +218,48 @@ public class StatisticsViewModel extends ViewModel {
             }
         }
 
-        Pair<Long, Long> range = dateRange.getValue();
-        
-        LocalDate rangeStart, rangeEnd, compareStart, compareEnd;
-        boolean hasComparison = false;
+        Granularity activeGranularity = granularity.getValue();
+        if (activeGranularity == null) activeGranularity = Granularity.MONTH;
 
-        if (range != null) {
-            rangeStart = Instant.ofEpochMilli(range.first).atZone(ZoneId.systemDefault()).toLocalDate();
-            rangeEnd = Instant.ofEpochMilli(range.second).atZone(ZoneId.systemDefault()).toLocalDate();
-            
-            compareStart = rangeStart.minusMonths(1);
-            compareEnd = rangeEnd.minusMonths(1);
-            hasComparison = true;
-        } else {
-            rangeStart = LocalDate.MIN;
-            rangeEnd = LocalDate.MAX;
-            compareStart = null;
-            compareEnd = null;
+        LocalDate rangeStart, rangeEnd;
+        LocalDate now = LocalDate.now();
+
+        switch (activeGranularity) {
+            case DAY:
+                rangeStart = now;
+                rangeEnd = now;
+                break;
+            case YEAR:
+                rangeStart = now.with(TemporalAdjusters.firstDayOfYear());
+                rangeEnd = now.with(TemporalAdjusters.lastDayOfYear());
+                break;
+            case LUSTRUM:
+                int currentLustrumStart = (now.getYear() / 5) * 5;
+                rangeStart = LocalDate.of(currentLustrumStart, 1, 1);
+                rangeEnd = LocalDate.of(currentLustrumStart + 4, 12, 31);
+                break;
+            case DECADE:
+                int currentDecadeStart = (now.getYear() / 10) * 10;
+                rangeStart = LocalDate.of(currentDecadeStart, 1, 1);
+                rangeEnd = LocalDate.of(currentDecadeStart + 9, 12, 31);
+                break;
+            case TOTAL:
+                rangeStart = LocalDate.of(2000, 1, 1);
+                rangeEnd = LocalDate.of(2100, 12, 31);
+                break;
+            case MONTH:
+            default:
+                rangeStart = now.with(TemporalAdjusters.firstDayOfMonth());
+                rangeEnd = now.with(TemporalAdjusters.lastDayOfMonth());
+                break;
         }
+        
+        // Update the dateRange LiveData so fragments can show the labels if they want
+        long startMillis = rangeStart.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        long endMillis = rangeEnd.atTime(LocalTime.MAX).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        dateRange.postValue(new Pair<>(startMillis, endMillis));
 
-        double currentIncome = 0;
-        double currentExpense = 0;
-        double previousIncome = 0;
-        double previousExpense = 0;
-
-        Map<String, MonthlySummaryBuilder> monthlyMap = new TreeMap<>();
+        Map<String, PeriodSummaryBuilder> periodMap = new TreeMap<>();
         Map<String, Double> currentCategoryTotals = new HashMap<>();
         Map<String, Double> currentMethodTotals = new HashMap<>();
         Map<String, Double> currentMemberExpenseTotals = new HashMap<>();
@@ -267,18 +268,72 @@ public class StatisticsViewModel extends ViewModel {
 
         for (Transaction t : activeTransactions) {
             LocalDate date = t.getDate().toDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-            
+
+            // Bucket aggregation logic (for chart)
+            String bucketKey;
+            String bucketLabel;
+            LocalDate bucketStart, bucketEnd;
+
+            switch (activeGranularity) {
+                case DAY:
+                    bucketKey = date.toString();
+                    bucketLabel = date.format(java.time.format.DateTimeFormatter.ofPattern("dd MMM", Locale.getDefault()));
+                    bucketStart = date;
+                    bucketEnd = date;
+                    break;
+                case YEAR:
+                    bucketKey = String.valueOf(date.getYear());
+                    bucketLabel = bucketKey;
+                    bucketStart = date.with(TemporalAdjusters.firstDayOfYear());
+                    bucketEnd = date.with(TemporalAdjusters.lastDayOfYear());
+                    break;
+                case LUSTRUM:
+                    int lustrumStart = (date.getYear() / 5) * 5;
+                    bucketKey = "L" + lustrumStart;
+                    bucketLabel = lustrumStart + "-" + (lustrumStart + 4);
+                    bucketStart = LocalDate.of(lustrumStart, 1, 1);
+                    bucketEnd = LocalDate.of(lustrumStart + 4, 12, 31);
+                    break;
+                case DECADE:
+                    int decadeStart = (date.getYear() / 10) * 10;
+                    bucketKey = "D" + decadeStart;
+                    bucketLabel = decadeStart + "-" + (decadeStart + 9);
+                    bucketStart = LocalDate.of(decadeStart, 1, 1);
+                    bucketEnd = LocalDate.of(decadeStart + 9, 12, 31);
+                    break;
+                case TOTAL:
+                    bucketKey = "TOTAL";
+                    bucketLabel = "Total";
+                    bucketStart = LocalDate.of(2000, 1, 1);
+                    bucketEnd = LocalDate.of(2100, 12, 31);
+                    break;
+                case MONTH:
+                default:
+                    @SuppressLint("DefaultLocale") String monthKey = date.getYear() + "-" + String.format("%02d", date.getMonthValue());
+                    bucketKey = monthKey;
+                    bucketLabel = date.getMonth().getDisplayName(TextStyle.SHORT, Locale.getDefault()) + " " + (date.getYear() % 100);
+                    bucketStart = date.with(TemporalAdjusters.firstDayOfMonth());
+                    bucketEnd = date.with(TemporalAdjusters.lastDayOfMonth());
+                    break;
+            }
+
+            PeriodSummaryBuilder builder = periodMap.computeIfAbsent(bucketKey, k -> new PeriodSummaryBuilder(bucketLabel));
+            if ("income".equals(t.getType())) builder.income += t.getAmount();
+            else builder.expense += t.getAmount();
+
+            long bucketStartMillis = bucketStart.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
+            long bucketEndMillis = bucketEnd.atTime(LocalTime.MAX).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+            builder.minMillis = bucketStartMillis;
+            builder.maxMillis = bucketEndMillis;
+
+            // Totals within the selected RANGE
             if (!date.isBefore(rangeStart) && !date.isAfter(rangeEnd)) {
                 if ("income".equals(t.getType())) {
-                    currentIncome += t.getAmount();
-
-                    // Member income distribution
                     String creator = t.getCreatedBy();
                     if (creator != null) {
                         currentMemberIncomeTotals.put(creator, currentMemberIncomeTotals.getOrDefault(creator, 0.0) + t.getAmount());
                     }
                 } else {
-                    currentExpense += t.getAmount();
                     currentExpenses.add(t);
 
                     // Category distribution
@@ -293,65 +348,106 @@ public class StatisticsViewModel extends ViewModel {
                         currentMethodTotals.put(method, currentMethodTotals.getOrDefault(method, 0.0) + t.getAmount());
                     }
 
-                    // Member expense distribution
+                    // Member distribution
                     String creator = t.getCreatedBy();
                     if (creator != null) {
                         currentMemberExpenseTotals.put(creator, currentMemberExpenseTotals.getOrDefault(creator, 0.0) + t.getAmount());
                     }
                 }
-            } 
-            else if (hasComparison && !date.isBefore(compareStart) && !date.isAfter(compareEnd)) {
-                if ("income".equals(t.getType())) {
-                    previousIncome += t.getAmount();
-                } else {
-                    previousExpense += t.getAmount();
+            }
+        }
+
+        // Totals of selected range
+        double currentIncomeTotal = 0;
+        double currentExpenseTotal = 0;
+        for (Transaction t : activeTransactions) {
+            LocalDate date = t.getDate().toDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+            if (!date.isBefore(rangeStart) && !date.isAfter(rangeEnd)) {
+                if ("income".equals(t.getType())) currentIncomeTotal += t.getAmount();
+                else currentExpenseTotal += t.getAmount();
+            }
+        }
+
+        currentMonthIncome.postValue(currentIncomeTotal);
+        currentMonthExpense.postValue(currentExpenseTotal);
+        
+        // Variation calculation based on LAST bucket vs PREVIOUS one
+        List<PeriodSummary> evolution = new ArrayList<>();
+        List<String> sortedKeys = new ArrayList<>(periodMap.keySet());
+        Collections.sort(sortedKeys);
+        for (String k : sortedKeys) {
+            PeriodSummaryBuilder b = periodMap.get(k);
+            if (b != null) {
+                evolution.add(new PeriodSummary(b.label, b.income, b.expense, b.minMillis, b.maxMillis));
+            }
+        }
+        
+        // Limit evolution chart to 5 records
+        if (evolution.size() > 5) {
+            evolution = new ArrayList<>(evolution.subList(evolution.size() - 5, evolution.size()));
+        }
+        periodEvolution.postValue(evolution);
+
+        if (activeGranularity == Granularity.TOTAL || evolution.isEmpty()) {
+            incomeVariationPercentage.postValue(null);
+            variationPercentage.postValue(null);
+        } else {
+            // Calculation of previous period for comparison
+            LocalDate prevStart, prevEnd;
+            switch (activeGranularity) {
+                case DAY:
+                    prevStart = now.minusDays(1);
+                    prevEnd = prevStart;
+                    break;
+                case YEAR:
+                    prevStart = rangeStart.minusYears(1);
+                    prevEnd = rangeEnd.minusYears(1);
+                    break;
+                case LUSTRUM:
+                    prevStart = rangeStart.minusYears(5);
+                    prevEnd = rangeEnd.minusYears(5);
+                    break;
+                case DECADE:
+                    prevStart = rangeStart.minusYears(10);
+                    prevEnd = rangeEnd.minusYears(10);
+                    break;
+                case MONTH:
+                default:
+                    prevStart = rangeStart.minusMonths(1);
+                    prevEnd = rangeEnd.minusMonths(1);
+                    break;
+            }
+
+            double prevIncome = 0;
+            double prevExpense = 0;
+
+            for (Transaction t : activeTransactions) {
+                LocalDate date = t.getDate().toDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+                if (!date.isBefore(prevStart) && !date.isAfter(prevEnd)) {
+                    if ("income".equals(t.getType())) prevIncome += t.getAmount();
+                    else prevExpense += t.getAmount();
                 }
             }
 
-            @SuppressLint("DefaultLocale") String monthKey = date.getYear() + "-" + String.format("%02d", date.getMonthValue());
-            String monthLabel = date.getMonth().getDisplayName(TextStyle.SHORT, Locale.getDefault()) + " " + (date.getYear() % 100);
+            if (prevIncome > 0) {
+                incomeVariationPercentage.postValue(((currentIncomeTotal - prevIncome) / prevIncome) * 100);
+            } else {
+                incomeVariationPercentage.postValue(currentIncomeTotal > 0 ? 100.0 : 0.0);
+            }
 
-            MonthlySummaryBuilder builder = monthlyMap.computeIfAbsent(monthKey, k -> new MonthlySummaryBuilder(monthLabel));
-            if ("income".equals(t.getType())) builder.income += t.getAmount();
-            else builder.expense += t.getAmount();
-
-            long millis = t.getDate().toDate().getTime();
-            if (millis < builder.minMillis) builder.minMillis = millis;
-            if (millis > builder.maxMillis) builder.maxMillis = millis;
+            if (prevExpense > 0) {
+                variationPercentage.postValue(((currentExpenseTotal - prevExpense) / prevExpense) * 100);
+            } else {
+                variationPercentage.postValue(currentExpenseTotal > 0 ? 100.0 : 0.0);
+            }
         }
 
-        currentMonthIncome.postValue(currentIncome);
-        currentMonthExpense.postValue(currentExpense);
-        
-        // Savings rate
-        if (currentIncome > 0) {
-            savingsRate.postValue(((currentIncome - currentExpense) / currentIncome) * 100);
+        // Savings rate based on selected range
+        if (currentIncomeTotal > 0) {
+            savingsRate.postValue(((currentIncomeTotal - currentExpenseTotal) / currentIncomeTotal) * 100);
         } else {
             savingsRate.postValue(null);
         }
-
-        if (hasComparison) {
-            if (previousIncome > 0) {
-                incomeVariationPercentage.postValue(((currentIncome - previousIncome) / previousIncome) * 100);
-            } else {
-                incomeVariationPercentage.postValue(0.0);
-            }
-
-            if (previousExpense > 0) {
-                variationPercentage.postValue(((currentExpense - previousExpense) / previousExpense) * 100);
-            } else {
-                variationPercentage.postValue(0.0);
-            }
-        } else {
-            incomeVariationPercentage.postValue(null);
-            variationPercentage.postValue(null);
-        }
-
-        List<MonthlySummary> evolution = new ArrayList<>();
-        for (MonthlySummaryBuilder b : monthlyMap.values()) {
-            evolution.add(new MonthlySummary(b.label, b.income, b.expense, b.minMillis, b.maxMillis));
-        }
-        monthlyEvolution.postValue(evolution);
 
         // Categories distribution
         List<DashboardCategorySummary> distribution = new ArrayList<>();
@@ -362,7 +458,7 @@ public class StatisticsViewModel extends ViewModel {
             Category cat = catMap.get(entry.getKey());
             String name = cat != null ? cat.getName() : "Otros";
             String color = cat != null ? cat.getColor() : "#808080";
-            double percentage = currentExpense > 0 ? (entry.getValue() / currentExpense) * 100 : 0;
+            double percentage = currentExpenseTotal > 0 ? (entry.getValue() / currentExpenseTotal) * 100 : 0;
             distribution.add(new DashboardCategorySummary(entry.getKey(), name, color, entry.getValue(), percentage));
         }
         distribution.sort((s1, s2) -> Double.compare(s2.getAmount(), s1.getAmount()));
@@ -371,22 +467,11 @@ public class StatisticsViewModel extends ViewModel {
         // Payment method distribution
         List<PaymentMethodSummary> methodDistribution = new ArrayList<>();
         String[] methodIds = {"tarjeta", "efectivo", "transferencia", "bizum", "tarjeta_restaurante", "tarjeta_transporte", "domiciliacion_bancaria"};
-        Map<String, Integer> methodLabelRes = new HashMap<>();
-        methodLabelRes.put("tarjeta", R.string.method_card);
-        methodLabelRes.put("efectivo", R.string.method_cash);
-        methodLabelRes.put("transferencia", R.string.method_transfer);
-        methodLabelRes.put("bizum", R.string.method_bizum);
-        methodLabelRes.put("tarjeta_restaurante", R.string.method_restaurant_card);
-        methodLabelRes.put("tarjeta_transporte", R.string.method_transport_card);
-        methodLabelRes.put("domiciliacion_bancaria", R.string.method_direct_debit);
 
         for (String mId : methodIds) {
             double amount = currentMethodTotals.getOrDefault(mId, 0.0);
             if (amount > 0) {
-                double percentage = currentExpense > 0 ? (amount / currentExpense) * 100 : 0;
-                // We use fixed labels here because getContext().getString() is not available in ViewModel
-                // The Fragment will handle localization if needed, or we just pass the resId
-                // For simplicity in this implementation, we'll store methodId and percentage
+                double percentage = currentExpenseTotal > 0 ? (amount / currentExpenseTotal) * 100 : 0;
                 methodDistribution.add(new PaymentMethodSummary(mId, "", amount, percentage));
             }
         }
@@ -405,7 +490,7 @@ public class StatisticsViewModel extends ViewModel {
         List<MemberSummary> expenseDistribution = new ArrayList<>();
         for (Map.Entry<String, Double> entry : currentMemberExpenseTotals.entrySet()) {
             String name = memberNameMap.getOrDefault(entry.getKey(), "Usuario");
-            double percentage = currentExpense > 0 ? (entry.getValue() / currentExpense) * 100 : 0;
+            double percentage = currentExpenseTotal > 0 ? (entry.getValue() / currentExpenseTotal) * 100 : 0;
             expenseDistribution.add(new MemberSummary(entry.getKey(), name, entry.getValue(), percentage));
         }
         expenseDistribution.sort((s1, s2) -> Double.compare(s2.getAmount(), s1.getAmount()));
@@ -414,7 +499,7 @@ public class StatisticsViewModel extends ViewModel {
         List<MemberSummary> incomeDistribution = new ArrayList<>();
         for (Map.Entry<String, Double> entry : currentMemberIncomeTotals.entrySet()) {
             String name = memberNameMap.getOrDefault(entry.getKey(), "Usuario");
-            double percentage = currentIncome > 0 ? (entry.getValue() / currentIncome) * 100 : 0;
+            double percentage = currentIncomeTotal > 0 ? (entry.getValue() / currentIncomeTotal) * 100 : 0;
             incomeDistribution.add(new MemberSummary(entry.getKey(), name, entry.getValue(), percentage));
         }
         incomeDistribution.sort((s1, s2) -> Double.compare(s2.getAmount(), s1.getAmount()));
@@ -423,13 +508,13 @@ public class StatisticsViewModel extends ViewModel {
         dataLoaded.postValue(new Result.Success<>(true));
     }
 
-    private static class MonthlySummaryBuilder {
+    private static class PeriodSummaryBuilder {
         final String label;
         double income = 0;
         double expense = 0;
         long minMillis = Long.MAX_VALUE;
         long maxMillis = Long.MIN_VALUE;
-        MonthlySummaryBuilder(String label) { this.label = label; }
+        PeriodSummaryBuilder(String label) { this.label = label; }
     }
 
     public void init() {
@@ -473,6 +558,7 @@ public class StatisticsViewModel extends ViewModel {
         statsMediator.removeSource(accountsSource);
         statsMediator.removeSource(categoriesSource);
         statsMediator.removeSource(transactionsSource);
+        statsMediator.removeSource(membersSource);
         stopListening();
     }
 }

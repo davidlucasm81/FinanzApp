@@ -89,15 +89,23 @@
     <string name="stats_by_member">Expense and income by member</string>
     <string name="savings_rate_desc">% saved relative to income</string>
 
+    <string name="stats_granularity_day">Day</string>
+    <string name="stats_granularity_month">Month</string>
+    <string name="stats_granularity_year">Year</string>
+    <string name="stats_granularity_lustrum">Lustrum</string>
+    <string name="stats_granularity_decade">Decade</string>
+    <string name="stats_granularity_total">Total</string>
+
     <!-- Statistics -->
     <string name="stats_title">Statistics</string>
     <string name="stats_income">Income</string>
     <string name="stats_expense">Expenses</string>
-    <string name="stats_monthly_evolution">Monthly Evolution</string>
+    <string name="stats_evolution">Evolution</string>
     <string name="stats_category_distribution">Category Distribution</string>
     <string name="category_others">Others</string>
     <string name="date_filter_all">Full history</string>
     <string name="date_filter_clear_desc">Clear filter</string>
+    <string name="no_data_dash">---</string>
     <string name="date_filter_select_period">Select period</string>
     <string name="date_filter_this_month">This month</string>
     <string name="privacy_consent_title">Privacy and Security</string>

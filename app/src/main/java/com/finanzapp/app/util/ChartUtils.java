@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.Color;
 
+import com.finanzapp.app.R;
 import com.github.mikephil.charting.charts.BarLineChartBase;
 import com.github.mikephil.charting.charts.Chart;
 import com.github.mikephil.charting.charts.PieChart;
@@ -22,7 +23,7 @@ public class ChartUtils {
         chart.getLegend().setTextColor(textColor);
         
         chart.setTouchEnabled(true);
-        chart.setNoDataText("No hay datos para este periodo");
+        chart.setNoDataText(chart.getContext().getString(R.string.stats_empty_subtitle));
         chart.setNoDataTextColor(textColor);
 
         // Animation for better UX
