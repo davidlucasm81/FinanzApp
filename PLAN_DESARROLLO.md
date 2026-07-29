@@ -109,7 +109,7 @@
 ## Fase 6 — Registro de movimientos (gasto/ingreso)
 - [x] Modelo `Transaction` + `TransactionRepository`.
 - [x] Formulario "Añadir movimiento": selector de fecha, descripción, importe (formateado según `currencyCode` de la familia), tipo (gasto/ingreso), categoría (filtrada por tipo y con búsqueda por texto), método de pago (tarjeta/transferencia/efectivo/bizum), cuenta asociada.
-- [x] Guardar el movimiento: **obligatorio** guardar el ID del usuario que lo creó (`createdBy`).
+- [x] Guardar el movimiento: **obligatorio** guardar el ID del usuario que lo creó (`createdBy`). Se permite su modificación posterior en la edición del movimiento.
 - [x] Actualizar `currentBalance` de la cuenta en una única Firestore transaction (atómico).
 - [x] Igual para edición y borrado: recalcular el saldo de la cuenta afectada dentro de la misma transacción atómica.
 - [x] Listado de movimientos con filtros: por cuenta, por categoría, por rango de fechas, por tipo y método de pago. Soporte completo para modo oscuro y UI adaptativa.

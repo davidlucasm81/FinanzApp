@@ -148,4 +148,9 @@ public class TransactionViewModel extends ViewModel {
 
     public com.google.firebase.Timestamp getFilterEndDate() { return filterEndDate; }
     public void setFilterEndDate(com.google.firebase.Timestamp filterEndDate) { this.filterEndDate = filterEndDate; }
+
+    public String getCurrentUserId() {
+        return authRepository.isLoggedIn() && authRepository.getCurrentUser().getValue() != null 
+                ? authRepository.getCurrentUser().getValue().getUid() : null;
+    }
 }

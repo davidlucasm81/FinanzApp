@@ -224,6 +224,29 @@
                     android:layout_height="48dp" />
             </com.google.android.material.card.MaterialCardView>
 
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/label_created_by"
+                android:textSize="12sp"
+                android:textColor="?attr/android:textColorSecondary"/>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="?attr/colorSurface"
+                app:strokeWidth="1dp"
+                app:strokeColor="?attr/android:textColorSecondary">
+                <Spinner
+                    android:id="@+id/spinner_created_by"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp" />
+            </com.google.android.material.card.MaterialCardView>
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_save"
                 android:layout_width="match_parent"

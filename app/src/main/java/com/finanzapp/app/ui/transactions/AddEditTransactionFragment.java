@@ -47,7 +47,7 @@ public class AddEditTransactionFragment extends Fragment {
     private TextInputLayout tilAmount, tilDescription;
     private RadioButton rbExpense, rbIncome;
     private Button btnDate;
-    private Spinner spinnerAccount, spinnerMethod;
+    private Spinner spinnerAccount, spinnerMethod, spinnerCreatedBy;
     private AutoCompleteTextView autoCategory;
     private Category selectedCategory;
     
@@ -57,6 +57,7 @@ public class AddEditTransactionFragment extends Fragment {
     private List<Category> allCategories = new ArrayList<>();
     private final List<Category> filteredCategories = new ArrayList<>();
     private List<Account> allAccounts = new ArrayList<>();
+    private List<com.finanzapp.app.data.model.Member> allMembers = new ArrayList<>();
     private final String[] paymentMethodValues = {
             "tarjeta", "efectivo", "transferencia", "bizum", 
             "tarjeta_restaurante", "tarjeta_transporte", "domiciliacion_bancaria"
@@ -108,6 +109,7 @@ public class AddEditTransactionFragment extends Fragment {
         autoCategory = view.findViewById(R.id.auto_category);
         spinnerAccount = view.findViewById(R.id.spinner_account);
         spinnerMethod = view.findViewById(R.id.spinner_method);
+        spinnerCreatedBy = view.findViewById(R.id.spinner_created_by);
 
         com.google.android.material.appbar.MaterialToolbar toolbar = view.findViewById(R.id.toolbar);
         if (existingTransaction != null) {
@@ -206,6 +208,27 @@ public class AddEditTransactionFragment extends Fragment {
                 adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
                 spinnerAccount.setAdapter(adapter);
                 if (selectedIndex != -1) spinnerAccount.setSelection(selectedIndex);
+            }
+        });
+
+        viewModel.getMembers(familyId).observe(getViewLifecycleOwner(), members -> {
+            if (members != null) {
+                allMembers = members;
+                List<String> names = new ArrayList<>();
+                int selectedIndex = -1;
+                String targetUid = existingTransaction != null ? existingTransaction.getCreatedBy() : viewModel.getCurrentUserId();
+                
+                for (int i = 0; i < members.size(); i++) {
+                    com.finanzapp.app.data.model.Member m = members.get(i);
+                    names.add(m.getDisplayName());
+                    if (targetUid != null && targetUid.equals(m.getUid())) {
+                        selectedIndex = i;
+                    }
+                }
+                ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, names);
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                spinnerCreatedBy.setAdapter(adapter);
+                if (selectedIndex != -1) spinnerCreatedBy.setSelection(selectedIndex);
             }
         });
 
@@ -314,17 +337,22 @@ public class AddEditTransactionFragment extends Fragment {
         
         String method = paymentMethodValues[spinnerMethod.getSelectedItemPosition()];
         String type = rbIncome.isChecked() ? "income" : "expense";
+        
+        String createdBy = null;
+        if (spinnerCreatedBy.getSelectedItem() != null && !allMembers.isEmpty()) {
+            createdBy = allMembers.get(spinnerCreatedBy.getSelectedItemPosition()).getUid();
+        }
 
         if (existingTransaction != null) {
             Transaction updated = new Transaction(
                     existingTransaction.getId(), accountId, new Timestamp(selectedDate.getTime()),
-                    description, amount, type, categoryId, method, existingTransaction.getCreatedBy(), existingTransaction.getCreatedAt()
+                    description, amount, type, categoryId, method, createdBy, existingTransaction.getCreatedAt()
             );
             viewModel.updateTransaction(familyId, existingTransaction, updated);
         } else {
             Transaction t = new Transaction(
                     null, accountId, new Timestamp(selectedDate.getTime()), 
-                    description, amount, type, categoryId, method, null, null
+                    description, amount, type, categoryId, method, createdBy, null
             );
             viewModel.addTransaction(familyId, t);
         }

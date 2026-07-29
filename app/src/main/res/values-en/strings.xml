@@ -169,6 +169,7 @@
     <string name="label_account_field">Account</string>
     <string name="label_category_field">Category</string>
     <string name="label_payment_method">Payment method</string>
+    <string name="label_created_by">Registered by</string>
     <string name="method_card">Card</string>
     <string name="method_cash">Cash</string>
     <string name="method_transfer">Transfer</string>
