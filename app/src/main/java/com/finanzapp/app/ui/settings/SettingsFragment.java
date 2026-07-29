@@ -34,6 +34,7 @@ public class SettingsFragment extends Fragment {
     private NotificationViewModel notificationViewModel;
     private com.finanzapp.app.data.repository.FamilyRepository familyRepository;
     private User currentUser;
+    private int titleClickCount = 0;
 
     @Nullable
     @Override
@@ -79,6 +80,15 @@ public class SettingsFragment extends Fragment {
 
         binding.switchNotifications.setOnCheckedChangeListener((buttonView, isChecked) ->
                 notificationViewModel.setNotificationsEnabled(isChecked));
+
+        binding.tvTitle.setOnClickListener(v -> {
+            titleClickCount++;
+            if (titleClickCount >= 5) {
+                titleClickCount = 0;
+                Toast.makeText(requireContext(), "Testing Crashlytics...", Toast.LENGTH_SHORT).show();
+                throw new RuntimeException("Test Crash from FinanzApp Settings");
+            }
+        });
     }
 
     private void setupObservers() {

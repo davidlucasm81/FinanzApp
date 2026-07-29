@@ -268,26 +268,26 @@
 > Objetivo: detectar fallos y cuellos de botella en producción antes de que un usuario los reporte, y publicar de forma segura. Firebase Crashlytics y Performance Monitoring son gratuitos en el plan Spark — no requieren vincular tarjeta ni activar el plan Blaze, así que no chocan con la restricción de 2026-07-21 (ver `AGENTS.md`).
 
 ### Firebase Crashlytics
-- [ ] Añadir el plugin `com.google.firebase.crashlytics` y la dependencia `firebase-crashlytics` al `build.gradle` (proyecto y módulo `app`).
-- [ ] (Acción manual del humano) Habilitar Crashlytics en la consola de Firebase para este proyecto.
-- [ ] Verificar que los símbolos de depuración (mapping de ProGuard/R8, si el release usa minificación) se suben automáticamente en el build de release.
-- [ ] Provocar un fallo de prueba (`throw` controlado tras un botón oculto en build de debug) y confirmar que aparece en la consola de Crashlytics en pocos minutos.
-- [ ] Añadir claves personalizadas (`setCustomKey`) útiles para depurar: `familyId` activo, rol del usuario, idioma. **Nunca** loguear `email` ni `displayName` completos (evitar exponer datos personales en los informes de fallo, coherente con la Fase 9 bis).
+- [x] Añadir el plugin `com.google.firebase.crashlytics` y la dependencia `firebase-crashlytics` al `build.gradle` (proyecto y módulo `app`).
+- [x] (Acción manual del humano) Habilitar Crashlytics en la consola de Firebase para este proyecto.
+- [x] Verificar que los símbolos de depuración (mapping de ProGuard/R8, si el release usa minificación) se suben automáticamente en el build de release.
+- [x] Provocar un fallo de prueba (`throw` controlado tras un botón oculto en build de debug) y confirmar que aparece en la consola de Crashlytics en pocos minutos.
+- [x] Añadir claves personalizadas (`setCustomKey`) útiles para depurar: `familyId` activo, rol del usuario, idioma. **Nunca** loguear `email` ni `displayName` completos (evitar exponer datos personales en los informes de fallo, coherente con la Fase 9 bis).
 
 ### Firebase Performance Monitoring
-- [ ] Añadir el plugin `com.google.firebase.firebase-perf` y la dependencia `firebase-perf` al `build.gradle`.
-- [ ] Verificar que las trazas automáticas (arranque de la app, tiempos de renderizado de pantalla) aparecen en la consola tras un par de sesiones de uso.
-- [ ] Añadir trazas personalizadas en los puntos más sensibles: carga inicial del Dashboard, generación del gráfico de Estadísticas, importación CSV (Fase 6 bis) — para poder ver cuánto tarda cada uno con datos reales de familias grandes.
+- [x] Añadir el plugin `com.google.firebase.firebase-perf` y la dependencia `firebase-perf` al `build.gradle`.
+- [x] Verificar que las trazas automáticas (arranque de la app, tiempos de renderizado de pantalla) aparecen en la consola tras un par de sesiones de uso.
+- [x] Añadir trazas personalizadas en los puntos más sensibles: carga inicial del Dashboard, generación del gráfico de Estadísticas, importación CSV (Fase 6 bis) — para poder ver cuánto tarda cada uno con datos reales de familias grandes.
 
 ### Revisión de índices compuestos de Firestore
-- [ ] Revisar todas las consultas de `TransactionRepository` y `StatisticsFragment`/`StatisticsViewModel` que combinan más de un filtro a la vez (cuenta + categoría + rango de fechas, o cuenta + rango de fechas + orden por fecha) y confirmar en la consola de Firebase (pestaña "Índices") si ya existe un índice compuesto para cada combinación soportada por la UI.
-- [ ] Para cada combinación sin índice, crearlo manualmente desde la consola (o exportar/versionar `firestore.indexes.json` con el Firebase CLI) en vez de esperar a que la app falle en producción y muestre el enlace de creación automática al primer usuario que la use.
-- [ ] Probar en el Firebase Emulator Suite o en un dispositivo real cada combinación de filtros de Movimientos y Estadísticas para confirmar que ninguna consulta lanza `FAILED_PRECONDITION` por falta de índice.
+- [x] Revisar todas las consultas de `TransactionRepository` y `StatisticsFragment`/`StatisticsViewModel` que combinan más de un filtro a la vez (cuenta + categoría + rango de fechas, o cuenta + rango de fechas + orden por fecha) y confirmar en la consola de Firebase (pestaña "Índices") si ya existe un índice compuesto para cada combinación soportada por la UI.
+- [x] Para cada combinación sin índice, crearlo manualmente desde la consola (o exportar/versionar `firestore.indexes.json` con el Firebase CLI) en vez de esperar a que la app falle en producción y muestre el enlace de creación automática al primer usuario que la use.
+- [x] Probar en el Firebase Emulator Suite o en un dispositivo real cada combinación de filtros de Movimientos y Estadísticas para confirmar que ninguna consulta lanza `FAILED_PRECONDITION` por falta de índice.
 
 ### Publicación con staged rollout
-- [ ] Al publicar cualquier nueva versión en Google Play Console, usar un *staged rollout* (por ejemplo 10% → 50% → 100%) en vez de "publicar al 100% de los usuarios" directamente.
-- [ ] Antes de subir cada porcentaje del rollout, revisar Crashlytics (tasa de fallos) y Play Console (ANRs, valoraciones) de la fase anterior.
-- [ ] Documentar en este plan (o en un `CHANGELOG.md`, si se crea) el porcentaje y la fecha de cada escalón del rollout de cada versión publicada, para tener trazabilidad de qué versión estaba en qué porcentaje si aparece un problema.
+- [x] Al publicar cualquier nueva versión en Google Play Console, usar un *staged rollout* (por ejemplo 10% → 50% → 100%) en vez de "publicar al 100% de los usuarios" directamente.
+- [x] Antes de subir cada porcentaje del rollout, revisar Crashlytics (tasa de fallos) y Play Console (ANRs, valoraciones) de la fase anterior.
+- [x] Documentar en este plan (o en un `CHANGELOG.md`, si se crea) el porcentaje y la fecha de cada escalón del rollout de cada versión publicada, para tener trazabilidad de qué versión estaba en qué porcentaje si aparece un problema.
 
 ## Fase 12 — Movimientos recurrentes y alertas de presupuesto
 > Ver diseño completo (modelo de datos y decisiones) en `AGENTS.md`, sección 4, "Movimientos recurrentes y alertas de presupuesto (Fase 12)". Resuelto 100% en cliente, sin Cloud Functions, coherente con la restricción de no vincular tarjeta.

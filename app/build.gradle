@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
+    alias(libs.plugins.firebase.perf)
 }
 // Carga de las credenciales de firma desde un fichero fuera del repo.
 // keystore.properties NUNCA se sube a git (ver .gitignore); en su lugar se
@@ -75,6 +77,8 @@ dependencies {
     implementation platform(libs.firebase.bom)
     implementation libs.firebase.auth
     implementation libs.firebase.firestore
+    implementation libs.firebase.crashlytics
+    implementation libs.firebase.perf
     implementation libs.androidx.credentials
     implementation libs.androidx.credentials.play.services.auth
     implementation libs.googleid

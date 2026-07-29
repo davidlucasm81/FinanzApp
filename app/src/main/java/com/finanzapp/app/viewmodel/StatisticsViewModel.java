@@ -33,6 +33,8 @@ import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.perf.FirebasePerformance;
+import com.google.firebase.perf.metrics.Trace;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -200,14 +202,19 @@ public class StatisticsViewModel extends ViewModel {
     }
 
     private void recomputeStatistics() {
+        Trace trace = FirebasePerformance.getInstance().newTrace("statistics_recompute");
+        trace.start();
+
         // Wait until all sources have emitted at least once
         if (!accountsResolved || !categoriesResolved || !transactionsResolved || !membersResolved) {
+            trace.stop();
             return;
         }
 
         // If no active accounts, we can show success but with empty state
         if (activeAccountIds.isEmpty()) {
             dataLoaded.postValue(new Result.Success<>(true));
+            trace.stop();
             return;
         }
 
@@ -506,6 +513,7 @@ public class StatisticsViewModel extends ViewModel {
         memberIncomeDistribution.postValue(incomeDistribution);
 
         dataLoaded.postValue(new Result.Success<>(true));
+        trace.stop();
     }
 
     private static class PeriodSummaryBuilder {

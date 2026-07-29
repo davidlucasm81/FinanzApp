@@ -14,6 +14,8 @@ import com.finanzapp.app.data.model.ImportResult;
 import com.finanzapp.app.data.model.ImportedRow;
 import com.finanzapp.app.util.Result;
 import com.finanzapp.app.util.SingleLiveEvent;
+import com.google.firebase.perf.FirebasePerformance;
+import com.google.firebase.perf.metrics.Trace;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,18 +40,23 @@ public class ImportTransactionsViewModel extends AndroidViewModel {
     public LiveData<String> getError() { return error; }
 
     public void importFromUri(String familyId, Uri uri) {
+        Trace trace = FirebasePerformance.getInstance().newTrace("transaction_import");
+        trace.start();
+
         loading.setValue(true);
         new Thread(() -> {
             ImportResult result = new ImportResult();
             try (InputStream is = getApplication().getContentResolver().openInputStream(uri)) {
                 if (is == null) {
                     postError("No se pudo abrir el archivo.");
+                    trace.stop();
                     return;
                 }
 
                 List<ImportedRow> rows = parser.parse(is, result);
                 if (rows.isEmpty() && result.getErrors().isEmpty()) {
                     postError("No se encontraron movimientos válidos en el archivo.");
+                    trace.stop();
                     return;
                 }
 
@@ -66,16 +73,19 @@ public class ImportTransactionsViewModel extends AndroidViewModel {
                             postError(((Result.Error<?>) importRepoResult).getException().getMessage());
                         }
                         loading.postValue(false);
+                        trace.stop();
                     });
                 } else {
                     // Only parsing errors, no rows to import
                     importResult.postValue(result);
                     loading.postValue(false);
+                    trace.stop();
                 }
 
             } catch (IOException e) {
                 postError("Error al leer el archivo: " + e.getMessage());
                 loading.postValue(false);
+                trace.stop();
             }
         }).start();
     }

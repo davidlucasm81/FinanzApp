@@ -73,7 +73,7 @@ public class ViewModelFactory implements ViewModelProvider.Factory {
         } else if (modelClass.isAssignableFrom(FamilyViewModel.class)) {
             return (T) new FamilyViewModel(authRepository, familyRepository);
         } else if (modelClass.isAssignableFrom(SettingsViewModel.class)) {
-            return (T) new SettingsViewModel(authRepository);
+            return (T) new SettingsViewModel(authRepository, familyRepository);
         } else if (modelClass.isAssignableFrom(DashboardViewModel.class)) {
             return (T) new DashboardViewModel(authRepository, familyRepository, accountRepository);
         } else if (modelClass.isAssignableFrom(CategoryViewModel.class)) {
