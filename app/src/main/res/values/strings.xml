@@ -90,6 +90,7 @@
     <string name="savings_rate_desc">% ahorrado respecto a los ingresos</string>
 
     <string name="stats_granularity_day">Día</string>
+    <string name="stats_granularity_week">Semana</string>
     <string name="stats_granularity_month">Mes</string>
     <string name="stats_granularity_year">Año</string>
     <string name="stats_granularity_lustrum">Lustro</string>
@@ -294,6 +295,7 @@
     <string name="dialog_edit_transaction">Editar Movimiento</string>
     <string name="dialog_select_end_date">Selecciona fecha de fin</string>
     <string name="dialog_select_start_date">Selecciona fecha de inicio</string>
+    <string name="dialog_select_date_range">Seleccionar rango de fechas</string>
     <string name="dialog_expel_member">Expulsar miembro</string>
     <string name="dialog_category_color">Color de la categoría</string>
     <string name="dialog_abandon_family">Abandonar familia</string>

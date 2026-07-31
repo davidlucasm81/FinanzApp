@@ -197,8 +197,14 @@ public class StatisticsViewModel extends ViewModel {
 
     public void setGranularity(Granularity g) {
         if (g != null && g != granularity.getValue()) {
+            dateRange.setValue(null); // Reset range when granularity changes
             granularity.setValue(g);
         }
+    }
+
+    public void setDateRange(long start, long end) {
+        dateRange.setValue(new Pair<>(start, end));
+        recomputeStatistics();
     }
 
     private void recomputeStatistics() {
@@ -231,62 +237,105 @@ public class StatisticsViewModel extends ViewModel {
         LocalDate rangeStart, rangeEnd;
         LocalDate now = LocalDate.now();
 
-        switch (activeGranularity) {
-            case DAY:
-                rangeStart = now;
-                rangeEnd = now;
-                break;
-            case YEAR:
-                rangeStart = now.with(TemporalAdjusters.firstDayOfYear());
-                rangeEnd = now.with(TemporalAdjusters.lastDayOfYear());
-                break;
-            case LUSTRUM:
-                int currentLustrumStart = (now.getYear() / 5) * 5;
-                rangeStart = LocalDate.of(currentLustrumStart, 1, 1);
-                rangeEnd = LocalDate.of(currentLustrumStart + 4, 12, 31);
-                break;
-            case DECADE:
-                int currentDecadeStart = (now.getYear() / 10) * 10;
-                rangeStart = LocalDate.of(currentDecadeStart, 1, 1);
-                rangeEnd = LocalDate.of(currentDecadeStart + 9, 12, 31);
-                break;
-            case TOTAL:
-                rangeStart = LocalDate.of(2000, 1, 1);
-                rangeEnd = LocalDate.of(2100, 12, 31);
-                break;
-            case MONTH:
-            default:
-                rangeStart = now.with(TemporalAdjusters.firstDayOfMonth());
-                rangeEnd = now.with(TemporalAdjusters.lastDayOfMonth());
-                break;
+        Pair<Long, Long> customRange = dateRange.getValue();
+        if (customRange != null && customRange.first != null && customRange.second != null) {
+            rangeStart = Instant.ofEpochMilli(customRange.first).atZone(ZoneId.systemDefault()).toLocalDate();
+            rangeEnd = Instant.ofEpochMilli(customRange.second).atZone(ZoneId.systemDefault()).toLocalDate();
+        } else {
+            switch (activeGranularity) {
+                case DAY:
+                    rangeStart = now;
+                    rangeEnd = now;
+                    break;
+                case WEEK:
+                    rangeStart = now.with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
+                    rangeEnd = now.with(TemporalAdjusters.nextOrSame(java.time.DayOfWeek.SUNDAY));
+                    break;
+                case MONTH:
+                    rangeStart = now.with(TemporalAdjusters.firstDayOfMonth());
+                    rangeEnd = now.with(TemporalAdjusters.lastDayOfMonth());
+                    break;
+                case YEAR:
+                    rangeStart = now.with(TemporalAdjusters.firstDayOfYear());
+                    rangeEnd = now.with(TemporalAdjusters.lastDayOfYear());
+                    break;
+                case LUSTRUM:
+                    int currentLustrumStart = (now.getYear() / 5) * 5;
+                    rangeStart = LocalDate.of(currentLustrumStart, 1, 1);
+                    rangeEnd = LocalDate.of(currentLustrumStart + 4, 12, 31);
+                    break;
+                case DECADE:
+                    int currentDecadeStart = (now.getYear() / 10) * 10;
+                    rangeStart = LocalDate.of(currentDecadeStart, 1, 1);
+                    rangeEnd = LocalDate.of(currentDecadeStart + 9, 12, 31);
+                    break;
+                case TOTAL:
+                    rangeStart = LocalDate.of(2000, 1, 1);
+                    rangeEnd = LocalDate.of(2100, 12, 31);
+                    break;
+                default:
+                    rangeStart = now.with(TemporalAdjusters.firstDayOfMonth());
+                    rangeEnd = now.with(TemporalAdjusters.lastDayOfMonth());
+                    break;
+            }
+            // Update the dateRange LiveData with default range
+            long startMillis = rangeStart.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
+            long endMillis = rangeEnd.atTime(LocalTime.MAX).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+            dateRange.postValue(new Pair<>(startMillis, endMillis));
         }
-        
-        // Update the dateRange LiveData so fragments can show the labels if they want
-        long startMillis = rangeStart.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
-        long endMillis = rangeEnd.atTime(LocalTime.MAX).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-        dateRange.postValue(new Pair<>(startMillis, endMillis));
 
-        Map<String, PeriodSummaryBuilder> periodMap = new TreeMap<>();
         Map<String, Double> currentCategoryTotals = new HashMap<>();
         Map<String, Double> currentMethodTotals = new HashMap<>();
         Map<String, Double> currentMemberExpenseTotals = new HashMap<>();
         Map<String, Double> currentMemberIncomeTotals = new HashMap<>();
         List<Transaction> currentExpenses = new ArrayList<>();
 
+        // Evolution calculation
+        Map<String, PeriodSummaryBuilder> evolutionMap = new TreeMap<>();
+        LocalDate evolutionEnd, evolutionStart;
+        Granularity evolutionGranularity = activeGranularity;
+
+        if (customRange != null && customRange.first != null && customRange.second != null) {
+            // If manual range, always compare month by month
+            evolutionGranularity = Granularity.MONTH;
+            evolutionStart = rangeStart.with(TemporalAdjusters.firstDayOfMonth());
+            evolutionEnd = rangeEnd.with(TemporalAdjusters.lastDayOfMonth());
+        } else {
+            // Default behavior: Last 7 buckets
+            evolutionEnd = now;
+            switch (activeGranularity) {
+                case DAY: evolutionStart = now.minusDays(6); break;
+                case WEEK: evolutionStart = now.with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY)).minusWeeks(6); break;
+                case YEAR: evolutionStart = now.minusYears(6).with(TemporalAdjusters.firstDayOfYear()); break;
+                case LUSTRUM: evolutionStart = now.minusYears(30).with(TemporalAdjusters.firstDayOfYear()); break;
+                case DECADE: evolutionStart = now.minusYears(60).with(TemporalAdjusters.firstDayOfYear()); break;
+                case TOTAL: evolutionStart = LocalDate.of(2000, 1, 1); break;
+                case MONTH:
+                default: evolutionStart = now.minusMonths(6).with(TemporalAdjusters.firstDayOfMonth()); break;
+            }
+        }
+
         for (Transaction t : activeTransactions) {
             LocalDate date = t.getDate().toDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-
+            
             // Bucket aggregation logic (for chart)
             String bucketKey;
             String bucketLabel;
             LocalDate bucketStart, bucketEnd;
 
-            switch (activeGranularity) {
+            switch (evolutionGranularity) {
                 case DAY:
                     bucketKey = date.toString();
                     bucketLabel = date.format(java.time.format.DateTimeFormatter.ofPattern("dd MMM", Locale.getDefault()));
                     bucketStart = date;
                     bucketEnd = date;
+                    break;
+                case WEEK:
+                    LocalDate monday = date.with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
+                    bucketKey = "W" + monday.toString();
+                    bucketLabel = monday.format(java.time.format.DateTimeFormatter.ofPattern("dd MMM", Locale.getDefault()));
+                    bucketStart = monday;
+                    bucketEnd = monday.plusDays(6);
                     break;
                 case YEAR:
                     bucketKey = String.valueOf(date.getYear());
@@ -324,16 +373,16 @@ public class StatisticsViewModel extends ViewModel {
                     break;
             }
 
-            PeriodSummaryBuilder builder = periodMap.computeIfAbsent(bucketKey, k -> new PeriodSummaryBuilder(bucketLabel));
-            if ("income".equals(t.getType())) builder.income += t.getAmount();
-            else builder.expense += t.getAmount();
+            // Fill evolution chart if within historical range
+            if (!date.isBefore(evolutionStart) && !date.isAfter(evolutionEnd)) {
+                PeriodSummaryBuilder builder = evolutionMap.computeIfAbsent(bucketKey, k -> new PeriodSummaryBuilder(bucketLabel));
+                if ("income".equals(t.getType())) builder.income += t.getAmount();
+                else builder.expense += t.getAmount();
+                builder.minMillis = bucketStart.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
+                builder.maxMillis = bucketEnd.atTime(LocalTime.MAX).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+            }
 
-            long bucketStartMillis = bucketStart.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
-            long bucketEndMillis = bucketEnd.atTime(LocalTime.MAX).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-            builder.minMillis = bucketStartMillis;
-            builder.maxMillis = bucketEndMillis;
-
-            // Totals within the selected RANGE
+            // Totals within the selected RANGE (for summary cards and distribution)
             if (!date.isBefore(rangeStart) && !date.isAfter(rangeEnd)) {
                 if ("income".equals(t.getType())) {
                     String creator = t.getCreatedBy();
@@ -378,21 +427,17 @@ public class StatisticsViewModel extends ViewModel {
         currentMonthIncome.postValue(currentIncomeTotal);
         currentMonthExpense.postValue(currentExpenseTotal);
         
-        // Variation calculation based on LAST bucket vs PREVIOUS one
         List<PeriodSummary> evolution = new ArrayList<>();
-        List<String> sortedKeys = new ArrayList<>(periodMap.keySet());
+        List<String> sortedKeys = new ArrayList<>(evolutionMap.keySet());
         Collections.sort(sortedKeys);
         for (String k : sortedKeys) {
-            PeriodSummaryBuilder b = periodMap.get(k);
+            PeriodSummaryBuilder b = evolutionMap.get(k);
             if (b != null) {
                 evolution.add(new PeriodSummary(b.label, b.income, b.expense, b.minMillis, b.maxMillis));
             }
         }
         
-        // Limit evolution chart to 5 records
-        if (evolution.size() > 5) {
-            evolution = new ArrayList<>(evolution.subList(evolution.size() - 5, evolution.size()));
-        }
+        // Show evolution for all buckets in the selected range
         periodEvolution.postValue(evolution);
 
         if (activeGranularity == Granularity.TOTAL || evolution.isEmpty()) {
@@ -401,29 +446,9 @@ public class StatisticsViewModel extends ViewModel {
         } else {
             // Calculation of previous period for comparison
             LocalDate prevStart, prevEnd;
-            switch (activeGranularity) {
-                case DAY:
-                    prevStart = now.minusDays(1);
-                    prevEnd = prevStart;
-                    break;
-                case YEAR:
-                    prevStart = rangeStart.minusYears(1);
-                    prevEnd = rangeEnd.minusYears(1);
-                    break;
-                case LUSTRUM:
-                    prevStart = rangeStart.minusYears(5);
-                    prevEnd = rangeEnd.minusYears(5);
-                    break;
-                case DECADE:
-                    prevStart = rangeStart.minusYears(10);
-                    prevEnd = rangeEnd.minusYears(10);
-                    break;
-                case MONTH:
-                default:
-                    prevStart = rangeStart.minusMonths(1);
-                    prevEnd = rangeEnd.minusMonths(1);
-                    break;
-            }
+            long diffDays = java.time.temporal.ChronoUnit.DAYS.between(rangeStart, rangeEnd) + 1;
+            prevStart = rangeStart.minusDays(diffDays);
+            prevEnd = rangeEnd.minusDays(diffDays);
 
             double prevIncome = 0;
             double prevExpense = 0;

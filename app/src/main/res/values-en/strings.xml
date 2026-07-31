@@ -90,6 +90,7 @@
     <string name="savings_rate_desc">% saved relative to income</string>
 
     <string name="stats_granularity_day">Day</string>
+    <string name="stats_granularity_week">Week</string>
     <string name="stats_granularity_month">Month</string>
     <string name="stats_granularity_year">Year</string>
     <string name="stats_granularity_lustrum">Lustrum</string>
@@ -294,6 +295,7 @@
     <string name="dialog_edit_transaction">Edit Transaction</string>
     <string name="dialog_select_end_date">Select end date</string>
     <string name="dialog_select_start_date">Select start date</string>
+    <string name="dialog_select_date_range">Select date range</string>
     <string name="dialog_expel_member">Expel member</string>
     <string name="dialog_category_color">Category color</string>
     <string name="dialog_abandon_family">Leave family</string>

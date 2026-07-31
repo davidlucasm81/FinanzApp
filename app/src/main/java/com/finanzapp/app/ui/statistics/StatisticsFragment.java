@@ -170,12 +170,33 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
     }
 
     private void setupClickListeners() {
+        binding.btnDateRange.setOnClickListener(v -> showDateRangePicker());
+    }
+
+    private void showDateRangePicker() {
+        Pair<Long, Long> currentRange = viewModel.getDateRange().getValue();
+        com.google.android.material.datepicker.MaterialDatePicker.Builder<androidx.core.util.Pair<Long, Long>> builder = 
+                com.google.android.material.datepicker.MaterialDatePicker.Builder.dateRangePicker();
+        builder.setTitleText(R.string.dialog_select_date_range);
+        
+        if (currentRange != null && currentRange.first != null && currentRange.second != null) {
+            builder.setSelection(new androidx.core.util.Pair<>(currentRange.first, currentRange.second));
+        }
+
+        com.google.android.material.datepicker.MaterialDatePicker<androidx.core.util.Pair<Long, Long>> picker = builder.build();
+        picker.addOnPositiveButtonClickListener(selection -> {
+            if (selection != null && selection.first != null && selection.second != null) {
+                viewModel.setDateRange(selection.first, selection.second);
+            }
+        });
+        picker.show(getChildFragmentManager(), "DATE_RANGE_PICKER");
     }
 
     private void setupGranularitySelector() {
         binding.cgGranularity.setOnCheckedChangeListener((group, checkedId) -> {
             Granularity g = Granularity.MONTH;
             if (checkedId == R.id.chipDay) g = Granularity.DAY;
+            else if (checkedId == R.id.chipWeek) g = Granularity.WEEK;
             else if (checkedId == R.id.chipMonth) g = Granularity.MONTH;
             else if (checkedId == R.id.chipYear) g = Granularity.YEAR;
             else if (checkedId == R.id.chipLustrum) g = Granularity.LUSTRUM;
@@ -210,6 +231,7 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
             int chipId = R.id.chipMonth;
             switch (granularity) {
                 case DAY: chipId = R.id.chipDay; break;
+                case WEEK: chipId = R.id.chipWeek; break;
                 case MONTH: chipId = R.id.chipMonth; break;
                 case YEAR: chipId = R.id.chipYear; break;
                 case LUSTRUM: chipId = R.id.chipLustrum; break;
@@ -217,6 +239,16 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
                 case TOTAL: chipId = R.id.chipTotal; break;
             }
             binding.cgGranularity.check(chipId);
+        });
+
+        viewModel.getDateRange().observe(getViewLifecycleOwner(), range -> {
+            if (range != null && range.first != null && range.second != null) {
+                String start = android.text.format.DateFormat.getMediumDateFormat(requireContext()).format(new java.util.Date(range.first));
+                String end = android.text.format.DateFormat.getMediumDateFormat(requireContext()).format(new java.util.Date(range.second));
+                binding.tvDateRange.setText(String.format("%s - %s", start, end));
+            } else {
+                binding.tvDateRange.setText(R.string.date_filter_all);
+            }
         });
 
         viewModel.getCurrentMonthIncome().observe(getViewLifecycleOwner(), income -> {
