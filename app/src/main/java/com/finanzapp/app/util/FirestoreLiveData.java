@@ -41,7 +41,12 @@ public class FirestoreLiveData<T> extends LiveData<T> {
     private final EventListener<QuerySnapshot> queryListener = new EventListener<>() {
         @Override
         public void onEvent(QuerySnapshot value, com.google.firebase.firestore.FirebaseFirestoreException error) {
-            if (error != null) return;
+            if (error != null) {
+                if (isList) {
+                    setValue((T) new ArrayList<>());
+                }
+                return;
+            }
             if (value != null && isList) {
                 List<Object> list = new ArrayList<>();
                 for (DocumentSnapshot doc : value) {

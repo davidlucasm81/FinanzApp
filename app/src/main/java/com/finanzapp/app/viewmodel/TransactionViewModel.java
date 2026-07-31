@@ -1,8 +1,12 @@
 package com.finanzapp.app.viewmodel;
 
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
+
+import android.util.Log;
 
 import com.finanzapp.app.data.model.Account;
 import com.finanzapp.app.data.model.Category;
@@ -32,6 +36,53 @@ public class TransactionViewModel extends ViewModel {
     private ListenerRegistration membersListener;
 
     // Filter state
+    public static class TransactionFilters {
+        public final String familyId;
+        public final String accountId;
+        public final String categoryId;
+        public final java.util.List<String> categoryIds;
+        public final String type;
+        public final String method;
+        public final com.google.firebase.Timestamp startDate;
+        public final com.google.firebase.Timestamp endDate;
+
+        public TransactionFilters(String familyId, String accountId, String categoryId, java.util.List<String> categoryIds,
+                                  String type, String method, com.google.firebase.Timestamp startDate, com.google.firebase.Timestamp endDate) {
+            this.familyId = familyId;
+            this.accountId = accountId;
+            this.categoryId = categoryId;
+            this.categoryIds = categoryIds;
+            this.type = type;
+            this.method = method;
+            this.startDate = startDate;
+            this.endDate = endDate;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            TransactionFilters that = (TransactionFilters) o;
+            return java.util.Objects.equals(familyId, that.familyId) &&
+                    java.util.Objects.equals(accountId, that.accountId) &&
+                    java.util.Objects.equals(categoryId, that.categoryId) &&
+                    java.util.Objects.equals(categoryIds, that.categoryIds) &&
+                    java.util.Objects.equals(type, that.type) &&
+                    java.util.Objects.equals(method, that.method) &&
+                    java.util.Objects.equals(startDate, that.startDate) &&
+                    java.util.Objects.equals(endDate, that.endDate);
+        }
+
+        @Override
+        public int hashCode() {
+            return java.util.Objects.hash(familyId, accountId, categoryId, categoryIds, type, method, startDate, endDate);
+        }
+    }
+
+    private final MutableLiveData<TransactionFilters> filters = new MutableLiveData<>();
+    private final LiveData<List<Transaction>> transactions;
+    private final MediatorLiveData<List<Transaction>> visibleTransactions = new MediatorLiveData<>();
+
     private String filterAccountId = null;
     private String filterCategoryId = null;
     private java.util.List<String> filterCategoryIds = null;
@@ -39,6 +90,8 @@ public class TransactionViewModel extends ViewModel {
     private String filterMethod = null;
     private com.google.firebase.Timestamp filterStartDate = null;
     private com.google.firebase.Timestamp filterEndDate = null;
+    private String preselectedMemberUid = null;
+    private java.util.Set<String> archivedAccountIds = new java.util.HashSet<>();
 
     private final MutableLiveData<Boolean> isPrivacyModeEnabled = new MutableLiveData<>(false);
 
@@ -56,6 +109,62 @@ public class TransactionViewModel extends ViewModel {
         this.categoryRepository = categoryRepository;
         this.familyRepository = familyRepository;
         authRepository.registerPreSignOutCleanup(signOutCleanup);
+
+        transactions = Transformations.switchMap(filters, f -> {
+            if (f.familyId == null) return new MutableLiveData<>(new java.util.ArrayList<>());
+            java.util.List<String> catIds = null;
+            if (f.categoryId != null && !f.categoryId.isEmpty()) {
+                catIds = java.util.Collections.singletonList(f.categoryId);
+            } else if (f.categoryIds != null && !f.categoryIds.isEmpty()) {
+                catIds = f.categoryIds;
+            }
+            return transactionRepository.getTransactions(f.familyId, f.accountId, catIds, f.type, f.method, f.startDate, f.endDate);
+        });
+
+        visibleTransactions.addSource(transactions, this::computeVisibleTransactions);
+    }
+
+    private void computeVisibleTransactions(List<Transaction> allTransactions) {
+        if (allTransactions == null) {
+            visibleTransactions.setValue(null);
+            return;
+        }
+        java.util.List<Transaction> filtered = new java.util.ArrayList<>();
+        for (Transaction t : allTransactions) {
+            if (!archivedAccountIds.contains(t.getAccountId())) {
+                if (preselectedMemberUid != null && !preselectedMemberUid.equals(t.getCreatedBy())) {
+                    continue;
+                }
+                filtered.add(t);
+            }
+        }
+        visibleTransactions.setValue(filtered);
+    }
+
+    public void updateFilters(String familyId) {
+        TransactionFilters newFilters = new TransactionFilters(familyId, filterAccountId, filterCategoryId, filterCategoryIds, filterType, filterMethod, filterStartDate, filterEndDate);
+        TransactionFilters currentFilters = filters.getValue();
+        
+        if (newFilters.equals(currentFilters)) {
+            Log.d("TransactionList", "Filters identical, skipping update");
+        } else {
+            Log.d("TransactionList", "Filters changed, posting new value");
+            filters.setValue(newFilters);
+        }
+    }
+
+    public LiveData<List<Transaction>> getVisibleTransactions() {
+        return visibleTransactions;
+    }
+
+    public void setArchivedAccountIds(java.util.Set<String> ids) {
+        this.archivedAccountIds = ids;
+        computeVisibleTransactions(transactions.getValue());
+    }
+
+    public void setPreselectedMemberUid(String uid) {
+        this.preselectedMemberUid = uid;
+        computeVisibleTransactions(transactions.getValue());
     }
 
     private void stopListening() {
@@ -73,15 +182,15 @@ public class TransactionViewModel extends ViewModel {
     }
 
     public LiveData<List<Transaction>> getFilteredTransactions(String familyId, String accountId, String categoryId, String type, String paymentMethod, com.google.firebase.Timestamp start, com.google.firebase.Timestamp end) {
-        // Handle multicategory filter if set
-        java.util.List<String> catIds = null;
-        if (categoryId != null && !categoryId.isEmpty()) {
-            catIds = java.util.Collections.singletonList(categoryId);
-        } else if (filterCategoryIds != null && !filterCategoryIds.isEmpty()) {
-            catIds = filterCategoryIds;
-        }
-
-        return transactionRepository.getTransactions(familyId, accountId, catIds, type, paymentMethod, start, end);
+        // Redirigir a la nueva lógica reactiva para asegurar coherencia
+        this.filterAccountId = accountId;
+        this.filterCategoryId = categoryId;
+        this.filterType = type;
+        this.filterMethod = paymentMethod;
+        this.filterStartDate = start;
+        this.filterEndDate = end;
+        updateFilters(familyId);
+        return visibleTransactions;
     }
 
     public LiveData<List<Member>> getMembers(String familyId) {
@@ -114,6 +223,10 @@ public class TransactionViewModel extends ViewModel {
 
     public LiveData<Boolean> isPrivacyModeEnabled() {
         return isPrivacyModeEnabled;
+    }
+
+    public TransactionFilters getFiltersValue() {
+        return filters.getValue();
     }
 
     public void initPrivacyMode(android.content.Context context) {

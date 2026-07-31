@@ -200,6 +200,21 @@ public class TransactionListFragment extends Fragment {
         restoreFiltersFromViewModel();
         resolveFamilyId();
 
+        viewModel.getVisibleTransactions().observe(getViewLifecycleOwner(), transactions -> {
+            Log.d("TransactionList", "Observer triggered: " + (transactions != null ? transactions.size() : "null"));
+            
+            if (transactions == null) {
+                // If transactions is null, it means we are still loading (switchMap hasn't produced a value yet)
+                // Don't hide the progress bar yet
+                return;
+            }
+            
+            if (progressBar != null) progressBar.setVisibility(View.GONE);
+            currentTransactions = transactions;
+            adapter.updateTransactions(transactions);
+            emptyState.setVisibility(transactions.isEmpty() ? View.VISIBLE : View.GONE);
+        });
+
         isInitializing = false;
         updateTransactions();
     }
@@ -257,10 +272,15 @@ public class TransactionListFragment extends Fragment {
         spinnerFilterType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                if (position == 0) filterType = null;
-                else if (position == 1) filterType = "expense";
-                else filterType = "income";
-                if (!isInitializing) updateTransactions();
+                String newType;
+                if (position == 0) newType = null;
+                else if (position == 1) newType = "expense";
+                else newType = "income";
+                
+                if (!java.util.Objects.equals(newType, filterType)) {
+                    filterType = newType;
+                    updateTransactions();
+                }
             }
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
@@ -293,8 +313,11 @@ public class TransactionListFragment extends Fragment {
         spinnerFilterMethod.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                filterMethod = position == 0 ? null : paymentMethodValues[position - 1];
-                if (!isInitializing) updateTransactions();
+                String newMethod = position == 0 ? null : paymentMethodValues[position - 1];
+                if (!java.util.Objects.equals(newMethod, filterMethod)) {
+                    filterMethod = newMethod;
+                    updateTransactions();
+                }
             }
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
@@ -432,17 +455,23 @@ public class TransactionListFragment extends Fragment {
                 spinnerFilterCategory.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                     @Override
                     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                        String newCategoryId;
+                        List<String> newCategoryIds = null;
+                        
                         if (position == 0) {
-                            filterCategoryId = null;
-                            filterCategoryIds = null;
+                            newCategoryId = null;
                         } else if ("GROUPED_OTHERS".equals(preselectedCategoryId) && position == names.size() - 1) {
-                            filterCategoryId = null;
-                            // filterCategoryIds ya debería estar seteado desde onViewCreated
+                            newCategoryId = null;
+                            newCategoryIds = filterCategoryIds; // Keep current multicategory if others selected
                         } else {
-                            filterCategoryId = allCategories.get(position - 1).getId();
-                            filterCategoryIds = null;
+                            newCategoryId = allCategories.get(position - 1).getId();
                         }
-                        if (!isInitializing) updateTransactions();
+                        
+                        if (!java.util.Objects.equals(newCategoryId, filterCategoryId)) {
+                            filterCategoryId = newCategoryId;
+                            filterCategoryIds = newCategoryIds;
+                            updateTransactions();
+                        }
                     }
                     @Override
                     public void onNothingSelected(AdapterView<?> parent) {}
@@ -456,9 +485,6 @@ public class TransactionListFragment extends Fragment {
             if (accounts != null) {
                 accountNames.clear();
                 archivedAccountIds.clear();
-                // El repositorio devuelve tanto cuentas activas como archivadas (otras pantallas
-                // necesitan verlas todas). Aquí nos quedamos solo con las activas para el spinner
-                // de filtro, y guardamos las archivadas para poder excluir sus movimientos más abajo.
                 List<Account> activeAccounts = new ArrayList<>();
                 for (Account a : accounts) {
                     accountNames.put(a.getId(), a.getName());
@@ -469,6 +495,7 @@ public class TransactionListFragment extends Fragment {
                     }
                 }
                 allAccounts = activeAccounts;
+                viewModel.setArchivedAccountIds(archivedAccountIds);
 
                 List<String> names = new ArrayList<>();
                 names.add(getString(R.string.filter_all_accounts));
@@ -491,8 +518,11 @@ public class TransactionListFragment extends Fragment {
                 spinnerFilterAccount.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                     @Override
                     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                        filterAccountId = position == 0 ? null : allAccounts.get(position - 1).getId();
-                        if (!isInitializing) updateTransactions();
+                        String newAccountId = position == 0 ? null : allAccounts.get(position - 1).getId();
+                        if (!java.util.Objects.equals(newAccountId, filterAccountId)) {
+                            filterAccountId = newAccountId;
+                            updateTransactions();
+                        }
                     }
                     @Override
                     public void onNothingSelected(AdapterView<?> parent) {}
@@ -549,6 +579,10 @@ public class TransactionListFragment extends Fragment {
             filterEndDate.setTimeInMillis(preselectedEndMillis);
         }
 
+        if (preselectedMemberUid != null) {
+            viewModel.setPreselectedMemberUid(preselectedMemberUid);
+        }
+
         if (preselectedCategoryId != null) {
             if ("GROUPED_OTHERS".equals(preselectedCategoryId)) {
                 // Already handled in spinner adapter setup
@@ -585,6 +619,14 @@ public class TransactionListFragment extends Fragment {
 
     private void updateTransactions() {
         if (familyId == null) return;
+        
+        // Don't update if we are still initializing spinners to avoid loops
+        if (isInitializing) {
+            Log.d("TransactionList", "updateTransactions skipped (isInitializing)");
+            return;
+        }
+
+        Log.d("TransactionList", "updateTransactions called");
 
         // Sync local filters to ViewModel
         viewModel.setFilterAccountId(filterAccountId);
@@ -594,35 +636,22 @@ public class TransactionListFragment extends Fragment {
         viewModel.setFilterMethod(filterMethod);
         viewModel.setFilterStartDate(filterStartDate != null ? new com.google.firebase.Timestamp(filterStartDate.getTime()) : null);
         viewModel.setFilterEndDate(filterEndDate != null ? new com.google.firebase.Timestamp(filterEndDate.getTime()) : null);
+        
+        // Only show progress bar if filters are actually different from what ViewModel already has
+        TransactionViewModel.TransactionFilters currentFilters = viewModel.getFiltersValue();
+        TransactionViewModel.TransactionFilters newFilters = new TransactionViewModel.TransactionFilters(
+                familyId, filterAccountId, filterCategoryId, filterCategoryIds, filterType, filterMethod, 
+                viewModel.getFilterStartDate(), viewModel.getFilterEndDate());
 
-        Timestamp start = filterStartDate != null ? new Timestamp(filterStartDate.getTime()) : null;
-        Timestamp end = filterEndDate != null ? new Timestamp(filterEndDate.getTime()) : null;
-
-        progressBar.setVisibility(View.VISIBLE);
-        emptyState.setVisibility(View.GONE);
-
-        viewModel.getFilteredTransactions(familyId, filterAccountId, filterCategoryId, filterType, filterMethod, start, end)
-                .observe(getViewLifecycleOwner(), transactions -> {
-                    progressBar.setVisibility(View.GONE);
-                    if (transactions != null) {
-                        // El listado de movimientos debe ser exclusivamente de cuentas activas:
-                        // TransactionRepository no distingue cuentas archivadas (no tiene por qué
-                        // conocer ese concepto), así que se descartan aquí los movimientos cuya
-                        // cuenta esté en archivedAccountIds.
-                        List<Transaction> visibleTransactions = new ArrayList<>();
-                        for (Transaction t : transactions) {
-                            if (!archivedAccountIds.contains(t.getAccountId())) {
-                                if (preselectedMemberUid != null && !preselectedMemberUid.equals(t.getCreatedBy())) {
-                                    continue;
-                                }
-                                visibleTransactions.add(t);
-                            }
-                        }
-                        currentTransactions = visibleTransactions;
-                        adapter.updateTransactions(visibleTransactions);
-                        emptyState.setVisibility(visibleTransactions.isEmpty() ? View.VISIBLE : View.GONE);
-                    }
-                });
+        if (currentFilters == null || !newFilters.equals(currentFilters)) {
+            Log.d("TransactionList", "Showing ProgressBar - Filters changed or initial load");
+            if (progressBar != null) progressBar.setVisibility(View.VISIBLE);
+            if (emptyState != null) emptyState.setVisibility(View.GONE);
+        } else {
+            Log.d("TransactionList", "Keeping ProgressBar state - Filters identical");
+        }
+        
+        viewModel.updateFilters(familyId);
 
         boolean hasFilters = filterAccountId != null || filterCategoryId != null || filterType != null || filterMethod != null || filterStartDate != null;
         btnClearFiltersTop.setVisibility(hasFilters ? View.VISIBLE : View.GONE);
