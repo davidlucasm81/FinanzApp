@@ -63,6 +63,7 @@ public class AccountListFragment extends Fragment {
         binding.fabAdd.setOnClickListener(v -> showAddEditDialog(null));
 
         resolveFamilyId();
+        viewModel.initPrivacyMode(requireContext());
         binding.pbLoading.setVisibility(View.VISIBLE);
     }
 
@@ -119,6 +120,10 @@ public class AccountListFragment extends Fragment {
         viewModel.getIsAdmin().observe(getViewLifecycleOwner(), admin -> {
             isAdmin = admin;
             if (adapter != null) adapter.setIsAdmin(isAdmin);
+        });
+
+        viewModel.isPrivacyModeEnabled().observe(getViewLifecycleOwner(), enabled -> {
+            if (adapter != null) adapter.setPrivacyModeEnabled(enabled);
         });
 
         viewModel.getCreateResult().observe(getViewLifecycleOwner(), result -> handleResult(result, "Cuenta creada"));
@@ -182,6 +187,7 @@ public class AccountListFragment extends Fragment {
         private final OnAccountActionListener onDelete;
         private String currency = "€";
         private boolean isAdmin = false;
+        private boolean isPrivacyModeEnabled = false;
 
         AccountsAdapter(List<Account> items, OnAccountActionListener onEdit, OnAccountActionListener onArchive, OnAccountActionListener onDelete) {
             this.items.addAll(items);
@@ -202,6 +208,13 @@ public class AccountListFragment extends Fragment {
             notifyDataSetChanged();
         }
 
+        void setPrivacyModeEnabled(boolean enabled) {
+            if (this.isPrivacyModeEnabled != enabled) {
+                this.isPrivacyModeEnabled = enabled;
+                notifyDataSetChanged();
+            }
+        }
+
         @NonNull
         @Override
         public AccountsViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -211,7 +224,7 @@ public class AccountListFragment extends Fragment {
 
         @Override
         public void onBindViewHolder(@NonNull AccountsViewHolder holder, int position) {
-            holder.bind(items.get(position), currency, isAdmin, onEdit, onArchive, onDelete);
+            holder.bind(items.get(position), currency, isAdmin, isPrivacyModeEnabled, onEdit, onArchive, onDelete);
         }
 
         @Override
@@ -226,9 +239,13 @@ public class AccountListFragment extends Fragment {
             this.binding = binding;
         }
 
-        void bind(Account a, String currency, boolean isAdmin, OnAccountActionListener onEdit, OnAccountActionListener onArchive, OnAccountActionListener onDelete) {
+        void bind(Account a, String currency, boolean isAdmin, boolean isPrivacyModeEnabled, OnAccountActionListener onEdit, OnAccountActionListener onArchive, OnAccountActionListener onDelete) {
             binding.tvItemName.setText(a.getName());
-            binding.tvItemBalance.setText(String.format(Locale.getDefault(), "%,.2f %s", a.getCurrentBalance(), currency));
+            if (isPrivacyModeEnabled) {
+                binding.tvItemBalance.setText("****");
+            } else {
+                binding.tvItemBalance.setText(String.format(Locale.getDefault(), "%,.2f %s", a.getCurrentBalance(), currency));
+            }
             binding.tvItemStatus.setVisibility(a.isActive() ? View.GONE : View.VISIBLE);
 
             // Icon for archive/unarchive (using standard android icons)

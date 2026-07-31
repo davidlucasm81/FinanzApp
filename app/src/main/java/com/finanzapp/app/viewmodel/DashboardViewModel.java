@@ -36,6 +36,7 @@ public class DashboardViewModel extends ViewModel {
     private final MutableLiveData<Result<User>> userData = new MutableLiveData<>();
     private final MutableLiveData<Double> netBalance = new MutableLiveData<>(0.0);
     private final MutableLiveData<List<Account>> accountsList = new MutableLiveData<>();
+    private final MutableLiveData<Boolean> isPrivacyModeEnabled = new MutableLiveData<>(false);
     private final SingleLiveEvent<Result<String>> transferResult = new SingleLiveEvent<>();
 
     private final Set<String> migratingAccounts = new HashSet<>();
@@ -56,6 +57,11 @@ public class DashboardViewModel extends ViewModel {
         this.familyRepository = familyRepository;
         this.accountRepository = accountRepository;
         authRepository.registerPreSignOutCleanup(signOutCleanup);
+
+        // Load persisted privacy mode state
+        // In a more complex architecture, context would be injected, but here we use the AppContainer's context concept if possible
+        // or just rely on a way to get context if needed. DashboardFragment will pass the initial state if needed, 
+        // but it's cleaner to have the VM initialize it.
 
         // Reactive architecture
         familyData = Transformations.switchMap(familyIdSource, id -> {
@@ -98,7 +104,20 @@ public class DashboardViewModel extends ViewModel {
     public LiveData<Result<User>> getUserData() { return userData; }
     public LiveData<Double> getNetBalance() { return netBalance; }
     public LiveData<List<Account>> getAccountsList() { return accountsList; }
+    public LiveData<Boolean> isPrivacyModeEnabled() { return isPrivacyModeEnabled; }
     public LiveData<Result<String>> getTransferResult() { return transferResult; }
+
+    public void togglePrivacyMode(android.content.Context context) {
+        Boolean current = isPrivacyModeEnabled.getValue();
+        boolean newValue = current == null || !current;
+        isPrivacyModeEnabled.setValue(newValue);
+        com.finanzapp.app.util.PreferenceUtils.setPrivacyModeEnabled(context, newValue);
+    }
+
+    public void initPrivacyMode(android.content.Context context) {
+        boolean enabled = com.finanzapp.app.util.PreferenceUtils.isPrivacyModeEnabled(context);
+        isPrivacyModeEnabled.setValue(enabled);
+    }
 
     public void transferFunds(String fromAccountId, String toAccountId, double amount) {
         String familyId = familyIdSource.getValue();

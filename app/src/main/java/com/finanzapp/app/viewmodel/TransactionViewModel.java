@@ -40,6 +40,8 @@ public class TransactionViewModel extends ViewModel {
     private com.google.firebase.Timestamp filterStartDate = null;
     private com.google.firebase.Timestamp filterEndDate = null;
 
+    private final MutableLiveData<Boolean> isPrivacyModeEnabled = new MutableLiveData<>(false);
+
     // Referencia estable para poder registrar/desregistrar el mismo Runnable
     private final Runnable signOutCleanup = this::stopListening;
 
@@ -108,6 +110,14 @@ public class TransactionViewModel extends ViewModel {
 
     public LiveData<Result<Boolean>> getOperationResult() {
         return operationResult;
+    }
+
+    public LiveData<Boolean> isPrivacyModeEnabled() {
+        return isPrivacyModeEnabled;
+    }
+
+    public void initPrivacyMode(android.content.Context context) {
+        isPrivacyModeEnabled.setValue(com.finanzapp.app.util.PreferenceUtils.isPrivacyModeEnabled(context));
     }
 
     public void addTransaction(String familyId, Transaction transaction) {

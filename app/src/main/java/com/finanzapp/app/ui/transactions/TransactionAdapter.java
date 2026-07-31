@@ -37,6 +37,7 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
     private final Map<String, String> memberNames;
     private final Map<String, String> paymentMethodLabels;
     private final OnTransactionClickListener listener;
+    private boolean isPrivacyModeEnabled = false;
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd MMM yyyy", Locale.getDefault());
     private final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(new Locale("es", "ES"));
 
@@ -91,6 +92,13 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
         result.dispatchUpdatesTo(this);
     }
 
+    public void setPrivacyModeEnabled(boolean enabled) {
+        if (this.isPrivacyModeEnabled != enabled) {
+            this.isPrivacyModeEnabled = enabled;
+            notifyDataSetChanged();
+        }
+    }
+
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -120,7 +128,12 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
 
         boolean isIncome = "income".equals(t.getType());
         double amount = t.getAmount();
-        String amountStr = (isIncome ? "+" : "-") + currencyFormat.format(amount);
+        String amountStr;
+        if (isPrivacyModeEnabled) {
+            amountStr = (isIncome ? "+" : "-") + "****";
+        } else {
+            amountStr = (isIncome ? "+" : "-") + currencyFormat.format(amount);
+        }
         holder.tvAmount.setText(amountStr);
         int amountColorRes = isIncome ? R.color.success : R.color.error;
         holder.tvAmount.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), amountColorRes));

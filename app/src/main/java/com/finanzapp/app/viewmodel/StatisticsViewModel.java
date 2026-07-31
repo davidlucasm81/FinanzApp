@@ -82,6 +82,7 @@ public class StatisticsViewModel extends ViewModel {
     private final MutableLiveData<List<MemberSummary>> memberExpenseDistribution = new MutableLiveData<>();
     private final MutableLiveData<List<MemberSummary>> memberIncomeDistribution = new MutableLiveData<>();
     private final MutableLiveData<List<Category>> allCategories = new MutableLiveData<>();
+    private final MutableLiveData<Boolean> isPrivacyModeEnabled = new MutableLiveData<>(false);
 
     private final MediatorLiveData<Void> statsMediator = new MediatorLiveData<>();
     private final Observer<Void> statsObserver = v -> {};
@@ -190,6 +191,7 @@ public class StatisticsViewModel extends ViewModel {
 
     public LiveData<List<Category>> getAllCategories() { return allCategories; }
     public LiveData<Double> getSavingsRate() { return savingsRate; }
+    public LiveData<Boolean> isPrivacyModeEnabled() { return isPrivacyModeEnabled; }
     public LiveData<List<PaymentMethodSummary>> getPaymentMethodDistribution() { return paymentMethodDistribution; }
     public LiveData<List<Transaction>> getTopExpenses() { return topExpenses; }
     public LiveData<List<MemberSummary>> getMemberExpenseDistribution() { return memberExpenseDistribution; }
@@ -205,6 +207,10 @@ public class StatisticsViewModel extends ViewModel {
     public void setDateRange(long start, long end) {
         dateRange.setValue(new Pair<>(start, end));
         recomputeStatistics();
+    }
+
+    public void initPrivacyMode(android.content.Context context) {
+        isPrivacyModeEnabled.setValue(com.finanzapp.app.util.PreferenceUtils.isPrivacyModeEnabled(context));
     }
 
     private void recomputeStatistics() {

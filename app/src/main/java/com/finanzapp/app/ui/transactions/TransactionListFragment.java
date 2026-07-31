@@ -191,6 +191,8 @@ public class TransactionListFragment extends Fragment {
             args.putString("familyId", familyId);
             Navigation.findNavController(v).navigate(R.id.action_transactionListFragment_to_importTransactionsFragment, args);
         });
+
+        viewModel.initPrivacyMode(requireContext());
         
         btnExport = view.findViewById(R.id.btn_export);
         btnExport.setOnClickListener(v -> showExportOptions());
@@ -517,6 +519,10 @@ public class TransactionListFragment extends Fragment {
                 Family family = ((Result.Success<Family>) result).getData();
                 familyName = family.getName();
             }
+        });
+
+        viewModel.isPrivacyModeEnabled().observe(getViewLifecycleOwner(), enabled -> {
+            if (adapter != null) adapter.setPrivacyModeEnabled(enabled);
         });
 
         if (!isInitializing) updateTransactions();

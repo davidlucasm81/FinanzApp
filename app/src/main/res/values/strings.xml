@@ -24,6 +24,8 @@
     <string name="desc_delete_account">Eliminar cuenta</string>
     <string name="desc_import_csv">Importar CSV</string>
     <string name="desc_export">Exportar movimientos</string>
+    <string name="privacy_mode_toggle_desc">Alternar modo privacidad</string>
+    <string name="privacy_mode_masked_value">****</string>
     <string name="export_options_title">Exportar como...</string>
     <string name="export_option_excel">Excel (.xlsx)</string>
     <string name="export_option_pdf">PDF (.pdf)</string>

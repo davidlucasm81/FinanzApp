@@ -53,6 +53,7 @@ public class DashboardFragment extends Fragment {
         setupClickListeners();
         setupObservers();
         
+        viewModel.initPrivacyMode(requireContext());
         viewModel.fetchDashboardData();
     }
 
@@ -78,6 +79,8 @@ public class DashboardFragment extends Fragment {
                         .show(getChildFragmentManager(), "FamilySwitcher");
             }
         });
+
+        binding.ivPrivacyToggle.setOnClickListener(v -> viewModel.togglePrivacyMode(requireContext()));
     }
 
     private void setupObservers() {
@@ -120,9 +123,29 @@ public class DashboardFragment extends Fragment {
             }
         });
 
-        viewModel.getNetBalance().observe(getViewLifecycleOwner(), total -> binding.tvNetBalanceValue.setText(formatCurrency(total, currentCurrencyCode)));
+        viewModel.isPrivacyModeEnabled().observe(getViewLifecycleOwner(), enabled -> {
+            binding.ivPrivacyToggle.setImageResource(enabled ? com.finanzapp.app.R.drawable.ic_visibility_off : com.finanzapp.app.R.drawable.ic_visibility);
+            accountAdapter.setPrivacyModeEnabled(enabled);
+            Double total = viewModel.getNetBalance().getValue();
+            if (total != null) {
+                updateNetBalanceText(total, enabled);
+            }
+        });
+
+        viewModel.getNetBalance().observe(getViewLifecycleOwner(), total -> {
+            Boolean privacyEnabled = viewModel.isPrivacyModeEnabled().getValue();
+            updateNetBalanceText(total, privacyEnabled != null && privacyEnabled);
+        });
 
         viewModel.getAccountsList().observe(getViewLifecycleOwner(), accounts -> accountAdapter.setItems(accounts, currentCurrencyCode));
+    }
+
+    private void updateNetBalanceText(double total, boolean isPrivacyEnabled) {
+        if (isPrivacyEnabled) {
+            binding.tvNetBalanceValue.setText(getString(com.finanzapp.app.R.string.privacy_mode_masked_value));
+        } else {
+            binding.tvNetBalanceValue.setText(formatCurrency(total, currentCurrencyCode));
+        }
     }
 
     @Override

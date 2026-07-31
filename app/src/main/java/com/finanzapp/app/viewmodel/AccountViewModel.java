@@ -24,6 +24,7 @@ public class AccountViewModel extends ViewModel {
     private final SingleLiveEvent<Result<String>> archiveResult = new SingleLiveEvent<>();
     private final SingleLiveEvent<Result<String>> deleteResult = new SingleLiveEvent<>();
     private final MutableLiveData<Boolean> isAdmin = new MutableLiveData<>(false);
+    private final MutableLiveData<Boolean> isPrivacyModeEnabled = new MutableLiveData<>(false);
     private ListenerRegistration roleListener;
 
     // Referencia estable para poder registrar/desregistrar el mismo Runnable
@@ -54,6 +55,11 @@ public class AccountViewModel extends ViewModel {
     public LiveData<Result<String>> getArchiveResult() { return archiveResult; }
     public LiveData<Result<String>> getDeleteResult() { return deleteResult; }
     public LiveData<Boolean> getIsAdmin() { return isAdmin; }
+    public LiveData<Boolean> isPrivacyModeEnabled() { return isPrivacyModeEnabled; }
+
+    public void initPrivacyMode(android.content.Context context) {
+        isPrivacyModeEnabled.setValue(com.finanzapp.app.util.PreferenceUtils.isPrivacyModeEnabled(context));
+    }
 
     public void checkAdminRole(String familyId) {
         String uid = FirebaseAuth.getInstance().getUid();

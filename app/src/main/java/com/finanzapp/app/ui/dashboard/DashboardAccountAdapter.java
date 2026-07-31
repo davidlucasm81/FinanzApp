@@ -19,6 +19,7 @@ import java.util.Locale;
 public class DashboardAccountAdapter extends RecyclerView.Adapter<DashboardAccountAdapter.ViewHolder> {
     private final List<Account> items = new ArrayList<>();
     private String currencyCode = "EUR";
+    private boolean isPrivacyModeEnabled = false;
 
     public void setItems(List<Account> newItems, String currencyCode) {
         List<Account> activeItems = new ArrayList<>();
@@ -60,6 +61,13 @@ public class DashboardAccountAdapter extends RecyclerView.Adapter<DashboardAccou
         result.dispatchUpdatesTo(this);
     }
 
+    public void setPrivacyModeEnabled(boolean enabled) {
+        if (this.isPrivacyModeEnabled != enabled) {
+            this.isPrivacyModeEnabled = enabled;
+            notifyDataSetChanged();
+        }
+    }
+
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -69,7 +77,7 @@ public class DashboardAccountAdapter extends RecyclerView.Adapter<DashboardAccou
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        holder.bind(items.get(position), currencyCode);
+        holder.bind(items.get(position), currencyCode, isPrivacyModeEnabled);
     }
 
     @Override
@@ -85,9 +93,13 @@ public class DashboardAccountAdapter extends RecyclerView.Adapter<DashboardAccou
             this.binding = binding;
         }
 
-        void bind(Account account, String currencyCode) {
+        void bind(Account account, String currencyCode, boolean isPrivacyModeEnabled) {
             binding.tvAccountName.setText(account.getName());
-            binding.tvAccountBalance.setText(formatCurrency(account.getCurrentBalance(), currencyCode));
+            if (isPrivacyModeEnabled) {
+                binding.tvAccountBalance.setText("****");
+            } else {
+                binding.tvAccountBalance.setText(formatCurrency(account.getCurrentBalance(), currencyCode));
+            }
         }
 
         private String formatCurrency(double amount, String currencyCode) {

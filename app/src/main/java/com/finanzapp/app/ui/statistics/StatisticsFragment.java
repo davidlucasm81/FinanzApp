@@ -72,6 +72,7 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
     private final Map<String, String> accountNames = new HashMap<>();
     private final Map<String, String> memberNames = new HashMap<>();
 
+    private boolean isPrivacyModeEnabled = false;
     private List<PeriodSummary> periodDataList = new ArrayList<>();
 
     @Nullable
@@ -100,6 +101,7 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         setupGranularitySelector();
         setupObservers();
 
+        viewModel.initPrivacyMode(requireContext());
         viewModel.init();
     }
 
@@ -255,7 +257,11 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
             if (income == null || income == 0) {
                 binding.tvTotalIncome.setText(R.string.no_data_dash);
             } else {
-                binding.tvTotalIncome.setText(formatCurrency(income, currentCurrencyCode, 2));
+                if (isPrivacyModeEnabled) {
+                    binding.tvTotalIncome.setText(R.string.privacy_mode_masked_value);
+                } else {
+                    binding.tvTotalIncome.setText(formatCurrency(income, currentCurrencyCode, 2));
+                }
             }
         });
 
@@ -266,7 +272,11 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
             if (expense == null || expense == 0) {
                 binding.tvTotalExpense.setText(R.string.no_data_dash);
             } else {
-                binding.tvTotalExpense.setText(formatCurrency(expense, currentCurrencyCode, 2));
+                if (isPrivacyModeEnabled) {
+                    binding.tvTotalExpense.setText(R.string.privacy_mode_masked_value);
+                } else {
+                    binding.tvTotalExpense.setText(formatCurrency(expense, currentCurrencyCode, 2));
+                }
             }
         });
 
@@ -293,6 +303,37 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         });
 
         viewModel.getSavingsRate().observe(getViewLifecycleOwner(), this::updateSavingsRate);
+        
+        viewModel.isPrivacyModeEnabled().observe(getViewLifecycleOwner(), enabled -> {
+            isPrivacyModeEnabled = enabled;
+            legendAdapter.setPrivacyModeEnabled(enabled);
+            methodLegendAdapter.setPrivacyModeEnabled(enabled);
+            memberExpenseLegendAdapter.setPrivacyModeEnabled(enabled);
+            memberIncomeLegendAdapter.setPrivacyModeEnabled(enabled);
+            topExpensesAdapter.setPrivacyModeEnabled(enabled);
+            
+            // Refresh values in summary cards
+            Double income = viewModel.getCurrentMonthIncome().getValue();
+            if (income != null && income != 0) {
+                binding.tvTotalIncome.setText(enabled ? getString(R.string.privacy_mode_masked_value) : formatCurrency(income, currentCurrencyCode, 2));
+            }
+            Double expense = viewModel.getCurrentMonthExpense().getValue();
+            if (expense != null && expense != 0) {
+                binding.tvTotalExpense.setText(enabled ? getString(R.string.privacy_mode_masked_value) : formatCurrency(expense, currentCurrencyCode, 2));
+            }
+            updateSavingsRate(viewModel.getSavingsRate().getValue());
+            
+            // Charts: We rebuild charts to mask values if necessary
+            List<PeriodSummary> evo = viewModel.getPeriodEvolution().getValue();
+            if (evo != null) updatePeriodChart(evo);
+            
+            List<DashboardCategorySummary> catDist = viewModel.getCategoryDistribution().getValue();
+            if (catDist != null) updatePieChart(catDist);
+            
+            List<PaymentMethodSummary> payDist = viewModel.getPaymentMethodDistribution().getValue();
+            if (payDist != null) updatePaymentMethodChart(payDist);
+        });
+
         viewModel.getPaymentMethodDistribution().observe(getViewLifecycleOwner(), distribution -> {
             if (distribution == null || distribution.isEmpty()) {
                 binding.paymentMethodPieChart.clear();
@@ -373,7 +414,11 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
             return;
         }
 
-        binding.tvSavingsRate.setText(String.format(Locale.getDefault(), "%.1f%%", rate));
+        if (isPrivacyModeEnabled) {
+            binding.tvSavingsRate.setText(getString(R.string.privacy_mode_masked_value));
+        } else {
+            binding.tvSavingsRate.setText(String.format(Locale.getDefault(), "%.1f%%", rate));
+        }
         binding.progressSavingsRate.setVisibility(View.VISIBLE);
         
         int progress = (int) Math.max(0, Math.min(100, rate));
@@ -451,13 +496,13 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         incomeSet.setColor(ContextCompat.getColor(requireContext(), R.color.success));
         incomeSet.setValueTextColor(textColor);
         incomeSet.setValueTextSize(10f);
-        incomeSet.setDrawValues(true);
+        incomeSet.setDrawValues(!isPrivacyModeEnabled);
         
         BarDataSet expenseSet = new BarDataSet(expenseEntries, "Gastos");
         expenseSet.setColor(ContextCompat.getColor(requireContext(), R.color.error));
         expenseSet.setValueTextColor(textColor);
         expenseSet.setValueTextSize(10f);
-        expenseSet.setDrawValues(true);
+        expenseSet.setDrawValues(!isPrivacyModeEnabled);
 
         CombinedData combinedData = getCombinedData(data, incomeSet, expenseSet);
         binding.monthlyChart.getXAxis().setValueFormatter(new IndexAxisValueFormatter(labels));
@@ -552,6 +597,7 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         dataSet.setValueLineColor(isDarkMode() ? Color.WHITE : Color.BLACK);
 
         PieData pieData = getPieData(dataSet);
+        pieData.setDrawValues(!isPrivacyModeEnabled);
 
         binding.categoryPieChart.setData(pieData);
         binding.categoryPieChart.setMinAngleForSlices(0f);
@@ -587,6 +633,7 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         pieData.setValueFormatter(new PercentFormatter(binding.paymentMethodPieChart));
         pieData.setValueTextSize(10f);
         pieData.setValueTextColor(isDarkMode() ? Color.WHITE : Color.BLACK);
+        pieData.setDrawValues(!isPrivacyModeEnabled);
 
         binding.paymentMethodPieChart.setData(pieData);
         binding.paymentMethodPieChart.invalidate();
@@ -724,10 +771,18 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
 
     private class LegendAdapter extends RecyclerView.Adapter<LegendAdapter.ViewHolder> {
         private List<DashboardCategorySummary> items = new ArrayList<>();
+        private boolean isPrivacyModeEnabled = false;
 
         public void updateData(List<DashboardCategorySummary> newItems) {
             this.items = new ArrayList<>(newItems);
             notifyDataSetChanged();
+        }
+
+        public void setPrivacyModeEnabled(boolean enabled) {
+            if (this.isPrivacyModeEnabled != enabled) {
+                this.isPrivacyModeEnabled = enabled;
+                notifyDataSetChanged();
+            }
         }
 
         @NonNull
@@ -741,7 +796,11 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             DashboardCategorySummary item = items.get(position);
             holder.tvName.setText(item.getCategoryName());
-            holder.tvAmount.setText(formatCurrency(item.getAmount(), currentCurrencyCode, 2));
+            if (isPrivacyModeEnabled) {
+                holder.tvAmount.setText(holder.itemView.getContext().getString(R.string.privacy_mode_masked_value));
+            } else {
+                holder.tvAmount.setText(formatCurrency(item.getAmount(), currentCurrencyCode, 2));
+            }
             holder.tvPercentage.setText(String.format(Locale.getDefault(), "%.1f%%", item.getPercentage()));
             holder.progressBar.setProgress((int) item.getPercentage());
 
@@ -782,10 +841,18 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
 
     private class PaymentMethodLegendAdapter extends RecyclerView.Adapter<PaymentMethodLegendAdapter.ViewHolder> {
         private List<PaymentMethodSummary> items = new ArrayList<>();
+        private boolean isPrivacyModeEnabled = false;
 
         public void updateData(List<PaymentMethodSummary> newItems) {
             this.items = new ArrayList<>(newItems);
             notifyDataSetChanged();
+        }
+
+        public void setPrivacyModeEnabled(boolean enabled) {
+            if (this.isPrivacyModeEnabled != enabled) {
+                this.isPrivacyModeEnabled = enabled;
+                notifyDataSetChanged();
+            }
         }
 
         @NonNull
@@ -800,7 +867,11 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
             PaymentMethodSummary item = items.get(position);
             String label = methodLabels.getOrDefault(item.getMethodId(), item.getMethodId());
             holder.tvName.setText(label);
-            holder.tvAmount.setText(formatCurrency(item.getAmount(), currentCurrencyCode, 2));
+            if (isPrivacyModeEnabled) {
+                holder.tvAmount.setText(holder.itemView.getContext().getString(R.string.privacy_mode_masked_value));
+            } else {
+                holder.tvAmount.setText(formatCurrency(item.getAmount(), currentCurrencyCode, 2));
+            }
             holder.tvPercentage.setText(String.format(Locale.getDefault(), "%.1f%%", item.getPercentage()));
             holder.progressBar.setProgress((int) item.getPercentage());
 
@@ -837,6 +908,7 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
     private class MemberSummaryAdapter extends RecyclerView.Adapter<MemberSummaryAdapter.ViewHolder> {
         private List<MemberSummary> items = new ArrayList<>();
         private final String transactionType;
+        private boolean isPrivacyModeEnabled = false;
 
         public MemberSummaryAdapter(String transactionType) {
             this.transactionType = transactionType;
@@ -845,6 +917,13 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         public void updateData(List<MemberSummary> newItems) {
             this.items = new ArrayList<>(newItems);
             notifyDataSetChanged();
+        }
+
+        public void setPrivacyModeEnabled(boolean enabled) {
+            if (this.isPrivacyModeEnabled != enabled) {
+                this.isPrivacyModeEnabled = enabled;
+                notifyDataSetChanged();
+            }
         }
 
         @NonNull
@@ -858,7 +937,11 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             MemberSummary item = items.get(position);
             holder.tvName.setText(item.getDisplayName());
-            holder.tvAmount.setText(formatCurrency(item.getAmount(), currentCurrencyCode, 2));
+            if (isPrivacyModeEnabled) {
+                holder.tvAmount.setText(holder.itemView.getContext().getString(R.string.privacy_mode_masked_value));
+            } else {
+                holder.tvAmount.setText(formatCurrency(item.getAmount(), currentCurrencyCode, 2));
+            }
             holder.tvPercentage.setText(String.format(Locale.getDefault(), "%.1f%%", item.getPercentage()));
             holder.progressBar.setProgress((int) item.getPercentage());
 
