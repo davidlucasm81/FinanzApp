@@ -16,7 +16,9 @@ import androidx.credentials.Credential;
 import androidx.credentials.CredentialManager;
 import androidx.credentials.GetCredentialRequest;
 import androidx.credentials.GetCredentialResponse;
+import androidx.credentials.exceptions.GetCredentialCancellationException;
 import androidx.credentials.exceptions.GetCredentialException;
+import androidx.credentials.exceptions.NoCredentialException;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.finanzapp.app.FinanzAppApplication;
@@ -124,7 +126,12 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onError(@NonNull GetCredentialException e) {
                 Log.e(TAG, "Credential Manager error", e);
-                if (!(e instanceof androidx.credentials.exceptions.GetCredentialCancellationException)) {
+                if (e instanceof GetCredentialCancellationException) {
+                    Log.d(TAG, "Google Login cancelled by user");
+                } else if (e instanceof NoCredentialException) {
+                    Log.w(TAG, "No credentials available");
+                    Toast.makeText(LoginActivity.this, R.string.error_no_google_accounts, Toast.LENGTH_SHORT).show();
+                } else {
                     Toast.makeText(LoginActivity.this, getString(R.string.error_google_specific, e.getMessage()), Toast.LENGTH_SHORT).show();
                 }
             }

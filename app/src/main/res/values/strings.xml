@@ -264,6 +264,7 @@
     <string name="msg_request_sent">Solicitud enviada. Espera aprobación.</string>
     <string name="msg_import_success">Importación completada con éxito</string>
     <string name="error_google_token">Error: No se pudo obtener el token de Google</string>
+    <string name="error_no_google_accounts">No se encontraron cuentas de Google en el dispositivo.</string>
     <string name="error_save_consent">Error al guardar consentimiento</string>
     <string name="msg_family_created">Familia creada con éxito</string>
     <string name="error_load_members">Error al cargar miembros</string>

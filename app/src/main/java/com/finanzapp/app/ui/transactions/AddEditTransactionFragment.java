@@ -280,6 +280,21 @@ public class AddEditTransactionFragment extends Fragment {
                 selectedCategory = null;
                 autoCategory.setText("", false);
             }
+        } else {
+            // Also check if typed text matches something that is now filtered out
+            String currentText = autoCategory.getText().toString().trim();
+            if (!currentText.isEmpty()) {
+                boolean found = false;
+                for (Category c : filteredCategories) {
+                    if (c.getName().equalsIgnoreCase(currentText)) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    autoCategory.setText("", false);
+                }
+            }
         }
     }
 
@@ -330,8 +345,10 @@ public class AddEditTransactionFragment extends Fragment {
         if (selectedCategory == null) {
             // Try to resolve by text if user typed but didn't click
             String currentText = autoCategory.getText().toString().trim();
+            String type = rbIncome.isChecked() ? "income" : "expense";
             for (Category c : allCategories) {
-                if (c.getName().equalsIgnoreCase(currentText)) {
+                if (c.getName().equalsIgnoreCase(currentText) && 
+                    (c.getAppliesTo().equals(type) || c.getAppliesTo().equals("both"))) {
                     selectedCategory = c;
                     break;
                 }
