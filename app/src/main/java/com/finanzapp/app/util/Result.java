@@ -11,7 +11,11 @@ public abstract class Result<T> {
 
     public static final class Error<T> extends Result<T> {
         private final Exception exception;
-        public Error(Exception exception) { this.exception = exception; }
+        public Error(Exception exception) { 
+            this.exception = exception;
+            // Centralized logging for all Result.Error instances
+            FirebaseLogger.logException(exception);
+        }
         public Exception getException() { return exception; }
     }
 

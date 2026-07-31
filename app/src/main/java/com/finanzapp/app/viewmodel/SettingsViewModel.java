@@ -7,9 +7,9 @@ import androidx.lifecycle.ViewModel;
 import com.finanzapp.app.data.model.User;
 import com.finanzapp.app.data.repository.AuthRepository;
 import com.finanzapp.app.data.repository.FamilyRepository;
+import com.finanzapp.app.util.FirebaseLogger;
 import com.finanzapp.app.util.Result;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.finanzapp.app.data.firebase.FirestorePaths;
@@ -64,9 +64,8 @@ public class SettingsViewModel extends ViewModel {
                     }
                     User user = value.toObject(User.class);
                     if (user != null) {
-                        FirebaseCrashlytics crashlytics = FirebaseCrashlytics.getInstance();
-                        crashlytics.setCustomKey("familyId", user.getFamilyId() != null ? user.getFamilyId() : "none");
-                        crashlytics.setUserId(user.getUid());
+                        FirebaseLogger.setUserId(user.getUid());
+                        FirebaseLogger.setCustomKey("familyId", user.getFamilyId() != null ? user.getFamilyId() : "none");
 
                         if (user.getFamilyId() != null) {
                             familyRepository.getMembers(user.getFamilyId(), result -> {
@@ -74,7 +73,7 @@ public class SettingsViewModel extends ViewModel {
                                     List<com.finanzapp.app.data.model.Member> members = ((Result.Success<List<com.finanzapp.app.data.model.Member>>) result).getData();
                                     for (com.finanzapp.app.data.model.Member m : members) {
                                         if (m.getUid().equals(user.getUid())) {
-                                            crashlytics.setCustomKey("role", m.getRole() != null ? m.getRole() : "none");
+                                            FirebaseLogger.setCustomKey("role", m.getRole() != null ? m.getRole() : "none");
                                             break;
                                         }
                                     }

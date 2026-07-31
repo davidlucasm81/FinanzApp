@@ -16,6 +16,7 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import com.finanzapp.app.ui.onboarding.OnboardingActivity;
+import com.finanzapp.app.util.FirebaseLogger;
 import com.finanzapp.app.data.model.FamilyMembership;
 import com.finanzapp.app.data.model.Member;
 import com.google.firebase.Timestamp;
@@ -71,6 +72,7 @@ public class SplashActivity extends AppCompatActivity {
                     }
                 })
                 .addOnFailureListener(e -> {
+                    FirebaseLogger.logException(e);
                     if (handled[0]) return;
                     // Si falla el servidor (ej. offline), intentamos con la caché como fallback
                     FirebaseFirestore.getInstance().collection(FirestorePaths.USERS)
@@ -88,6 +90,7 @@ public class SplashActivity extends AppCompatActivity {
                                 }
                             })
                             .addOnFailureListener(e2 -> {
+                                FirebaseLogger.logException(e2);
                                 if (handled[0]) return;
                                 handled[0] = true;
                                 navigateToLogin();
@@ -108,7 +111,10 @@ public class SplashActivity extends AppCompatActivity {
                         proceedWithRouting(firebaseUser);
                     }
                 })
-                .addOnFailureListener(e -> navigateToLogin());
+                .addOnFailureListener(e -> {
+                    FirebaseLogger.logException(e);
+                    navigateToLogin();
+                });
     }
 
     private void performSelfHeal(FirebaseUser firebaseUser) {
@@ -129,7 +135,10 @@ public class SplashActivity extends AppCompatActivity {
                         navigateToLogin();
                     }
                 })
-                .addOnFailureListener(e -> navigateToLogin());
+                .addOnFailureListener(e -> {
+                    FirebaseLogger.logException(e);
+                    navigateToLogin();
+                });
     }
 
     private void migrateToMembership(String uid, String familyId) {
@@ -154,18 +163,27 @@ public class SplashActivity extends AppCompatActivity {
                                     .document(familyId)
                                     .set(membership)
                                     .addOnSuccessListener(v -> navigateToMain())
-                                    .addOnFailureListener(e -> navigateToMain()); // Navigate anyway to avoid blocking
+                                    .addOnFailureListener(e -> {
+                                        FirebaseLogger.logException(e);
+                                        navigateToMain(); // Navigate anyway to avoid blocking
+                                    });
                         } else {
                             navigateToMain();
                         }
                     } else {
                         navigateToMain();
                     }
-                }).addOnFailureListener(e -> navigateToMain());
+                }).addOnFailureListener(e -> {
+                    FirebaseLogger.logException(e);
+                    navigateToMain();
+                });
             } else {
                 navigateToMain();
             }
-        }).addOnFailureListener(e -> navigateToMain());
+        }).addOnFailureListener(e -> {
+            FirebaseLogger.logException(e);
+            navigateToMain();
+        });
     }
 
     private void proceedWithRouting(FirebaseUser firebaseUser) {
@@ -191,7 +209,10 @@ public class SplashActivity extends AppCompatActivity {
                         navigateToLogin();
                     }
                 })
-                .addOnFailureListener(e -> navigateToLogin());
+                .addOnFailureListener(e -> {
+                    FirebaseLogger.logException(e);
+                    navigateToLogin();
+                });
     }
 
     private void validateActiveFamily(String uid, String activeFamilyId) {
@@ -205,7 +226,10 @@ public class SplashActivity extends AppCompatActivity {
                         setFirstFamilyActive(uid);
                     }
                 })
-                .addOnFailureListener(e -> navigateToMain());
+                .addOnFailureListener(e -> {
+                    FirebaseLogger.logException(e);
+                    navigateToMain();
+                });
     }
 
     private void setFirstFamilyActive(String uid) {
@@ -218,13 +242,19 @@ public class SplashActivity extends AppCompatActivity {
                         FirebaseFirestore.getInstance().collection(FirestorePaths.USERS).document(uid)
                                 .update("familyId", firstFamilyId)
                                 .addOnSuccessListener(v -> navigateToMain())
-                                .addOnFailureListener(e -> navigateToMain());
+                                .addOnFailureListener(e -> {
+                                    FirebaseLogger.logException(e);
+                                    navigateToMain();
+                                });
                     } else {
                         // No memberships after all? (should not happen here), go to onboarding
                         navigateToOnboarding();
                     }
                 })
-                .addOnFailureListener(e -> navigateToOnboarding());
+                .addOnFailureListener(e -> {
+                    FirebaseLogger.logException(e);
+                    navigateToOnboarding();
+                });
     }
 
     private void checkPendingInvitations(String email) {
@@ -248,7 +278,10 @@ public class SplashActivity extends AppCompatActivity {
                         checkPendingCodeRequests(currentUser.getUid());
                     }
                 })
-                .addOnFailureListener(e -> navigateToOnboarding());
+                .addOnFailureListener(e -> {
+                    FirebaseLogger.logException(e);
+                    navigateToOnboarding();
+                });
     }
 
     private void checkPendingCodeRequests(String uid) {
@@ -262,7 +295,10 @@ public class SplashActivity extends AppCompatActivity {
                     // and WelcomeFragment will decide the specific Fragment
                     navigateToOnboarding();
                 })
-                .addOnFailureListener(e -> navigateToOnboarding());
+                .addOnFailureListener(e -> {
+                    FirebaseLogger.logException(e);
+                    navigateToOnboarding();
+                });
     }
 
     private void navigateToLogin() {

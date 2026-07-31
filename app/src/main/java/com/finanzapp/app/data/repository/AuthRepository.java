@@ -5,6 +5,7 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.finanzapp.app.data.firebase.FirestorePaths;
 import com.finanzapp.app.data.model.User;
+import com.finanzapp.app.util.FirebaseLogger;
 import com.finanzapp.app.util.Result;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.AuthCredential;
@@ -107,6 +108,7 @@ public class AuthRepository {
 
     public void signOut() {
         runPreSignOutCleanup();
+        FirebaseLogger.setUserId("");
         auth.signOut();
     }
 

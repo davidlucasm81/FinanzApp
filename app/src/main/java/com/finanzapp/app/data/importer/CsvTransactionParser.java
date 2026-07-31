@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 
 import com.finanzapp.app.data.model.ImportResult;
 import com.finanzapp.app.data.model.ImportedRow;
+import com.finanzapp.app.util.FirebaseLogger;
 import com.google.firebase.Timestamp;
 
 import java.io.BufferedReader;
@@ -49,6 +50,7 @@ public class CsvTransactionParser {
                 ImportedRow row = parseLine(line, delimiter, lineNumber);
                 rows.add(row);
             } catch (ParseException e) {
+                FirebaseLogger.logException(e);
                 result.addError("Fila " + lineNumber + ": " + e.getMessage());
             }
             lineNumber++;

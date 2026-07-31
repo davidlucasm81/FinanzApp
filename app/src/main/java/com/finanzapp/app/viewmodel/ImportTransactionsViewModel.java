@@ -12,9 +12,9 @@ import com.finanzapp.app.data.importer.CsvTransactionParser;
 import com.finanzapp.app.data.importer.TransactionImportRepository;
 import com.finanzapp.app.data.model.ImportResult;
 import com.finanzapp.app.data.model.ImportedRow;
+import com.finanzapp.app.util.FirebaseLogger;
 import com.finanzapp.app.util.Result;
 import com.finanzapp.app.util.SingleLiveEvent;
-import com.google.firebase.perf.FirebasePerformance;
 import com.google.firebase.perf.metrics.Trace;
 
 import java.io.IOException;
@@ -40,8 +40,7 @@ public class ImportTransactionsViewModel extends AndroidViewModel {
     public LiveData<String> getError() { return error; }
 
     public void importFromUri(String familyId, Uri uri) {
-        Trace trace = FirebasePerformance.getInstance().newTrace("transaction_import");
-        trace.start();
+        Trace trace = FirebaseLogger.startTrace("transaction_import");
 
         loading.setValue(true);
         new Thread(() -> {
@@ -49,14 +48,14 @@ public class ImportTransactionsViewModel extends AndroidViewModel {
             try (InputStream is = getApplication().getContentResolver().openInputStream(uri)) {
                 if (is == null) {
                     postError("No se pudo abrir el archivo.");
-                    trace.stop();
+                    FirebaseLogger.stopTrace(trace);
                     return;
                 }
 
                 List<ImportedRow> rows = parser.parse(is, result);
                 if (rows.isEmpty() && result.getErrors().isEmpty()) {
                     postError("No se encontraron movimientos válidos en el archivo.");
-                    trace.stop();
+                    FirebaseLogger.stopTrace(trace);
                     return;
                 }
 
@@ -73,19 +72,20 @@ public class ImportTransactionsViewModel extends AndroidViewModel {
                             postError(((Result.Error<?>) importRepoResult).getException().getMessage());
                         }
                         loading.postValue(false);
-                        trace.stop();
+                        FirebaseLogger.stopTrace(trace);
                     });
                 } else {
                     // Only parsing errors, no rows to import
                     importResult.postValue(result);
                     loading.postValue(false);
-                    trace.stop();
+                    FirebaseLogger.stopTrace(trace);
                 }
 
             } catch (IOException e) {
+                FirebaseLogger.logException(e);
                 postError("Error al leer el archivo: " + e.getMessage());
                 loading.postValue(false);
-                trace.stop();
+                FirebaseLogger.stopTrace(trace);
             }
         }).start();
     }

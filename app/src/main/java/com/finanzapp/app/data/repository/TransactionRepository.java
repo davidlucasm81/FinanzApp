@@ -7,6 +7,7 @@ import com.finanzapp.app.data.firebase.FirestorePaths;
 import com.finanzapp.app.data.model.Account;
 import com.finanzapp.app.data.model.Notification;
 import com.finanzapp.app.data.model.Transaction;
+import com.finanzapp.app.util.FirebaseLogger;
 import com.finanzapp.app.util.Result;
 import com.finanzapp.app.util.FirestoreLiveData;
 import com.google.firebase.Timestamp;
@@ -16,6 +17,7 @@ import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
+import com.google.firebase.perf.metrics.Trace;
 
 import java.util.HashMap;
 import java.util.List;
@@ -59,9 +61,11 @@ public class TransactionRepository {
     }
 
     public void addTransaction(String familyId, Transaction transaction, Callback callback) {
+        Trace trace = FirebaseLogger.startTrace("repo_add_transaction");
         String uid = auth.getUid();
         if (uid == null) {
             callback.onResult(new Result.Error<>(new Exception("User not authenticated")));
+            FirebaseLogger.stopTrace(trace);
             return;
         }
 
@@ -93,8 +97,12 @@ public class TransactionRepository {
                 }).addOnSuccessListener(result -> {
                     emitTransactionNotification(familyId, transaction);
                     callback.onResult(new Result.Success<>(true));
+                    FirebaseLogger.stopTrace(trace);
                 })
-                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+                .addOnFailureListener(e -> {
+                    callback.onResult(new Result.Error<>(e));
+                    FirebaseLogger.stopTrace(trace);
+                });
     }
 
     private void emitTransactionNotification(String familyId, Transaction transaction) {

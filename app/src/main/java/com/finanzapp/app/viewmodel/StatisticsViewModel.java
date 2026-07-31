@@ -28,12 +28,12 @@ import com.finanzapp.app.data.repository.AuthRepository;
 import com.finanzapp.app.data.repository.CategoryRepository;
 import com.finanzapp.app.data.repository.FamilyRepository;
 import com.finanzapp.app.data.repository.TransactionRepository;
+import com.finanzapp.app.util.FirebaseLogger;
 import com.finanzapp.app.util.Result;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
-import com.google.firebase.perf.FirebasePerformance;
 import com.google.firebase.perf.metrics.Trace;
 
 import java.time.Instant;
@@ -214,19 +214,18 @@ public class StatisticsViewModel extends ViewModel {
     }
 
     private void recomputeStatistics() {
-        Trace trace = FirebasePerformance.getInstance().newTrace("statistics_recompute");
-        trace.start();
+        Trace trace = FirebaseLogger.startTrace("statistics_recompute");
 
         // Wait until all sources have emitted at least once
         if (!accountsResolved || !categoriesResolved || !transactionsResolved || !membersResolved) {
-            trace.stop();
+            FirebaseLogger.stopTrace(trace);
             return;
         }
 
         // If no active accounts, we can show success but with empty state
         if (activeAccountIds.isEmpty()) {
             dataLoaded.postValue(new Result.Success<>(true));
-            trace.stop();
+            FirebaseLogger.stopTrace(trace);
             return;
         }
 
@@ -544,7 +543,7 @@ public class StatisticsViewModel extends ViewModel {
         memberIncomeDistribution.postValue(incomeDistribution);
 
         dataLoaded.postValue(new Result.Success<>(true));
-        trace.stop();
+        FirebaseLogger.stopTrace(trace);
     }
 
     private static class PeriodSummaryBuilder {

@@ -12,12 +12,12 @@ import com.finanzapp.app.data.model.User;
 import com.finanzapp.app.data.repository.AccountRepository;
 import com.finanzapp.app.data.repository.AuthRepository;
 import com.finanzapp.app.data.repository.FamilyRepository;
+import com.finanzapp.app.util.FirebaseLogger;
 import com.finanzapp.app.util.Result;
 import com.finanzapp.app.util.SingleLiveEvent;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
-import com.google.firebase.perf.FirebasePerformance;
 import com.google.firebase.perf.metrics.Trace;
 
 import java.util.HashSet;
@@ -130,13 +130,12 @@ public class DashboardViewModel extends ViewModel {
     }
 
     public void fetchDashboardData() {
-        Trace trace = FirebasePerformance.getInstance().newTrace("dashboard_data_fetch");
-        trace.start();
+        Trace trace = FirebaseLogger.startTrace("dashboard_data_fetch");
 
         FirebaseUser currentUser = authRepository.getCurrentUser().getValue();
         if (currentUser == null) {
             userData.setValue(new Result.Error<>(new Exception("User not logged in")));
-            trace.stop();
+            FirebaseLogger.stopTrace(trace);
             return;
         }
 
@@ -144,7 +143,7 @@ public class DashboardViewModel extends ViewModel {
             userData.setValue(new Result.Loading<>());
             userListener = FirebaseFirestore.getInstance().collection(FirestorePaths.USERS).document(currentUser.getUid())
                     .addSnapshotListener((value, error) -> {
-                        trace.stop();
+                        FirebaseLogger.stopTrace(trace);
                         if (error != null || value == null) {
                             if (authRepository.getCurrentUser().getValue() != null) {
                                 userData.postValue(new Result.Error<>(Objects.requireNonNullElseGet(error, () -> new Exception("User not found"))));
