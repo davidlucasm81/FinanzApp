@@ -55,7 +55,6 @@ public class AddEditTransactionFragment extends Fragment {
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
     
     private List<Category> allCategories = new ArrayList<>();
-    private final List<Category> filteredCategories = new ArrayList<>();
     private List<Account> allAccounts = new ArrayList<>();
     private List<com.finanzapp.app.data.model.Member> allMembers = new ArrayList<>();
     private final String[] paymentMethodValues = {
@@ -247,30 +246,29 @@ public class AddEditTransactionFragment extends Fragment {
         if (allCategories.isEmpty()) return;
         
         String type = rbIncome.isChecked() ? "income" : "expense";
-        List<String> names = new ArrayList<>();
-        filteredCategories.clear();
+        List<Category> filtered = new ArrayList<>();
         
         for (Category c : allCategories) {
             if (c.getAppliesTo().equals(type) || c.getAppliesTo().equals("both")) {
-                filteredCategories.add(c);
-                names.add(c.getName());
+                filtered.add(c);
             }
         }
 
-        requireContext();
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, names);
-        autoCategory.post(() -> autoCategory.setAdapter(adapter));
+        CategoryAdapter adapter = new CategoryAdapter(requireContext(), filtered);
+        autoCategory.post(() -> {
+            autoCategory.setAdapter(adapter);
+            // Ensure the dropdown is shown when typing
+            autoCategory.setThreshold(1);
+        });
         
         autoCategory.setOnItemClickListener((parent, view, position, id) -> {
-            if (position >= 0 && position < filteredCategories.size()) {
-                selectedCategory = filteredCategories.get(position);
-            }
+            selectedCategory = (Category) parent.getItemAtPosition(position);
         });
 
         // Clear selection if current selectedCategory is not in filtered list
         if (selectedCategory != null) {
             boolean found = false;
-            for (Category c : filteredCategories) {
+            for (Category c : filtered) {
                 if (c.getId().equals(selectedCategory.getId())) {
                     found = true;
                     break;
@@ -285,9 +283,10 @@ public class AddEditTransactionFragment extends Fragment {
             String currentText = autoCategory.getText().toString().trim();
             if (!currentText.isEmpty()) {
                 boolean found = false;
-                for (Category c : filteredCategories) {
+                for (Category c : filtered) {
                     if (c.getName().equalsIgnoreCase(currentText)) {
                         found = true;
+                        selectedCategory = c;
                         break;
                     }
                 }

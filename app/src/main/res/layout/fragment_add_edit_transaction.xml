@@ -198,7 +198,8 @@
                     android:layout_height="wrap_content"
                     android:inputType="textNoSuggestions"
                     android:importantForAutofill="no"
-                    android:paddingVertical="16dp" />
+                    android:paddingVertical="16dp"
+                    android:completionThreshold="1" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <TextView
