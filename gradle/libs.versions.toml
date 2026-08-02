@@ -20,6 +20,9 @@ mpandroidchart = "v3.1.0"
 lifecycle = "2.8.7"
 core-splashscreen = "1.0.1"
 poi = "5.5.1"
+admob = "23.6.0"
+purchases = "8.12.0"
+ump = "3.1.0"
 
 [libraries]
 compiler = { module = "com.github.bumptech.glide:compiler", version.ref = "glide" }
@@ -46,6 +49,9 @@ mpandroidchart = { group = "com.github.PhilJay", name = "MPAndroidChart", versio
 poi-ooxml = { group = "org.apache.poi", name = "poi-ooxml", version.ref = "poi" }
 androidx-lifecycle-livedata = { group = "androidx.lifecycle", name = "lifecycle-livedata", version.ref = "lifecycle" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "core-splashscreen" }
+admob = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "admob" }
+purchases = { group = "com.revenuecat.purchases", name = "purchases", version.ref = "purchases" }
+ump = { group = "com.google.android.ump", name = "user-messaging-platform", version.ref = "ump" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

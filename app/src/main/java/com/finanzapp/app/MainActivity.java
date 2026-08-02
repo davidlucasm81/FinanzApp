@@ -19,6 +19,8 @@ import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
 import androidx.navigation.ui.NavigationUI;
 
+import com.finanzapp.app.data.monetization.AdsRepository;
+import com.finanzapp.app.data.monetization.BillingRepository;
 import com.finanzapp.app.data.model.Notification;
 import com.finanzapp.app.databinding.ActivityMainBinding;
 import com.finanzapp.app.viewmodel.NotificationViewModel;
@@ -48,6 +50,7 @@ public class MainActivity extends AppCompatActivity {
 
         setupNotificationViewModel();
         applyWindowInsets(binding);
+        setupMonetization();
 
         NavHostFragment navHostFragment =
                 (NavHostFragment) getSupportFragmentManager()
@@ -280,6 +283,29 @@ public class MainActivity extends AppCompatActivity {
             );
 
             return windowInsets;
+        });
+    }
+
+    private void setupMonetization() {
+        FinanzAppApplication.AppContainer container = ((FinanzAppApplication) getApplication()).getAppContainer();
+        com.finanzapp.app.data.repository.AuthRepository authRepository = container.getAuthRepository();
+        BillingRepository billingRepository = container.getBillingRepository();
+        AdsRepository adsRepository = container.getAdsRepository();
+        
+        billingRepository.getIsPremium().observe(this, isPremium -> {
+            // isPremium will be null if UNKNOWN, false if not premium, true if premium.
+            // BillingRepository now only resolves to NONE/PURCHASED/WHITELIST if logged in.
+            if (Boolean.FALSE.equals(isPremium)) {
+                if (authRepository.isLoggedIn()) {
+                    // Initialize Ads only for non-premium logged-in users
+                    adsRepository.init(this, canRequestAds -> 
+                        android.util.Log.d("MainActivity", "Ads initialization complete. Can request ads: " + canRequestAds));
+                } else {
+                    android.util.Log.d("MainActivity", "User not logged in. Postponing ads initialization.");
+                }
+            } else if (Boolean.TRUE.equals(isPremium)) {
+                android.util.Log.d("MainActivity", "Skipping ads initialization for premium user.");
+            }
         });
     }
 }

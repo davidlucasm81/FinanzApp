@@ -18,9 +18,13 @@ import com.finanzapp.app.data.model.Family;
 import com.finanzapp.app.data.model.User;
 import com.finanzapp.app.databinding.FragmentDashboardBinding;
 import com.finanzapp.app.ui.family.FamilySwitcherFragment;
+import com.finanzapp.app.data.monetization.BillingRepository;
 import com.finanzapp.app.util.Result;
 import com.finanzapp.app.viewmodel.DashboardViewModel;
 import com.finanzapp.app.viewmodel.ViewModelFactory;
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdSize;
+import com.google.android.gms.ads.AdView;
 
 import java.text.NumberFormat;
 import java.util.Currency;
@@ -33,6 +37,8 @@ public class DashboardFragment extends Fragment {
     private String currentCurrencyCode = "EUR";
     private DashboardAccountAdapter accountAdapter;
     private String currentFamilyId;
+    private AdView adView;
+    private BillingRepository billingRepository;
 
     @Nullable
     @Override
@@ -48,6 +54,7 @@ public class DashboardFragment extends Fragment {
         FinanzAppApplication.AppContainer appContainer = ((FinanzAppApplication) requireActivity().getApplication()).getAppContainer();
         ViewModelFactory factory = new ViewModelFactory(appContainer);
         viewModel = new ViewModelProvider(this, factory).get(DashboardViewModel.class);
+        billingRepository = appContainer.getBillingRepository();
 
         setupRecyclerViews();
         setupClickListeners();
@@ -138,6 +145,38 @@ public class DashboardFragment extends Fragment {
         });
 
         viewModel.getAccountsList().observe(getViewLifecycleOwner(), accounts -> accountAdapter.setItems(accounts, currentCurrencyCode));
+
+        billingRepository.getIsPremium().observe(getViewLifecycleOwner(), isPremium -> {
+            if (isPremium == null) return;
+            if (isPremium) {
+                removeAds();
+            } else {
+                loadAds();
+            }
+        });
+    }
+
+    private void loadAds() {
+        if (adView != null) return;
+
+        adView = new AdView(requireContext());
+        adView.setAdUnitId(com.finanzapp.app.BuildConfig.ADMOB_BANNER_FIXED_ID);
+        adView.setAdSize(AdSize.BANNER);
+
+        binding.adViewContainer.removeAllViews();
+        binding.adViewContainer.addView(adView);
+        binding.adViewContainer.setVisibility(View.VISIBLE);
+
+        AdRequest adRequest = new AdRequest.Builder().build();
+        adView.loadAd(adRequest);
+    }
+
+    private void removeAds() {
+        if (adView != null) {
+            adView.destroy();
+            adView = null;
+        }
+        binding.adViewContainer.setVisibility(View.GONE);
     }
 
     private void updateNetBalanceText(double total, boolean isPrivacyEnabled) {
@@ -150,6 +189,9 @@ public class DashboardFragment extends Fragment {
 
     @Override
     public void onDestroyView() {
+        if (adView != null) {
+            adView.destroy();
+        }
         super.onDestroyView();
         binding = null;
     }

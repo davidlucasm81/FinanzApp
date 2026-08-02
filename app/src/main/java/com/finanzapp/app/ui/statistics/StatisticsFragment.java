@@ -29,10 +29,14 @@ import com.finanzapp.app.data.model.statistics.Granularity;
 import com.finanzapp.app.data.model.statistics.PeriodSummary;
 import com.finanzapp.app.databinding.FragmentStatisticsBinding;
 import com.finanzapp.app.ui.transactions.TransactionAdapter;
+import com.finanzapp.app.data.monetization.BillingRepository;
 import com.finanzapp.app.util.ChartUtils;
 import com.finanzapp.app.util.Result;
 import com.finanzapp.app.viewmodel.StatisticsViewModel;
 import com.finanzapp.app.viewmodel.ViewModelFactory;
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdSize;
+import com.google.android.gms.ads.AdView;
 import com.github.mikephil.charting.charts.CombinedChart;
 import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.BarDataSet;
@@ -74,6 +78,8 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
 
     private boolean isPrivacyModeEnabled = false;
     private List<PeriodSummary> periodDataList = new ArrayList<>();
+    private AdView adView;
+    private BillingRepository billingRepository;
 
     @Nullable
     @Override
@@ -94,6 +100,7 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         FinanzAppApplication.AppContainer appContainer = ((FinanzAppApplication) requireActivity().getApplication()).getAppContainer();
         ViewModelFactory factory = new ViewModelFactory(appContainer);
         viewModel = new ViewModelProvider(this, factory).get(StatisticsViewModel.class);
+        billingRepository = appContainer.getBillingRepository();
 
         setupRecyclerView();
         setupCharts();
@@ -404,6 +411,38 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
                 }
             }
         });
+
+        billingRepository.getIsPremium().observe(getViewLifecycleOwner(), isPremium -> {
+            if (isPremium == null) return;
+            if (isPremium) {
+                removeAds();
+            } else {
+                loadAds();
+            }
+        });
+    }
+
+    private void loadAds() {
+        if (adView != null) return;
+
+        adView = new AdView(requireContext());
+        adView.setAdUnitId(com.finanzapp.app.BuildConfig.ADMOB_BANNER_FIXED_ID);
+        adView.setAdSize(AdSize.BANNER);
+
+        binding.adViewContainer.removeAllViews();
+        binding.adViewContainer.addView(adView);
+        binding.adViewContainer.setVisibility(View.VISIBLE);
+
+        AdRequest adRequest = new AdRequest.Builder().build();
+        adView.loadAd(adRequest);
+    }
+
+    private void removeAds() {
+        if (adView != null) {
+            adView.destroy();
+            adView = null;
+        }
+        binding.adViewContainer.setVisibility(View.GONE);
     }
 
     private void updateSavingsRate(Double rate) {
@@ -765,6 +804,9 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
 
     @Override
     public void onDestroyView() {
+        if (adView != null) {
+            adView.destroy();
+        }
         super.onDestroyView();
         binding = null;
     }

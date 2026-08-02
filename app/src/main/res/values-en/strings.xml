@@ -115,21 +115,16 @@
     <string name="privacy_consent_checkbox">I have read and accept the Privacy Policy</string>
     <string name="privacy_consent_continue">Continue</string>
     <string name="privacy_policy_text">&lt;b&gt;FINANZAPP PRIVACY POLICY&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;
-        At &lt;b&gt;FinanzApp&lt;/b&gt;, your family\'s privacy is our priority. This application has been designed under principles of transparency and security.&lt;br/&gt;&lt;br/&gt;
+        At &lt;b&gt;FinanzApp&lt;/b&gt;, your family\'s privacy is our priority. This application has been designed under principles of transparency and security compliant with GDPR.&lt;br/&gt;&lt;br/&gt;
         &lt;b&gt;1. DATA WE COLLECT&lt;/b&gt;&lt;br/&gt;
-        We collect basic data from your Google profile (name, email, and photo) to identify you within your family unit. We also store the financial transactions and accounts you register voluntarily.&lt;br/&gt;&lt;br/&gt;
+        We collect basic data from your Google profile (name, email, and photo) to identify you within your family unit. We also store the financial transactions and accounts you register voluntarily. If you are not Premium, AdMob may receive your device\'s advertising ID. RevenueCat manages your Premium purchase data.&lt;br/&gt;&lt;br/&gt;
         &lt;b&gt;2. PURPOSE OF TREATMENT&lt;/b&gt;&lt;br/&gt;
-        Your data is used exclusively to allow the operation of shared finances. We do not sell or share your data with third parties outside of the Google Cloud services necessary for the app.&lt;br/&gt;&lt;br/&gt;
+        Your data is used exclusively to allow the operation of shared finances and, in the free version, to show banner ads that fund the app. We do not sell your data to third parties.&lt;br/&gt;&lt;br/&gt;
         &lt;b&gt;3. SECURITY AND STORAGE&lt;/b&gt;&lt;br/&gt;
-        The information is stored in &lt;b&gt;Google Cloud (Firestore)&lt;/b&gt;, which has advanced encryption protocols at rest and in transit. Access is restricted only to your family members through security rules validated on the server.&lt;br/&gt;&lt;br/&gt;
+        Information is stored in &lt;b&gt;Google Cloud (Firestore)&lt;/b&gt; (Madrid region), with encryption at rest and in transit. AdMob and RevenueCat act as data processors for advertising and purchases respectively.&lt;br/&gt;&lt;br/&gt;
         &lt;b&gt;4. YOUR RIGHTS&lt;/b&gt;&lt;br/&gt;
-        As a user, you have the right to access, rectification, deletion, portability, limitation, and opposition over your data. Specifically, from the app itself you can:&lt;br/&gt;
-        • &lt;b&gt;Access:&lt;/b&gt; Consult your data at any time.&lt;br/&gt;
-        • &lt;b&gt;Rectification:&lt;/b&gt; Correct your name or photo from your Google profile.&lt;br/&gt;
-        • &lt;b&gt;Portability:&lt;/b&gt; Download your information in JSON format from Settings.&lt;br/&gt;
-        • &lt;b&gt;Deletion:&lt;/b&gt; Permanently delete your account and all associated data.&lt;br/&gt;
-        To exercise the limitation or opposition of treatment, or any other request, write to us at: davidlucasmora81@gmail.com.&lt;br/&gt;&lt;br/&gt;
-        You can consult the full policy, with the identity of the data controller and all legal details, at: &lt;b&gt;[Privacy Policy Public URL once published]&lt;/b&gt;.&lt;br/&gt;&lt;br/&gt;
+        You have the right to access, rectification, deletion, portability, limitation, and opposition. You can download your data or delete your account from Settings. You can manage ad consent from Settings.&lt;br/&gt;
+        For more details and the full policy, visit: &lt;b&gt;https://github.com/davidlucasm81/FinanzApp/blob/master/POLITICA_PRIVACIDAD.md&lt;/b&gt;.&lt;br/&gt;&lt;br/&gt;
         By continuing, you confirm that you have read and accept that FinanzApp processes your data according to these terms.</string>
     <string name="settings_view_privacy_policy">View Privacy Policy</string>
     <string name="label_legal">Legal Notice</string>
@@ -323,4 +318,21 @@
     <string name="label_invitation_section">Invitation</string>
     <string name="label_management_section">Management</string>
     <string name="msg_invite_code_desc">Share this code with the members you want to join your family.</string>
+
+    <!-- Monetization -->
+    <string name="nav_premium">Premium</string>
+    <string name="premium_title">FinanzApp Premium</string>
+    <string name="premium_subtitle">Take your family finances to the next level</string>
+    <string name="premium_benefit_no_ads">No intrusive ads</string>
+    <string name="premium_benefit_support">Support app development</string>
+    <string name="premium_subscribe_button">Buy Premium for %1$s</string>
+    <string name="premium_restore_purchase">Restore purchase</string>
+    <string name="premium_success">You are now Premium! Thank you for your support.</string>
+    <string name="premium_status_free">Free account</string>
+    <string name="premium_status_active">Premium active</string>
+    <string name="premium_status_whitelist">Premium active (Whitelist)</string>
+    <string name="premium_manage_subscription">Manage</string>
+    <string name="premium_buy_action">Buy Premium</string>
+    <string name="premium_no_purchase_found">No previous purchase was found for this account.</string>
+    <string name="ad_remove_label">Remove ads</string>
 </resources>

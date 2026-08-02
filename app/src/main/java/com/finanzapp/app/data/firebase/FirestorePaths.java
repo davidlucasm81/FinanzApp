@@ -51,4 +51,6 @@ public class FirestorePaths {
         return getFamilyPath(familyId) + "/" + NOTIFICATIONS;
     }
 
+    public static final String PREMIUM_WHITELIST = "premium_whitelist";
+
 }

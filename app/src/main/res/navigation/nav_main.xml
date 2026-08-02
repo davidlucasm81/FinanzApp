@@ -110,7 +110,16 @@
         <action
             android:id="@+id/action_settingsFragment_to_privacyPolicyFragment"
             app:destination="@id/privacyPolicyFragment" />
+        <action
+            android:id="@+id/action_settingsFragment_to_paywallFragment"
+            app:destination="@id/paywallFragment" />
     </fragment>
+
+    <fragment
+        android:id="@+id/paywallFragment"
+        android:name="com.finanzapp.app.ui.monetization.PaywallFragment"
+        android:label="@string/nav_premium"
+        tools:layout="@layout/fragment_paywall" />
 
     <fragment
         android:id="@+id/privacyPolicyFragment"

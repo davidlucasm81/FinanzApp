@@ -23,6 +23,7 @@ import androidx.lifecycle.ViewModelProvider;
 import com.finanzapp.app.FinanzAppApplication;
 import com.finanzapp.app.data.model.User;
 import com.finanzapp.app.databinding.FragmentSettingsBinding;
+import com.finanzapp.app.data.monetization.BillingRepository;
 import com.finanzapp.app.util.Result;
 import com.finanzapp.app.viewmodel.NotificationViewModel;
 import com.finanzapp.app.viewmodel.SettingsViewModel;
@@ -32,6 +33,7 @@ public class SettingsFragment extends Fragment {
     private FragmentSettingsBinding binding;
     private SettingsViewModel viewModel;
     private NotificationViewModel notificationViewModel;
+    private BillingRepository billingRepository;
     private com.finanzapp.app.data.repository.FamilyRepository familyRepository;
     private User currentUser;
     private int titleClickCount = 0;
@@ -49,6 +51,7 @@ public class SettingsFragment extends Fragment {
 
         FinanzAppApplication.AppContainer appContainer = ((FinanzAppApplication) requireActivity().getApplication()).getAppContainer();
         familyRepository = appContainer.getFamilyRepository();
+        billingRepository = appContainer.getBillingRepository();
         ViewModelFactory factory = new ViewModelFactory(appContainer);
         viewModel = new ViewModelProvider(this, factory).get(SettingsViewModel.class);
         notificationViewModel = new ViewModelProvider(requireActivity(), factory).get(NotificationViewModel.class);
@@ -74,6 +77,16 @@ public class SettingsFragment extends Fragment {
         binding.btnViewPrivacyPolicy.setOnClickListener(v -> {
             androidx.navigation.Navigation.findNavController(v)
                     .navigate(R.id.action_settingsFragment_to_privacyPolicyFragment);
+        });
+
+        binding.cvPremium.setOnClickListener(v -> {
+            BillingRepository.PremiumType type = billingRepository.getPremiumType().getValue();
+            if (type != BillingRepository.PremiumType.WHITELIST) {
+                androidx.navigation.Navigation.findNavController(v)
+                        .navigate(R.id.action_settingsFragment_to_paywallFragment);
+            } else {
+                Toast.makeText(requireContext(), R.string.premium_status_whitelist, Toast.LENGTH_SHORT).show();
+            }
         });
 
         binding.btnDeleteAccount.setOnClickListener(v -> showDeleteConfirmation());
@@ -136,6 +149,31 @@ public class SettingsFragment extends Fragment {
                 shareJsonFile(json);
             } else if (result instanceof Result.Error) {
                 Toast.makeText(requireContext(), R.string.settings_export_error, Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        billingRepository.getPremiumType().observe(getViewLifecycleOwner(), type -> {
+            if (type == BillingRepository.PremiumType.UNKNOWN) return;
+
+            if (type == BillingRepository.PremiumType.WHITELIST) {
+                binding.tvPremiumStatus.setText(R.string.premium_status_whitelist);
+                binding.tvPremiumAction.setVisibility(View.GONE);
+                binding.ivPremiumChevron.setVisibility(View.GONE);
+                binding.ivPremiumStar.setImageTintList(android.content.res.ColorStateList.valueOf(requireContext().getColor(R.color.success)));
+                binding.cvPremium.setClickable(false);
+            } else if (type == BillingRepository.PremiumType.PURCHASED) {
+                binding.tvPremiumStatus.setText(R.string.premium_status_active);
+                binding.tvPremiumAction.setVisibility(View.GONE);
+                binding.ivPremiumChevron.setVisibility(View.GONE);
+                binding.ivPremiumStar.setImageTintList(android.content.res.ColorStateList.valueOf(requireContext().getColor(R.color.warning)));
+                binding.cvPremium.setClickable(false);
+            } else {
+                binding.tvPremiumStatus.setText(R.string.premium_status_free);
+                binding.tvPremiumAction.setText(R.string.premium_buy_action);
+                binding.tvPremiumAction.setVisibility(View.VISIBLE);
+                binding.ivPremiumChevron.setVisibility(View.VISIBLE);
+                binding.ivPremiumStar.setImageTintList(android.content.res.ColorStateList.valueOf(requireContext().getColor(R.color.gray_300)));
+                binding.cvPremium.setClickable(true);
             }
         });
     }

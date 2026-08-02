@@ -12,6 +12,10 @@ public class User {
     private String familyId;
     private Timestamp createdAt;
     private Timestamp privacyPolicyAcceptedAt;
+    private boolean isPremium;
+    private String premiumProductId;
+    private String premiumPurchaseToken;
+    private Timestamp premiumUpdatedAt;
 
     public User() {
         // Required for Firestore serialization
@@ -52,4 +56,16 @@ public class User {
 
     public Timestamp getPrivacyPolicyAcceptedAt() { return privacyPolicyAcceptedAt; }
     public void setPrivacyPolicyAcceptedAt(Timestamp privacyPolicyAcceptedAt) { this.privacyPolicyAcceptedAt = privacyPolicyAcceptedAt; }
+
+    public boolean isPremium() { return isPremium; }
+    public void setPremium(boolean premium) { isPremium = premium; }
+
+    public String getPremiumProductId() { return premiumProductId; }
+    public void setPremiumProductId(String premiumProductId) { this.premiumProductId = premiumProductId; }
+
+    public String getPremiumPurchaseToken() { return premiumPurchaseToken; }
+    public void setPremiumPurchaseToken(String premiumPurchaseToken) { this.premiumPurchaseToken = premiumPurchaseToken; }
+
+    public Timestamp getPremiumUpdatedAt() { return premiumUpdatedAt; }
+    public void setPremiumUpdatedAt(Timestamp premiumUpdatedAt) { this.premiumUpdatedAt = premiumUpdatedAt; }
 }

@@ -3,7 +3,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper to check if user is an approved member (or becoming one in this batch)
+    // Helper to check if user is an approved member
     function isMember(familyId) {
       return request.auth != null && (
         exists(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)) ||
@@ -11,7 +11,7 @@ service cloud.firestore {
       );
     }
 
-    // Helper to check if user is an admin or owner (or becoming one in this batch)
+    // Helper to check if user is an admin or owner
     function isAdmin(familyId) {
       return request.auth != null && (
         (exists(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)) &&
@@ -25,46 +25,21 @@ service cloud.firestore {
 
     // 1. User Rules
     match /users/{uid} {
-      // A user may read and fully manage their own document
       allow read: if request.auth != null && request.auth.uid == uid;
       allow create: if request.auth != null && request.auth.uid == uid;
       allow delete: if request.auth != null && request.auth.uid == uid;
 
-      // Allow update of own document
-      allow update: if (request.auth != null && request.auth.uid == uid
+      allow update: if (request.auth != null && request.auth.uid == uid)
         && (
-          !request.resource.data.diff(resource.data).changedKeys().contains('familyId')
-          || request.resource.data.get('familyId', null) == null
-          || (request.resource.data.get('familyId', null) is string && exists(/databases/$(database)/documents/users/$(uid)/memberships/$(request.resource.data.get('familyId', ''))))
-          || (request.resource.data.get('familyId', null) is string && existsAfter(/databases/$(database)/documents/users/$(uid)/memberships/$(request.resource.data.get('familyId', ''))))
-        ))
-        // Additionally, allow an admin of a family to set *only* the `familyId` field
-        // on a user's document when approving a join request. This avoids the need for
-        // the admin to have full read/write access to other users' documents while
-        // still permitting the specific update required by the approval flow.
-        || (
-          request.auth != null
-          && request.resource.data.familyId is string
-          // Ensure the update only changes the familyId field
-          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['familyId'])
-          // Ensure the admin is indeed admin of the family being assigned
-          && exists(/databases/$(database)/documents/families/$(request.resource.data.familyId)/members/$(request.auth.uid))
-          && (get(/databases/$(database)/documents/families/$(request.resource.data.familyId)/members/$(request.auth.uid)).data.role == 'admin' ||
-              get(/databases/$(database)/documents/families/$(request.resource.data.familyId)/members/$(request.auth.uid)).data.role == 'owner')
-        )
-        // Allow an admin/owner to clear (set to null) the familyId of a member they are
-        // removing (kicking) from their own family.
-        || (
-          request.auth != null
-          && request.resource.data.familyId == null
-          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['familyId'])
-          && resource.data.familyId is string
-          && exists(/databases/$(database)/documents/families/$(resource.data.familyId)/members/$(request.auth.uid))
-          && (get(/databases/$(database)/documents/families/$(resource.data.familyId)/members/$(request.auth.uid)).data.role == 'admin' ||
-              get(/databases/$(database)/documents/families/$(resource.data.familyId)/members/$(request.auth.uid)).data.role == 'owner')
+          // Allow updates if isPremium field is NOT being changed
+          !request.resource.data.diff(resource.data).changedKeys().contains('isPremium')
+          // Allow setting isPremium to false
+          || request.resource.data.isPremium == false
+          // Allow setting isPremium to true ONLY if the user is in the whitelist
+          // We use the email from the token directly
+          || exists(/databases/$(database)/documents/premium_whitelist/$(request.auth.token.email.lower()))
         );
 
-      // Memberships: A user's personal list of families they belong to
       match /memberships/{familyId} {
         allow read, write: if request.auth != null && request.auth.uid == uid;
       }
@@ -76,80 +51,27 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow update, delete: if isAdmin(familyId);
 
-      // Members
       match /members/{memberId} {
         allow read: if isMember(familyId);
-
-        // Split write into create, update, delete for finer control
-        allow create: if isAdmin(familyId) || (request.auth != null && request.auth.uid == memberId);
-
-        allow update: if isAdmin(familyId) || (request.auth != null && request.auth.uid == memberId);
-
-        allow delete: if isAdmin(familyId) || (request.auth != null && request.auth.uid == memberId);
+        allow create, update, delete: if isAdmin(familyId) || (request.auth != null && request.auth.uid == memberId);
       }
 
-      // Invitations
       match /invitations/{invitationId} {
         allow read: if request.auth != null && (isMember(familyId) || request.auth.uid == resource.data.requestedByUid || request.auth.token.email == resource.data.targetEmail);
-
-        // Anyone authenticated can request to join by code (code_request).
-        // Only an admin/owner of the family can create an email invitation.
-        allow create: if request.auth != null && (
-          request.resource.data.type == 'code_request' ||
-          (request.resource.data.type == 'email_invite' && isAdmin(familyId))
-        );
-
-        // Deleting/withdrawing an invitation: an admin can always remove it, the
-        // original requester of a code_request can withdraw their own pending request,
-        // and the target of an email invite can delete it (used to reject it).
-        allow delete: if isAdmin(familyId) ||
-                      (request.auth != null && request.auth.uid == resource.data.requestedByUid) ||
-                      (request.auth != null && request.auth.token.email == resource.data.targetEmail);
-
-        // Updating status: only an admin/owner may approve/reject a join request.
-        // A requester may only withdraw (reject) their own code_request, never approve it.
-        // The target of an email invite may only accept or reject their own invitation.
-        allow update: if isAdmin(familyId) ||
-                      (
-                        request.auth != null
-                        && request.auth.uid == resource.data.requestedByUid
-                        && request.resource.data.status == 'rejected'
-                        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'resolvedAt', 'resolvedByUid'])
-                      ) ||
-                      (
-                        request.auth != null
-                        && request.auth.token.email == resource.data.targetEmail
-                        && request.resource.data.status in ['accepted', 'rejected']
-                        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'resolvedAt', 'resolvedByUid'])
-                      );
+        allow create: if request.auth != null && (request.resource.data.type == 'code_request' || (request.resource.data.type == 'email_invite' && isAdmin(familyId)));
+        allow delete: if isAdmin(familyId) || (request.auth != null && request.auth.uid == resource.data.requestedByUid) || (request.auth != null && request.auth.token.email == resource.data.targetEmail);
+        allow update: if isAdmin(familyId) || (request.auth != null && request.auth.uid == resource.data.requestedByUid && request.resource.data.status == 'rejected') || (request.auth != null && request.auth.token.email == resource.data.targetEmail && request.resource.data.status in ['accepted', 'rejected']);
       }
 
-      // Accounts: allow members to read and create accounts; only admins may perform
-      // privileged updates (edit initialBalance, archive/delete).
       match /accounts/{accountId} {
-        // Any approved member can read accounts
         allow read: if isMember(familyId);
-
-        // Creation is allowed for members (including becoming-members in the same batch)
         allow create: if isMember(familyId);
-
-        // Updates: admin/owner puede editar cualquier campo (nombre, initialBalance, active, etc.).
-        // Un member normal NO puede editar la cuenta (ni siquiera el nombre); la única excepción
-        // es el campo `currentBalance`, que se actualiza automáticamente y de forma atómica al
-        // registrar/editar/borrar un movimiento (ver TransactionRepository) — eso sí debe poder
-        // hacerlo cualquier member, o no podría registrar ingresos/gastos.
-        allow update: if isAdmin(familyId) || (
-          isMember(familyId)
-          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['currentBalance'])
-        );
-
-        // Deletion (physical) and archiving should be restricted to admins
+        allow update: if isAdmin(familyId) || (isMember(familyId) && request.resource.data.diff(resource.data).changedKeys().hasOnly(['currentBalance']));
         allow delete: if isAdmin(familyId);
       }
 
       match /categories/{categoryId} {
-        allow read: if isMember(familyId);
-        allow write: if isMember(familyId);
+        allow read, write: if isMember(familyId);
       }
 
       match /transactions/{transactionId} {
@@ -163,16 +85,18 @@ service cloud.firestore {
 
     // 3. Collection Group rules
     match /{path=**}/invitations/{invitationId} {
-      allow read: if request.auth != null && (
-        request.auth.token.email == resource.data.targetEmail ||
-        request.auth.uid == resource.data.requestedByUid
-      );
+      allow read: if request.auth != null && (request.auth.token.email == resource.data.targetEmail || request.auth.uid == resource.data.requestedByUid);
     }
 
     match /{path=**}/transactions/{transactionId} {
-      // Permitir que un usuario lea sus propios movimientos en cualquier familia
-      // (necesario para la exportación de datos propios).
       allow read: if request.auth != null && resource.data.createdBy == request.auth.uid;
+    }
+
+    // 4. Premium Whitelist
+    match /premium_whitelist/{email} {
+      // Allow reading own whitelist entry
+      allow read: if request.auth != null && request.auth.token.email.lower() == email;
+      allow write: if false;
     }
   }
 }

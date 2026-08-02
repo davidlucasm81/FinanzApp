@@ -35,6 +35,7 @@ import com.finanzapp.app.data.model.FamilyMembership;
 import com.finanzapp.app.data.model.Member;
 import com.finanzapp.app.data.model.Transaction;
 import com.finanzapp.app.data.model.User;
+import com.finanzapp.app.data.monetization.BillingRepository;
 import com.finanzapp.app.util.Result;
 import com.finanzapp.app.viewmodel.TransactionViewModel;
 import com.finanzapp.app.viewmodel.ViewModelFactory;
@@ -95,6 +96,7 @@ public class TransactionListFragment extends Fragment {
 
     private boolean isInitializing = false;
     private boolean isPreselectionApplied = false;
+    private BillingRepository billingRepository;
     private String preselectedCategoryId = null;
     private String preselectedMethod = null;
     private String preselectedType = null;
@@ -136,6 +138,7 @@ public class TransactionListFragment extends Fragment {
         FinanzAppApplication.AppContainer appContainer = ((FinanzAppApplication) requireActivity().getApplication()).getAppContainer();
         ViewModelFactory factory = new ViewModelFactory(appContainer);
         viewModel = new ViewModelProvider(requireActivity(), factory).get(TransactionViewModel.class);
+        billingRepository = appContainer.getBillingRepository();
 
         RecyclerView rvTransactions = view.findViewById(R.id.rv_transactions);
         FloatingActionButton fabAdd = view.findViewById(R.id.fab_add_transaction);
@@ -556,6 +559,12 @@ public class TransactionListFragment extends Fragment {
         });
 
         if (!isInitializing) updateTransactions();
+
+        billingRepository.getIsPremium().observe(getViewLifecycleOwner(), isPremium -> {
+            if (isPremium != null) {
+                adapter.setPremium(isPremium);
+            }
+        });
 
         viewModel.getOperationResult().observe(getViewLifecycleOwner(), result -> {
             if (result instanceof Result.Success) {
