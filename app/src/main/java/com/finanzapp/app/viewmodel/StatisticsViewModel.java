@@ -84,6 +84,8 @@ public class StatisticsViewModel extends ViewModel {
     private final MutableLiveData<List<Category>> allCategories = new MutableLiveData<>();
     private final MutableLiveData<Boolean> isPrivacyModeEnabled = new MutableLiveData<>(false);
 
+    private boolean isCustomRangeSet = false;
+
     private final MediatorLiveData<Void> statsMediator = new MediatorLiveData<>();
     private final Observer<Void> statsObserver = v -> {};
 
@@ -199,12 +201,14 @@ public class StatisticsViewModel extends ViewModel {
 
     public void setGranularity(Granularity g) {
         if (g != null && g != granularity.getValue()) {
+            isCustomRangeSet = false; // Reset flag when granularity changes
             dateRange.setValue(null); // Reset range when granularity changes
             granularity.setValue(g);
         }
     }
 
     public void setDateRange(long start, long end) {
+        isCustomRangeSet = true; // User explicitly set a custom range
         dateRange.setValue(new Pair<>(start, end));
         recomputeStatistics();
     }
@@ -300,7 +304,7 @@ public class StatisticsViewModel extends ViewModel {
         LocalDate evolutionEnd, evolutionStart;
         Granularity evolutionGranularity = activeGranularity;
 
-        if (customRange != null && customRange.first != null && customRange.second != null) {
+        if (isCustomRangeSet && customRange != null && customRange.first != null && customRange.second != null) {
             // If manual range, always compare month by month
             evolutionGranularity = Granularity.MONTH;
             evolutionStart = rangeStart.with(TemporalAdjusters.firstDayOfMonth());
