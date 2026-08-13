@@ -45,7 +45,7 @@ public class FamilyRepository {
         activeListeners.clear();
     }
 
-    public void createFamily(String name, String currencyCode, FamilyCallback callback) {
+    public void createFamily(String name, String currencyCode, String mode, FamilyCallback callback) {
         FirebaseUser currentUser = auth.getCurrentUser();
         if (currentUser == null) {
             callback.onResult(new Result.Error<>(new Exception("User not authenticated")));
@@ -63,7 +63,8 @@ public class FamilyRepository {
                 currencyCode,
                 inviteCode,
                 uid,
-                Timestamp.now()
+                Timestamp.now(),
+                mode
         );
 
         String displayName = currentUser.getDisplayName() != null ? currentUser.getDisplayName() : "User";
@@ -81,13 +82,27 @@ public class FamilyRepository {
         batch.set(db.collection(FirestorePaths.getMembersPath(familyId)).document(uid), adminMember);
 
         // Phase 7 bis: Add membership
-        FamilyMembership membership = new FamilyMembership(familyId, name, "owner", adminMember.getJoinedAt());
+        FamilyMembership membership = new FamilyMembership(familyId, name, "owner", mode, adminMember.getJoinedAt());
         batch.set(db.collection(FirestorePaths.getMembershipsPath(uid)).document(familyId), membership);
 
         batch.update(db.collection(FirestorePaths.USERS).document(uid), "familyId", familyId);
 
         // Seed categories
         seedDefaultCategories(batch, familyId);
+
+        // Phase 18: If shared expenses mode, create the single joint account
+        if ("shared_expenses".equals(mode)) {
+            DocumentReference jointAccountRef = db.collection(FirestorePaths.getAccountsPath(familyId)).document();
+            com.finanzapp.app.data.model.Account jointAccount = new com.finanzapp.app.data.model.Account();
+            jointAccount.setId(jointAccountRef.getId());
+            jointAccount.setName("Cuenta conjunta");
+            jointAccount.setInitialBalance(0.0);
+            jointAccount.setCurrentBalance(0.0);
+            jointAccount.setActive(true);
+            jointAccount.setCreatedBy(uid);
+            jointAccount.setCreatedAt(Timestamp.now());
+            batch.set(jointAccountRef, jointAccount);
+        }
 
         batch.commit().addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
@@ -130,6 +145,7 @@ public class FamilyRepository {
                         );
                         invitation.setRequesterName(displayName);
                         invitation.setRequesterEmail(email);
+                        invitation.setFamilyMode(familyDoc.getString("mode"));
 
                         inviteRef.set(invitation)
                                 .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(true)))
@@ -172,6 +188,7 @@ public class FamilyRepository {
                         );
                         invitation.setRequesterName(displayName);
                         invitation.setRequesterEmail(email);
+                        invitation.setFamilyMode(familyDoc.getString("mode"));
 
                         inviteRef.set(invitation)
                                 .addOnSuccessListener(aVoid -> {
@@ -299,16 +316,13 @@ public class FamilyRepository {
         );
         batch.set(db.collection(FirestorePaths.getMembersPath(familyId)).document(userUid), member);
 
-        // Phase 7 bis: Add membership for the approved user
-        // We need the family name to seed the membership. The invitation doesn't have it,
-        // but this method is called by an admin who can fetch it, or we fetch it now.
-        // For simplicity and since batch must be atomic, we'll fetch family name first in the ViewModel
-        // OR we fetch it here before starting the batch.
-
+        // Phase 18: Use mode from invitation if available to avoid extra fetch,
+        // but we still need familyName for membership.
         db.collection(FirestorePaths.FAMILIES).document(familyId).get().addOnCompleteListener(familyTask -> {
             if (familyTask.isSuccessful() && familyTask.getResult().exists()) {
                 String familyName = familyTask.getResult().getString("name");
-                FamilyMembership membership = new FamilyMembership(familyId, familyName, "member", member.getJoinedAt());
+                String mode = invitation.getFamilyMode() != null ? invitation.getFamilyMode() : familyTask.getResult().getString("mode");
+                FamilyMembership membership = new FamilyMembership(familyId, familyName, "member", mode, member.getJoinedAt());
 
                 WriteBatch finalBatch = db.batch();
                 // 1. Update invitation status
@@ -364,25 +378,29 @@ public class FamilyRepository {
         if (adminUid == null) return;
 
         String normalizedEmail = email.toLowerCase().trim();
-        DocumentReference inviteRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.INVITATIONS).document();
-        Invitation invitation = new Invitation(
-                inviteRef.getId(),
-                "email_invite",
-                normalizedEmail,
-                null,
-                adminUid,
-                "pending",
-                Timestamp.now()
-        );
+        db.collection(FirestorePaths.FAMILIES).document(familyId).get().addOnSuccessListener(familyDoc -> {
+            String mode = familyDoc != null ? familyDoc.getString("mode") : "normal";
+            DocumentReference inviteRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.INVITATIONS).document();
+            Invitation invitation = new Invitation(
+                    inviteRef.getId(),
+                    "email_invite",
+                    normalizedEmail,
+                    null,
+                    adminUid,
+                    "pending",
+                    Timestamp.now()
+            );
+            invitation.setFamilyMode(mode);
 
-        inviteRef.set(invitation)
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        callback.onResult(new Result.Success<>(true));
-                    } else {
-                        callback.onResult(new Result.Error<>(task.getException()));
-                    }
-                });
+            inviteRef.set(invitation)
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            callback.onResult(new Result.Success<>(true));
+                        } else {
+                            callback.onResult(new Result.Error<>(task.getException()));
+                        }
+                    });
+        }).addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
     }
 
     public void acceptInvitation(Invitation invitation, String familyId, ApproveCallback callback) {
@@ -401,6 +419,7 @@ public class FamilyRepository {
                 db.collection(FirestorePaths.FAMILIES).document(familyId).get().addOnCompleteListener(familyTask -> {
                     if (familyTask.isSuccessful() && familyTask.getResult().exists()) {
                         String familyName = familyTask.getResult().getString("name");
+                        String mode = familyTask.getResult().getString("mode");
 
                         WriteBatch batch = db.batch();
 
@@ -422,7 +441,7 @@ public class FamilyRepository {
                         batch.set(db.collection(FirestorePaths.getMembersPath(familyId)).document(uid), member);
 
                         // 3. Phase 7 bis: Add membership
-                        FamilyMembership membership = new FamilyMembership(familyId, familyName, "member", member.getJoinedAt());
+                        FamilyMembership membership = new FamilyMembership(familyId, familyName, "member", mode, member.getJoinedAt());
                         batch.set(db.collection(FirestorePaths.getMembershipsPath(uid)).document(familyId), membership);
 
                         // 4. Update user familyId
@@ -541,12 +560,38 @@ public class FamilyRepository {
     }
 
     public void updateFamily(String familyId, String name, String currencyCode, ApproveCallback callback) {
+        // Fetch current family data to see if name changed
+        getFamily(familyId, result -> {
+            if (result instanceof Result.Success) {
+                Family currentFamily = ((Result.Success<Family>) result).getData();
+                boolean nameChanged = !currentFamily.getName().equals(name);
+
+                db.collection(FirestorePaths.FAMILIES).document(familyId)
+                        .update("name", name, "currencyCode", currencyCode)
+                        .addOnCompleteListener(task -> {
+                            if (task.isSuccessful()) {
+                                if (nameChanged) {
+                                    // Phase 7 bis: Propagate family name change to all members' memberships
+                                    propagateFamilyNameChange(familyId, name, callback);
+                                } else {
+                                    callback.onResult(new Result.Success<>(true));
+                                }
+                            } else {
+                                callback.onResult(new Result.Error<>(task.getException()));
+                            }
+                        });
+            } else {
+                callback.onResult(new Result.Error<>(((Result.Error<?>) result).getException()));
+            }
+        });
+    }
+
+    public void updateFamilyMode(String familyId, String mode, ApproveCallback callback) {
         db.collection(FirestorePaths.FAMILIES).document(familyId)
-                .update("name", name, "currencyCode", currencyCode)
+                .update("mode", mode)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
-                        // Phase 7 bis: Propagate family name change to all members' memberships
-                        propagateFamilyNameChange(familyId, name, callback);
+                        callback.onResult(new Result.Success<>(true));
                     } else {
                         callback.onResult(new Result.Error<>(task.getException()));
                     }

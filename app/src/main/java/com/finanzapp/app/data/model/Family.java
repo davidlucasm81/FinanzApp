@@ -11,18 +11,24 @@ public class Family {
     private String inviteCode;
     private String createdBy;
     private Timestamp createdAt;
+    private String mode; // "normal" | "shared_expenses"
 
     public Family() {
         // Required for Firestore serialization
     }
 
     public Family(String id, String name, String currencyCode, String inviteCode, String createdBy, Timestamp createdAt) {
+        this(id, name, currencyCode, inviteCode, createdBy, createdAt, "normal");
+    }
+
+    public Family(String id, String name, String currencyCode, String inviteCode, String createdBy, Timestamp createdAt, String mode) {
         this.id = id;
         this.name = name;
         this.currencyCode = currencyCode;
         this.inviteCode = inviteCode;
         this.createdBy = createdBy;
         this.createdAt = createdAt;
+        this.mode = mode;
     }
 
     // Getters and Setters
@@ -43,4 +49,10 @@ public class Family {
 
     public Timestamp getCreatedAt() { return createdAt; }
     public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
+
+    public String getMode() {
+        if ("tricount".equals(mode)) return "shared_expenses";
+        return mode != null ? mode : "normal";
+    }
+    public void setMode(String mode) { this.mode = mode; }
 }

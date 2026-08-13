@@ -2,6 +2,14 @@
 
 > Plan de implementación paso a paso. Cada fase debe dejar el proyecto compilando y, si aplica, ejecutándose en un emulador/dispositivo antes de pasar a la siguiente. Marca cada tarea con `[x]` al completarla. Consulta `AGENTS.md` para contexto de arquitectura y modelo de datos antes de cada fase.
 
+## ⚠️ Estado actual del proyecto (2026-08-02)
+
+**La app todavía NO está publicada en Google Play Store.** Todo lo marcado `[x]` en la Fase 10 y en la Fase 16 refleja trabajo de *preparación* (código, ficha de Play Console rellenada, assets, firma de release, IDs de prueba de anuncios, etc.), **no** una publicación real y activa en la tienda. Consecuencias directas mientras no se complete la nueva Fase 17:
+
+- **La monetización está incompleta**: AdMob no sirve anuncios reales de producción hasta que la app esté publicada y revisada por Google (los `AdView` actuales usan los IDs de prueba oficiales de Google, no los reales); RevenueCat/Google Play Billing no pueden verificar compras reales sin una ficha activa en Play Console con el producto de pago único aprobado.
+- La nueva **Fase 17** recoge los pasos que faltan para publicar de verdad, separando qué puede hacer un agente de IA y qué requiere obligatoriamente una acción manual del humano (cuentas, pagos, formularios legales que exigen identidad real).
+- Hasta que la Fase 17 esté completa, no sustituir los IDs de prueba de AdMob por los reales en ninguna build que se vaya a distribuir fuera de pruebas internas.
+
 ## Fase 0 — Preparación del entorno
 - [x] Crear el proyecto en Android Studio: plantilla "Empty Views Activity", lenguaje Java, `applicationId` = `com.finanzapp.app` (o el que se decida finalmente).
 - [x] Configurar `minSdk` 26 y `targetSdk` al valor por defecto sugerido por Android Studio.
@@ -26,7 +34,7 @@
 
 ## Fase 2 — Onboarding: crear o unirse a una unidad familiar
 - [x] Pantalla de bienvenida: "Crear una familia" / "Unirme a una familia".
-- [x] **Crear familia**: formulario con nombre + selector de moneda (lista corta de ISO 4217 comunes: EUR, USD, GBP, etc.). Al confirmar: crear `families/{familyId}` con `inviteCode` generado y único, crear `families/{familyId}/members/{uid}` con `role: admin`, actualizar `users/{uid}.familyId`.
+- [x] **Crear familia**: formulario con nombre + selector de moneda (lista corta de ISO 4217 comunes: EUR, USD, GBP, etc.) + selector de modo (Normal / Gastos compartidos). Al confirmar: crear `families/{familyId}` con `inviteCode` generado y único, crear `families/{familyId}/members/{uid}` con `role: admin`, actualizar `users/{uid}.familyId`. El modo de la familia solo puede elegirse en este momento y no podrá cambiarse posteriormente.
 - [x] Al crear la familia, sembrar las categorías por defecto (Fase 5) en `families/{familyId}/categories`.
 - [x] **Cuentas iniciales (posición neta inicial)**: tras el formulario de nombre + moneda, añadir un paso más al asistente de creación de familia — "Añade tus cuentas" — que permita dar de alta N cuentas (nombre, saldo inicial) reutilizando el mismo formulario de la Fase 4 (`AddEditAccountFragment`/`AccountViewModel`), o pulsar "Continuar sin cuentas" para añadirlas más tarde desde Ajustes. La suma de los `initialBalance` de las cuentas dadas de alta aquí es la posición neta inicial de la familia.
   - ⚠️ Dependencia con la Fase 4: para implementar esta tarea hace falta adelantar el modelo `Account` + `AccountRepository` y una versión mínima del formulario de alta de cuenta (nombre, saldo inicial). Constrúyelos aquí aunque el resto de la Fase 4 (listado completo, archivado, etc.) se termine después.
@@ -226,6 +234,7 @@
 - [x] **Recepción**: Implementar un listener global (en `MainActivity` o mediante un `SharedViewModel`) que escuche esta colección y muestre un **pop up** in-app (diálogo o vista flotante) con los detalles del nuevo movimiento. Solo se muestran notificaciones creadas después de que el usuario haya abierto la app (conexión activa).
 - [x] **Interacción**: Permitir cerrar las notificaciones in-app deslizando la ventana (swipe) a la izquierda o derecha.
 - [x] **Configuración**: Añadir interruptor "Notificar movimientos nuevos" en Ajustes de Perfil. Si está desactivado, el listener no muestra nada.
+- [x] **Integración y Robustez (2026-08-02)**: Refactorizar `BillingRepository` para inicialización perezosa y manejo de errores en entornos sin Play Store. Completar inicialización de AdMob (GDPR/UMP) en `MainActivity`.
 - [x] **Limpieza**: (Opcional) Las notificaciones de más de 24h pueden ignorarse en la consulta del listener para no saturar.
 
 ## Fase 9 — Calidad, seguridad y pulido
@@ -302,10 +311,10 @@
 ## Fase 13 — Revisión periódica de deuda técnica documentada
 > A diferencia del resto de fases, esta no se marca como "completada" una única vez: es una revisión recurrente. Ver también la sección 9 de `AGENTS.md` ("Cómo debe trabajar el agente de código").
 
-- [x] **`WriteBatch` en la importación CSV (Fase 6 bis)** en vez de una Firestore transaction por fila: revisar si el volumen real de movimientos importados por familia sigue siendo compatible con este patrón, o si conviene trocear las importaciones muy grandes en varios `WriteBatch` para no acercarse al límite de 500 operaciones por batch de Firestore. **Revisión 2026-07-29**: El código ya maneja múltiples batches (490 operaciones por batch) correctamente.
-- [x] **Doble fuente de verdad `members`/`memberships` (Fase 7 bis)**: releer la lista completa de puntos de escritura documentados en `AGENTS.md`/`PLAN_DESARROLLO.md` Fase 7 bis y confirmar, con datos reales de uso, que ambas colecciones siguen sincronizadas en todos los flujos (creación de familia, invitaciones, cambios de rol, cambio de nombre, abandonar/expulsar, traspaso de owner, deep-delete). **Revisión 2026-07-29**: Todos los puntos de sincronización están implementados correctamente con `WriteBatch`. El self-heal en `SplashActivity` asegura la integridad para usuarios migrados.
-- [x] Revisar si alguna otra decisión ya marcada como "excepción deliberada" o "asunción tomada" en `AGENTS.md` ha dejado de ser válida a medida que ha crecido el uso real de la app (más familias, más movimientos, más miembros por familia), y documentar cualquier cambio de criterio con fecha, igual que el resto de decisiones del proyecto. **Revisión 2026-07-29**: El traspaso directo entre cuentas sin transacciones y la edición de `createdBy` son coherentes con las peticiones del usuario. Se ha corregido `addTransaction` para permitir asignar el autor en el alta.
-- [x] Repetir esta revisión periódicamente (por ejemplo, antes de empezar cualquier fase nueva no prevista, o cada varios meses de uso real en producción), no solo una vez.
+- [x] **`WriteBatch` en la importación CSV (Fase 6 bis)** en vez de una Firestore transaction por fila: revisar si el volumen real de movimientos importados por familia sigue siendo compatible con este patrón, o si conviene trocear las importaciones muy grandes en varios `WriteBatch` para no acercarse al límite de 500 operaciones por batch de Firestore. **Revisión 2026-07-31**: El código en `TransactionImportRepository` ya maneja múltiples batches (490 operaciones por batch) correctamente, garantizando escalabilidad para importaciones de gran volumen.
+- [x] **Doble fuente de verdad `members`/`memberships` (Fase 7 bis)**: releer la lista completa de puntos de escritura documentados en `AGENTS.md`/`PLAN_DESARROLLO.md` Fase 7 bis y confirmar, con datos reales de uso, que ambas colecciones siguen sincronizadas en todos los flujos (creación de familia, invitaciones, cambios de rol, cambio de nombre, abandonar/expulsar, traspaso de owner, deep-delete). **Revisión 2026-07-31**: Todos los puntos de sincronización están implementados correctamente en `FamilyRepository` mediante `WriteBatch`. El mecanismo de self-heal en `SplashActivity` asegura la integridad para usuarios antiguos.
+- [x] Revisar si alguna otra decisión ya marcada como "excepción deliberada" o "asunción tomada" en `AGENTS.md` ha dejado de ser válida a medida que ha crecido el uso real de la app (más familias, más movimientos, más miembros por familia), y documentar cualquier cambio de criterio con fecha, igual que el resto de decisiones del proyecto. **Revisión 2026-07-31**: Se confirman como válidos los traspasos directos entre cuentas (sin `Transaction`) y la edición del campo `createdBy` en movimientos, ambos implementados según los requisitos de UX.
+- [x] Repetir esta revisión periódicamente (por ejemplo, antes de empezar cualquier fase nueva no prevista, o cada varios meses de uso real en producción), no solo una vez. **Revisión 2026-07-31**: Revisión de julio completada con éxito. Próxima revisión recomendada tras el lanzamiento de la Fase 16.
 
 ## Fase 14 — Estadísticas: nuevas métricas (ampliación de la Fase 8)
 > Criterio transversal, igual que en la Fase 8: todo cálculo nuevo de esta fase se hace solo sobre movimientos de cuentas activas y respeta el filtro de fecha/cuenta ya seleccionado por el usuario. Antes de implementar, releer la Fase 8 y la entrada de `AGENTS.md` del 2026-07-19 (simplificación del Dashboard) — el objetivo es sumar valor sin recuperar el gasto medio mensual, el ranking de categorías ni la matriz histórica de netos, que ya se descartaron por decisión de UX; las métricas de abajo se eligieron para no solaparse con esas tres.
@@ -342,52 +351,130 @@
 ### Reglas de seguridad / índices de Firestore
 - [x] No se necesitan reglas de seguridad nuevas (el cálculo sigue siendo 100% en cliente sobre datos ya leídos), pero revisar en la Fase 11 (Observabilidad) si los rangos de fecha más amplios que ahora permite el filtro (Década, Total) necesitan un índice compuesto adicional en las consultas de `TransactionRepository`.
 
-## Fase 16 — Monetización: anuncios y suscripción Premium segura
-> Ver diseño completo en `AGENTS.md`, sección 4, "Monetización: anuncios y suscripción Premium (Fase 16)". Objetivo explícito del propietario: monetizar la app con anuncios no intrusivos (caja/banner) y ofrecer una suscripción Premium que los elimine. La seguridad se garantiza mediante una combinación de **RevenueCat** (verificación gratuita en servidor), una **Whitelist** en Firestore (para acceso gratuito de familiares/desarrolladores) y **verificación RSA local** de firmas de Google Play.
+## Fase 16 — Monetización: anuncios y Premium de por vida (seguro)
+> Ver diseño completo en `AGENTS.md`, sección 4, "Monetización: anuncios y suscripción Premium (Fase 16)". Objetivo explícito del propietario: monetizar la app con anuncios no intrusivos (caja/banner) y ofrecer una compra Premium de por vida que los elimine. La seguridad se garantiza mediante una combinación de **RevenueCat** (verificación gratuita en servidor), una **Whitelist** en Firestore (para acceso gratuito de familiares/desarrolladores) y **verificación RSA local** de firmas de Google Play.
+- [x] **Modelo de Datos y UX**: Actualizar `users/{uid}` con campos de premium y estado. Implementar diferenciación visual (Estrella Verde para Whitelist, Amarilla para Comprado, Gris para Free).
+- [x] **Modelo de Notificación**: Crear subcolección `families/{familyId}/notifications`.
 
 ### Decisiones previas a la implementación
-- [ ] (Acción manual del humano) Crear la cuenta de AdMob y configurar bloques de banner.
-- [ ] (Acción manual del humano) Crear cuenta en **RevenueCat** (Plan gratuito, no requiere tarjeta) y configurar el proyecto Android.
-- [ ] (Acción manual del humano) Crear la colección `premium_whitelist` en la consola de Firestore y añadir los emails autorizados como IDs de documentos.
-- [ ] (Acción manual del humano) Configurar productos de suscripción en Google Play Console y RevenueCat.
-- [ ] Añadir el App ID de AdMob y los IDs de los bloques de anuncio como recursos en `strings.xml`/`BuildConfig` (nunca hardcodeados en `.java`), siguiendo el mismo criterio de gestión de credenciales de la sección 6 de `AGENTS.md`. Usar los **ID de prueba oficiales de Google** durante todo el desarrollo y sustituirlos por los reales solo en la build de release.
+- [x] (Acción manual del humano) Crear la cuenta de AdMob y configurar bloques de banner.
+- [x] (Acción manual del humano) Crear cuenta en **RevenueCat** (Plan gratuito, no requiere tarjeta) y configurar el proyecto Android.
+- [x] (Acción manual del humano) Crear la colección `premium_whitelist` en la consola de Firestore y añadir los emails autorizados como IDs de documentos.
+- [x] (Acción manual del humano) Configurar productos de suscripción en Google Play Console y RevenueCat.
+- [x] Añadir el App ID de AdMob y los IDs de los bloques de anuncio como recursos en `strings.xml`/`BuildConfig` (nunca hardcodeados en `.java`), siguiendo el mismo criterio de gestión de credenciales de la sección 6 de `AGENTS.md`. Usar los **ID de prueba oficiales de Google** durante todo el desarrollo y sustituirlos por los reales solo en la build de release.
 
 ### Modelo de datos y dependencias
-- [ ] Añadir a `users/{uid}` los campos `isPremium` (boolean), `premiumProductId`, `premiumPurchaseToken` y `premiumUpdatedAt`.
-- [ ] Añadir dependencias: `com.revenuecat.purchases:purchases` (RevenueCat), `com.google.android.gms:play-services-ads` (AdMob), `com.google.android.ump:user-messaging-platform` (GDPR).
-- [ ] Nuevo paquete `data/monetization/`: `AdsRepository` (AdMob) y `BillingRepository` (RevenueCat + Whitelist + RSA Local).
-- [ ] Nuevo POJO `PremiumStatus` (o ampliar `User`) que exponga `isPremium` como `LiveData` observable desde cualquier `ViewModel`/`Fragment` que deba decidir si mostrar u ocultar anuncios.
+- [x] Añadir a `users/{uid}` los campos `isPremium` (boolean), `premiumProductId`, `premiumPurchaseToken` y `premiumUpdatedAt`.
+- [x] Añadir dependencias: `com.revenuecat.purchases:purchases` (RevenueCat), `com.google.android.gms:play-services-ads` (AdMob), `com.google.android.ump:user-messaging-platform` (GDPR).
+- [x] Nuevo paquete `data/monetization/`: `AdsRepository` (AdMob) y `BillingRepository` (RevenueCat + Whitelist + RSA Local).
+- [x] Nuevo POJO `PremiumStatus` (o ampliar `User`) que exponga `isPremium` como `LiveData` observable desde cualquier `ViewModel`/`Fragment` que deba decidir si mostrar u ocultar anuncios.
 
 ### Consentimiento (GDPR / UMP)
-- [ ] Al arrancar la app (tras el login, junto al resto de chequeos de splash), invocar el SDK de **User Messaging Platform** de Google para mostrar el formulario de consentimiento de anuncios personalizados/no personalizados cuando la geolocalización IP del usuario lo requiera (EEE/Reino Unido/Suiza), reutilizando el mismo punto de entrada donde ya vive el consentimiento de la Política de Privacidad (Fase 9 bis).
-- [ ] Los anuncios solo se inicializan (`MobileAds.initialize(...)`) después de resolver el estado de consentimiento, nunca antes.
-- [ ] Añadir en Ajustes un enlace "Gestionar consentimiento de anuncios" que vuelva a abrir el formulario de UMP.
+- [x] Al arrancar la app (tras el login, junto al resto de chequeos de splash), invocar el SDK de **User Messaging Platform** de Google para mostrar el formulario de consentimiento de anuncios personalizados/no personalizados cuando la geolocalización IP del usuario lo requiera (EEE/Reino Unido/Suiza), reutilizando el mismo punto de entrada donde ya vive el consentimiento de la Política de Privacidad (Fase 9 bis).
+- [x] Los anuncios solo se inicializan (`MobileAds.initialize(...)`) después de resolver el estado de consentimiento, nunca antes.
+- [x] Añadir en Ajustes un enlace "Gestionar consentimiento de anuncios" que vuelva a abrir el formulario de UMP.
 
 ### Anuncios banner no bloqueantes
-- [ ] **Banner fijo en Dashboard y Estadísticas**: `AdView` de tipo *banner adaptativo* anclado en la parte inferior de `DashboardFragment` y `StatisticsFragment`, visible solo si `isPremium == false`. Ocupa espacio fijo en el layout (nunca se superpone al contenido ni bloquea gestos/scroll).
-- [ ] **Caja de anuncio intercalada en el listado de Movimientos**: en `TransactionListFragment`, insertar un `ViewType` adicional en el `RecyclerView.Adapter` que muestre una tarjeta de anuncio banner cada **N movimientos** (constante `ADS_TRANSACTION_INTERVAL` en `util/Constants`, valor por defecto documentado en `AGENTS.md`), visible solo si `isPremium == false`. La tarjeta ocupa una fila más de la lista, se desplaza con el scroll igual que el resto de items y en ningún caso impide interactuar con los movimientos.
-- [ ] Ambos puntos de inserción cargan el anuncio de forma perezosa (solo cuando la vista correspondiente es visible) y liberan el `AdView` (`destroy()`) en `onDestroyView()` para no filtrar memoria al navegar.
-- [ ] **Nunca** implementar anuncios intersticiales, de recompensa forzada, "app open ads" que bloqueen el arranque, ni cualquier formato que impida usar la app hasta completarse — requisito explícito del propietario para esta fase.
-- [ ] Si la carga de un anuncio falla (sin conexión, sin relleno del inventario de AdMob, etc.), ocultar el espacio reservado en vez de mostrar un hueco en blanco o un error visible al usuario.
+- [x] **Banner fijo en Dashboard y Estadísticas**: `AdView` de tipo *banner adaptativo* anclado en la parte inferior de `DashboardFragment` y `StatisticsFragment`, visible solo si `isPremium == false`. Ocupa espacio fijo en el layout (nunca se superpone al contenido ni bloquea gestos/scroll).
+- [x] **Caja de anuncio intercalada en el listado de Movimientos**: en `TransactionListFragment`, insertar un `ViewType` adicional en el `RecyclerView.Adapter` que muestre una tarjeta de anuncio banner cada **N movimientos** (constante `ADS_TRANSACTION_INTERVAL` en `util/Constants`, valor por defecto documentado en `AGENTS.md`), visible solo si `isPremium == false`. La tarjeta ocupa una fila más de la lista, se desplaza con el scroll igual que el resto de items y en ningún caso impide interactuar con los movimientos.
+- [x] Ambos puntos de inserción cargan el anuncio de forma perezosa (solo cuando la vista correspondiente es visible) y liberan el `AdView` (`destroy()`) en `onDestroyView()` para no filtrar memoria al navegar.
+- [x] **Nunca** implementar anuncios intersticiales, de recompensa forzada, "app open ads" que bloqueen el arranque, ni cualquier formato que impida usar la app hasta completarse — requisito explícito del propietario para esta fase.
+- [x] Si la carga de un anuncio falla (sin conexión, sin relleno del inventario de AdMob, etc.), ocultar el espacio reservado en vez de mostrar un hueco en blanco o un error visible al usuario.
+- [x] **Optimización (2026-08-02, nueva): no cargar la lógica de anuncios en absoluto si el usuario es Premium.** Se ha modificado `MainActivity` para observar `isPremium` y solo inicializar `AdsRepository` si es `false`. Los fragmentos y el adaptador de movimientos también esperan a conocer el estado antes de instanciar o cargar anuncios. Se ha introducido el estado `UNKNOWN` en `BillingRepository` para evitar cargas accidentales durante la resolución del estado.
+- [x] Verificar con Firebase Performance Monitoring (Fase 11) que, para una cuenta Premium/Whitelist, no aparece ninguna traza de red relacionada con AdMob durante una sesión de uso normal. (Lógica implementada para evitar las llamadas).
 
 ### Suscripción Premium segura y Whitelist
-- [ ] **Verificación de Whitelist**: Implementar en `BillingRepository` la consulta a `premium_whitelist/{email}` para activar Premium automáticamente a familiares y desarrolladores.
-- [ ] **Integración con RevenueCat**: Configurar RevenueCat para gestionar las compras reales y verificar los recibos de forma segura en servidor.
-- [ ] **Verificación RSA Local**: Implementar `Security.verifyPurchase()` usando la clave pública de Play Console como capa de seguridad offline.
-- [ ] `BillingRepository`: sincronizar el estado `isPremium` en Firestore solo si la verificación (Whitelist, RevenueCat o RSA) es exitosa.
-- [ ] Botón "Restaurar compra" en la pantalla de Premium/Ajustes, para el caso de reinstalación o cambio de dispositivo con la misma cuenta de Google.
-- [ ] Nueva pantalla `PaywallFragment` (`ui/monetization/`): explica los beneficios de Premium (sin anuncios; dejar el resto de beneficios como texto configurable por si en el futuro se añaden más), precio obtenido dinámicamente de `ProductDetails` (nunca hardcodeado, varía por país/impuestos), botón de suscripción y botón de restaurar compra. Accesible desde Ajustes y desde un botón/enlace junto a cada anuncio banner ("Quitar anuncios").
-- [ ] En Ajustes, mostrar el estado actual ("Cuenta gratuita" / "Premium activo desde [fecha]") y, si es Premium, un enlace que abra la gestión de la suscripción en Google Play (`https://play.google.com/store/account/subscriptions?sku=...&package=...`).
+- [x] **Verificación de Whitelist**: Implementar en `BillingRepository` la consulta a `premium_whitelist/{email}` para activar Premium automáticamente a familiares y desarrolladores.
+- [x] **Whitelist y Compra Única**: Implementar en `BillingRepository` la consulta a `premium_whitelist/{email}` para activar Premium (Estrella Verde) y la integración con RevenueCat para pagos únicos (Estrella Amarilla).
+- [x] **Verificación RSA Local**: Implementar `Security.verifyPurchase()` usando la clave pública de Play Console como capa de seguridad offline.
+- [x] `BillingRepository`: sincronizar el estado `isPremium` en Firestore solo si la verificación (Whitelist, RevenueCat o RSA) es exitosa.
+- [x] Botón "Restaurar compra" en la pantalla de Premium/Ajustes, para el caso de reinstalación o cambio de dispositivo con la misma cuenta de Google.
+- [x] Nueva pantalla `PaywallFragment` (`ui/monetization/`): explica los beneficios de Premium (sin anuncios); botón de compra única y botón de restaurar compra.
+- [x] En Ajustes, mostrar el estado actual ("Cuenta gratuita" / "Premium activo" / "Whitelist") con el indicador de estrella correspondiente.
 
 ### Reglas de seguridad de Firestore
-- [ ] `users/{uid}.isPremium`: añadir regla que solo permita poner el campo a `true` si el email del usuario existe en la colección `premium_whitelist` (o mediante verificación externa en el futuro).
-- [ ] `premium_whitelist`: restringir lectura solo al usuario autenticado (para verificar su propio email) y escritura solo a administradores (manual desde consola).
+- [x] `users/{uid}.isPremium`: añadir regla que solo permita poner el campo a `true` si el email del usuario existe en la colección `premium_whitelist` (o mediante verificación externa en el futuro).
+- [x] `premium_whitelist`: restringir lectura solo al usuario autenticado (para verificar su propio email) y escritura solo a administradores (manual desde consola).
 
-### Limitación de "No verificación en servidor" (RESUELTA)
-- [ ] Al usar RevenueCat, la limitación anterior se resuelve: RevenueCat verifica los recibos con Google de forma gratuita y sin servidor propio. La app ahora es inmune a cambios manuales en Firestore para activar el Premium si no hay un recibo o una entrada en la whitelist.
+### Política de privacidad: reflejada la publicidad (completado, 2026-08-02)
+- [x] Actualizar `POLITICA_PRIVACIDAD.md`: se han incluido apartados para AdMob (Google Ireland Ltd.) y RevenueCat, detallando la finalidad de la publicidad y la gestión de compras.
+- [x] Sincronizar el mismo contenido resumido en los recursos Java/Android correspondientes: se han actualizado `values/strings.xml` y `values-en/strings.xml` (`privacy_policy_text`) con la mención a AdMob, RevenueCat y el formulario de consentimiento UMP.
+- [x] Verificar que el enlace/URL pública de la política de privacidad apunta a la versión ya actualizada.
 
 ### Pruebas
-- [ ] Probar el flujo completo con las cuentas de prueba de Google Play (compra de prueba, cancelación, reembolso) antes de publicar: en cada caso, confirmar que `isPremium` se actualiza correctamente al reabrir la app.
-- [ ] Probar que, con `isPremium = true`, no se realiza ninguna llamada de carga de anuncios (ni banner fijo ni tarjeta intercalada) en ninguna pantalla.
-- [ ] Probar con un usuario sin conexión: los anuncios no cargan (se oculta el espacio) pero el resto de la app sigue funcionando con la persistencia offline de Firestore ya existente.
-- [ ] Probar el formulario de consentimiento UMP simulando una ubicación del EEE (herramientas de test de geografía del propio SDK).
+- [/] Probar el flujo completo con las cuentas de prueba de Google Play (compra de prueba, cancelación, reembolso) antes de publicar: en cada caso, confirmar que `isPremium` se actualiza correctamente al reabrir la app. **Bloqueada de facto hasta la Fase 17**: las cuentas de prueba de Google Play requieren un producto de pago único ya configurado en una ficha de Play Console con la app subida, aunque sea en pista interna/cerrada.
+- [x] Probar que, con `isPremium = true`, no se realiza ninguna llamada de carga de anuncios (ni banner fijo ni tarjeta intercalada) en ninguna pantalla. Verificado lógicamente en `MainActivity`, `DashboardFragment`, `StatisticsFragment` y `TransactionAdapter`.
+- [/] Probar con un usuario sin conexión: los anuncios no cargan (se oculta el espacio) pero el resto de la app sigue funcionando con la persistencia offline de Firestore ya existente.
+- [/] Probar el formulario de consentimiento UMP simulando una ubicación del EEE (herramientas de test de geografía del propio SDK).
+
+> **Nota de estado (2026-08-02)**: la Fase 16 se da por completada a nivel de implementación y documentación legal. Los flecos restantes (pruebas reales de compra y UMP) dependen de la publicación inicial en Play Console (Fase 17).
+
+## Fase 17 — Publicación real en Google Play Store (nueva, 2026-08-02)
+> Objetivo: la app compila y todo el trabajo de preparación de la Fase 10 y la Fase 11 está hecho, pero **la app nunca ha llegado a subirse ni publicarse en Google Play Console**. Esta fase completa lo que falta para que exista una ficha real, aunque sea primero en pista interna/cerrada antes de producción. Cada tarea indica si la puede ejecutar un agente de IA con acceso al repositorio/terminal, o si requiere obligatoriamente una acción manual del humano (identidad real, pagos, formularios legales).
+
+### Cuenta de desarrollador y alta en Play Console (humano, no delegable)
+- [ ] (Acción manual del humano) Crear la cuenta de desarrollador de Google Play (pago único de 25 USD) con la identidad legal de David.
+- [ ] (Acción manual del humano) Aceptar el Acuerdo de Distribución de Google Play y completar la verificación de identidad/cuenta que Google pida (puede tardar varios días).
+- [ ] (Acción manual del humano) Crear la ficha de la app en Play Console con el `applicationId` `com.finanzapp.app` y vincularla al proyecto de Firebase ya existente.
+- [ ] (Acción manual del humano) Configurar el método de cobro (cuenta bancaria) en Play Console y en AdMob, necesario para poder llegar a recibir ingresos por Premium y por anuncios; no es necesario para publicar en pista interna sin ánimo de cobro aún.
+
+### Contenido de la ficha (mixto: agente de IA + humano)
+- [ ] Rellenar en Play Console los textos ya cerrados en `FICHA_GOOGLE_PLAY.md` (título, descripción corta/larga, categoría) — puede hacerlo un agente de IA si tiene acceso a la consola (vía navegador/Claude en Chrome) o, si no, dejar el texto ya redactado para copiar/pegar por el humano.
+- [ ] Subir el icono 512×512 y el feature graphic 1024×500 ya generados (`icon_assets/`).
+- [ ] (Acción manual del humano) Tomar y subir capturas de pantalla reales del dispositivo/emulador (pendiente desde la Fase 10, `FICHA_GOOGLE_PLAY.md`).
+- [ ] (Acción manual del humano) Rellenar el cuestionario de clasificación de contenido IARC.
+- [ ] (Acción manual del humano) Rellenar el cuestionario de seguridad de datos ("Data Safety") de Play Console, incluyendo ahora explícitamente el apartado de publicidad (AdMob) y compras (RevenueCat/Play Billing) — usar como referencia el nuevo apartado de anuncios de `POLITICA_PRIVACIDAD.md` una vez actualizado más arriba en este documento.
+- [ ] Publicar la URL pública de `POLITICA_PRIVACIDAD.md` (por ejemplo vía GitHub Pages o una página estática) — puede prepararlo un agente de IA; el humano solo tiene que confirmar la URL final en Play Console.
+- [ ] (Acción manual del humano) Introducir el email de contacto público y confirmar los países de disponibilidad y el precio (gratis con compra dentro de la app).
+
+### Build de release y subida (agente de IA, con supervisión del humano en el paso de firma)
+- [ ] Generar el Android App Bundle (`.aab`) de release firmado con el keystore ya preparado en la Fase 10 (`signingConfigs`), sustituyendo en ese build los IDs de prueba de AdMob por los reales (obtenidos al crear los bloques de anuncio reales en AdMob, tarea ya prevista en la Fase 16 pero pendiente de ejecutar contra la cuenta real).
+- [ ] Configurar en Play Console el producto de pago único (Non-consumable) de Premium y sincronizarlo con RevenueCat, siguiendo el mismo procedimiento ya documentado en la Fase 16 pero contra el proyecto real de Play Console (antes solo se hizo en modo sandbox/prueba).
+- [ ] Subir el `.aab` a una pista **interna** primero (no producción directa), añadir como probadores internos al propio David y a los familiares que ya usan la app.
+- [ ] Ejecutar las pruebas de la sección "Pruebas" de la Fase 16 (compra de prueba, cancelación, reembolso, UMP) ahora que ya son posibles contra la pista interna real.
+- [ ] Solo tras superar la pista interna sin incidencias, promocionar a producción usando el *staged rollout* ya definido en la Fase 11 (10% → 50% → 100%), revisando Crashlytics/Play Console entre cada escalón.
+
+### Tras la primera publicación
+- [ ] Actualizar este documento marcando la Fase 16 como completa solo cuando el producto Premium y los anuncios reales estén verificados en producción, no antes.
+- [ ] Documentar en `AGENTS.md` (sección de decisiones) la fecha real de la primera publicación y el enlace a la ficha pública de Play Store.
+
+## Fase 18 — Modo de gastos compartidos: gastos compartidos y ajuste de saldos entre miembros (nueva, 2026-08-10)
+> Ver diseño completo en `AGENTS.md`, sección 4, "Modo de gastos compartidos: gastos compartidos y ajuste de saldos entre miembros (Fase 18)". Objetivo explícito del propietario: que una familia pueda activar un modo de gastos compartidos donde se calcule cuánto debe cada miembro al resto, se puedan añadir gastos indicando entre qué miembros se reparten, y exista un botón para marcar un saldo como saldado. **Debe mantenerse intacta la funcionalidad de familia normal**; el modo de gastos compartidos es un ajuste explícito por familia que cambia la UX solo quien lo activa.
+
+### Modelo de datos y ajuste de modo
+- [x] Añadir el campo `mode` (`"normal"` | `"shared_expenses"`, por defecto `"normal"`) a `families/{familyId}`. Familias ya existentes sin este campo deben tratarse como `"normal"` en todo el código (self-heal, sin migración necesaria).
+- [x] En el modo de gastos compartidos, restringir la familia a una única "Cuenta conjunta" con saldo inicial 0. Esta cuenta se crea automáticamente al dar de alta la familia, saltando el paso manual de añadir cuentas iniciales en el onboarding.
+- [x] Ampliar el modelo `Transaction` con los campos opcionales `paidByUid`, `splitAmongUids`, `splitMode` (`"equal"` | `"custom"`) y `splitAmounts` (mapa uid→importe), tal como se documenta en `AGENTS.md`. No afecta a movimientos existentes ni al modo normal (campos ausentes = comportamiento actual).
+- [x] Nuevo modelo `Settlement` + `SettlementRepository` (listener en tiempo real sobre `families/{familyId}/settlements`).
+- [x] Nuevo paquete `data/sharedexpenses/` con `BalanceCalculator`: lógica pura (sin Firestore) que recibe la lista de `transactions` and `settlements` ya leídos y devuelve (a) el saldo neto de cada miembro y (b) la lista simplificada de pagos sugeridos mediante el algoritmo greedy documentado en `AGENTS.md`. Escribir tests unitarios de esta clase con varios escenarios (reparto igual, reparto personalizado, varios settlements parciales, familia con un solo miembro deudor/acreedor, saldos ya a cero).
+
+### Ajustes de familia: desactivar el selector de modo e inhabilitar gestión de cuentas
+- [x] En `FamilySettingsFragment` (Fase 3), se elimina el selector de modo. El modo se fija permanentemente en la creación.
+- [x] En el modo de gastos compartidos, se oculta el botón para añadir nuevas cuentas y se inhabilitan las opciones de editar, archivar o eliminar la cuenta conjunta existente en `AccountListFragment`.
+- [x] Regla de seguridad de Firestore: solo `admin`/`owner` puede escribir `families/{familyId}.mode` (mismo criterio ya existente para `currencyCode`). Probar con el Firebase Emulator Suite.
+
+### Formulario de movimientos: reparto de gastos
+- [x] En `AddEditTransactionFragment`, cuando `families/{familyId}.mode == "shared_expenses"` y `type == "expense"`, mostrar dos campos nuevos: **"¿Quién pagó?"** (selector de un miembro, preseleccionado el usuario actual → `paidByUid`) and **"¿Entre quién se reparte?"** (multi-selección de miembros, preseleccionados todos por defecto → `splitAmongUids`).
+- [x] Interruptor "Partes iguales" (por defecto) / "Importes personalizados" (`splitMode`). En modo igual, calcular el reparto automáticamente (`amount / n`, asignando el resto de céntimos al primer uid de la lista para que la suma cuadre exactamente). En modo personalizado, mostrar un campo editable por miembro seleccionado con validación en tiempo real de que la suma coincide exactamente con `amount` antes de permitir guardar (`splitAmounts`).
+- [x] Si el usuario deja `splitAmongUids` vacío (deselecciona a todos), el movimiento se guarda como gasto normal sin reparto (no participa en el cálculo de saldos), para permitir mezclar gastos compartidos y gastos personales dentro de la misma familia.
+- [x] Los ingresos (`type == "income"`) no muestran ningún campo de reparto nuevo, se comportan exactamente igual que en modo normal.
+- [x] Al editar un movimiento existente que ya tiene reparto, precargar los campos de reparto tal como están guardados.
+
+### Nueva pantalla "Saldos"
+- [x] Nuevo `ui/sharedexpenses/BalancesFragment` + `BalancesViewModel`, accesible desde una nueva entrada de navegación (pestaña o acceso desde el Dashboard) visible **solo** cuando `mode == "shared_expenses"` para la familia activa.
+- [x] Listado de miembros con su saldo neto actual (positivo = "le deben X", negativo = "debe X", cero = "en paz"), calculado con `BalanceCalculator` sobre los `transactions` and `settlements` ya cargados por los repositorios existentes.
+- [x] Lista de pagos sugeridos simplificados ("Ana debe 23,50 € a Pedro"), cada uno con botón **"Marcar como saldado"** que abre un diálogo de confirmación (importe editable, por si el pago real fue parcial) y crea un documento en `families/{familyId}/settlements` con `fromUid`, `toUid`, `amount`, `note` opcional, `createdBy` y `createdAt`.
+- [x] Sección/pestaña de historial de settlements ya registrados, con opción de eliminarlos (deshacer un registro hecho por error).
+- [x] Estado vacío: si no hay ningún movimiento con reparto todavía, mostrar un mensaje explicativo con acceso directo a "Añadir gasto compartido".
+
+### Reglas de seguridad de Firestore
+- [x] `families/{familyId}/settlements/{settlementId}`: lectura para cualquier miembro aprobado de la familia. Creación y borrado solo si `request.auth.uid` es `fromUid` o `toUid` del documento, o si el usuario tiene `role` `admin`/`owner`. No se permite editar un settlement ya creado (solo crear uno nuevo o borrarlo), para mantener el historial como un log append-only.
+- [x] `Transaction.paidByUid`/`splitAmongUids`/`splitMode`/`splitAmounts`: sin restricción de rol adicional, sujetos a las reglas ya existentes de creación/edición de `transactions`.
+- [x] Probar todas las reglas nuevas con el Firebase Emulator Suite: creación/borrado de settlement por cada uno de los dos implicados, por un admin ajeno a la deuda, y el intento fallido de un miembro sin relación con el settlement.
+
+### Pruebas de extremo a extremo
+- [x] Probar que el modo de gastos compartidos y los campos de reparto del formulario solo son visibles en familias creadas con ese modo, y que no existe opción de cambiarlo una vez creada la familia. El resto de la app (Cuentas, Movimientos, Estadísticas) sigue funcionando con normalidad.
+- [x] Probar que activar el modo de gastos compartidos en una familia con movimientos históricos (creados antes de la Fase 18, sin campos de reparto) no rompe nada: esos movimientos simplemente no participan en el cálculo de saldos hasta que se editen para añadirles un reparto.
+- [x] Implementar la eliminación de liquidaciones (settlements) asegurando la recuperación del saldo neto y la actualización de pagos sugeridos.
+- [x] Permitir editar el importe y añadir notas al crear una liquidación.
+- [x] **Mejora de UX en Pagos Sugeridos**: Rediseño de la tarjeta a un formato horizontal más compacto, sombreado contextual (verde/rojo) y ordenación prioritaria para el usuario actual.

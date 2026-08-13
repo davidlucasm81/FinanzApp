@@ -18,6 +18,12 @@ public class Transaction implements Serializable {
     private String createdBy;
     private Timestamp createdAt;
 
+    // Shared Expenses fields
+    private String paidByUid;
+    private java.util.List<String> splitAmongUids;
+    private String splitMode; // "equal" | "custom"
+    private java.util.Map<String, Double> splitAmounts;
+
     public Transaction() {
         // Required for Firestore
     }
@@ -66,4 +72,36 @@ public class Transaction implements Serializable {
 
     public Timestamp getCreatedAt() { return createdAt; }
     public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
+
+    public String getPaidByUid() {
+        return paidByUid != null ? paidByUid : createdBy;
+    }
+
+    public void setPaidByUid(String paidByUid) {
+        this.paidByUid = paidByUid;
+    }
+
+    public java.util.List<String> getSplitAmongUids() {
+        return splitAmongUids;
+    }
+
+    public void setSplitAmongUids(java.util.List<String> splitAmongUids) {
+        this.splitAmongUids = splitAmongUids;
+    }
+
+    public String getSplitMode() {
+        return splitMode;
+    }
+
+    public void setSplitMode(String splitMode) {
+        this.splitMode = splitMode;
+    }
+
+    public java.util.Map<String, Double> getSplitAmounts() {
+        return splitAmounts;
+    }
+
+    public void setSplitAmounts(java.util.Map<String, Double> splitAmounts) {
+        this.splitAmounts = splitAmounts;
+    }
 }

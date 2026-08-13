@@ -323,4 +323,37 @@
     <string name="label_invitation_section">Invitation</string>
     <string name="label_management_section">Management</string>
     <string name="msg_invite_code_desc">Share this code with the members you want to join your family.</string>
+
+    <!-- Shared Expenses Phase 18 -->
+    <string name="label_family_mode">Family Mode</string>
+    <string name="mode_normal">Normal (Joint Net Position)</string>
+    <string name="mode_shared_expenses">Shared Expenses</string>
+    <string name="dialog_change_mode_title">Change Family Mode</string>
+    <string name="dialog_change_mode_msg">Do you want to switch to %s mode? This will enable/disable shared expense splitting options.</string>
+    <string name="nav_balances">Balances</string>
+    <string name="label_balances_title">Family Balances</string>
+    <string name="label_net_balance">Net Balance</string>
+    <string name="label_suggested_payments">Suggested Payments</string>
+    <string name="label_owes_to">%1$s owes %2$s to %3$s</string>
+    <string name="btn_settle">Mark as settled</string>
+    <string name="dialog_settle_title">Settle Debt</string>
+    <string name="dialog_settle_msg">A payment of %1$s from %2$s to %3$s will be recorded. This will not move money between bank accounts.</string>
+    <string name="label_paid_by">Who paid?</string>
+    <string name="label_split_among">Split among whom?</string>
+    <string name="label_split_equal">Equal shares</string>
+    <string name="label_split_custom">Custom amounts</string>
+    <string name="label_total_amount">Total amount</string>
+    <string name="error_split_total">The split sum must equal the total amount</string>
+    <string name="label_current_sum">Current sum: %1$s</string>
+    <string name="label_remaining_amount">Remaining: %1$s</string>
+    <string name="label_total_match">✓ Sum matches</string>
+    <string name="btn_distribute_remaining">Distribute remaining</string>
+    <string name="label_settlement_history">Settlement History</string>
+    <string name="empty_balances_title">All caught up</string>
+    <string name="empty_balances_desc">There are no outstanding debts in the family.</string>
+    <string name="label_joint_account">Joint Account</string>
+    <string name="label_multiple_accounts">Multiple Accounts</string>
+    <string name="label_none">None</string>
+    <string name="label_family_type">Family Type</string>
+    <string name="label_me">Me</string>
 </resources>

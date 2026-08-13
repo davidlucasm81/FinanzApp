@@ -11,6 +11,7 @@ import com.finanzapp.app.data.repository.CategoryRepository;
 import com.finanzapp.app.FinanzAppApplication;
 import com.finanzapp.app.data.repository.NotificationRepository;
 import com.finanzapp.app.data.repository.TransactionRepository;
+import com.finanzapp.app.data.repository.SettlementRepository;
 
 public class ViewModelFactory implements ViewModelProvider.Factory {
     private final AuthRepository authRepository;
@@ -19,6 +20,8 @@ public class ViewModelFactory implements ViewModelProvider.Factory {
     private final CategoryRepository categoryRepository;
     private final TransactionRepository transactionRepository;
     private final NotificationRepository notificationRepository;
+    private final SettlementRepository settlementRepository;
+    private String familyId;
 
     public ViewModelFactory(FinanzAppApplication.AppContainer container) {
         this.authRepository = container.getAuthRepository();
@@ -27,36 +30,50 @@ public class ViewModelFactory implements ViewModelProvider.Factory {
         this.categoryRepository = container.getCategoryRepository();
         this.transactionRepository = container.getTransactionRepository();
         this.notificationRepository = container.getNotificationRepository();
+        this.settlementRepository = container.getSettlementRepository();
+    }
+
+    public ViewModelFactory(FinanzAppApplication.AppContainer container, String familyId) {
+        this(container);
+        this.familyId = familyId;
     }
 
     public ViewModelFactory(AuthRepository authRepository, FamilyRepository familyRepository) {
-        this(authRepository, familyRepository, null, null, null, null);
+        this(authRepository, familyRepository, null, null, null, null, null);
     }
 
     public ViewModelFactory(AuthRepository authRepository, FamilyRepository familyRepository, AccountRepository accountRepository) {
-        this(authRepository, familyRepository, accountRepository, null, null, null);
+        this(authRepository, familyRepository, accountRepository, null, null, null, null);
     }
 
     public ViewModelFactory(AuthRepository authRepository, FamilyRepository familyRepository,
                             AccountRepository accountRepository, CategoryRepository categoryRepository) {
-        this(authRepository, familyRepository, accountRepository, categoryRepository, null, null);
+        this(authRepository, familyRepository, accountRepository, categoryRepository, null, null, null);
     }
 
     public ViewModelFactory(AuthRepository authRepository, FamilyRepository familyRepository,
                             AccountRepository accountRepository, CategoryRepository categoryRepository,
                             TransactionRepository transactionRepository) {
-        this(authRepository, familyRepository, accountRepository, categoryRepository, transactionRepository, null);
+        this(authRepository, familyRepository, accountRepository, categoryRepository, transactionRepository, null, null);
     }
 
     public ViewModelFactory(AuthRepository authRepository, FamilyRepository familyRepository,
                             AccountRepository accountRepository, CategoryRepository categoryRepository,
                             TransactionRepository transactionRepository, NotificationRepository notificationRepository) {
+        this(authRepository, familyRepository, accountRepository, categoryRepository, transactionRepository, notificationRepository, null);
+    }
+
+    public ViewModelFactory(AuthRepository authRepository, FamilyRepository familyRepository,
+                            AccountRepository accountRepository, CategoryRepository categoryRepository,
+                            TransactionRepository transactionRepository, NotificationRepository notificationRepository,
+                            SettlementRepository settlementRepository) {
         this.authRepository = authRepository;
         this.familyRepository = familyRepository;
         this.accountRepository = accountRepository;
         this.categoryRepository = categoryRepository;
         this.transactionRepository = transactionRepository;
         this.notificationRepository = notificationRepository;
+        this.settlementRepository = settlementRepository;
     }
 
     @NonNull
@@ -75,7 +92,7 @@ public class ViewModelFactory implements ViewModelProvider.Factory {
         } else if (modelClass.isAssignableFrom(SettingsViewModel.class)) {
             return (T) new SettingsViewModel(authRepository, familyRepository);
         } else if (modelClass.isAssignableFrom(DashboardViewModel.class)) {
-            return (T) new DashboardViewModel(authRepository, familyRepository, accountRepository);
+            return (T) new DashboardViewModel(authRepository, familyRepository, accountRepository, transactionRepository, categoryRepository, settlementRepository);
         } else if (modelClass.isAssignableFrom(CategoryViewModel.class)) {
             if (categoryRepository == null) throw new IllegalArgumentException("CategoryRepository not provided to ViewModelFactory");
             return (T) new CategoryViewModel(authRepository, categoryRepository);
@@ -86,6 +103,8 @@ public class ViewModelFactory implements ViewModelProvider.Factory {
             return (T) new StatisticsViewModel(authRepository, familyRepository, accountRepository, categoryRepository, transactionRepository);
         } else if (modelClass.isAssignableFrom(NotificationViewModel.class)) {
             return (T) new NotificationViewModel(authRepository, notificationRepository);
+        } else if (modelClass.isAssignableFrom(BalancesViewModel.class)) {
+            return (T) new BalancesViewModel(authRepository, familyRepository, transactionRepository, settlementRepository, familyId);
         }
         throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());
     }

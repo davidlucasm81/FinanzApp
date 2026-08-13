@@ -224,7 +224,39 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         viewModel.getFamilyData().observe(getViewLifecycleOwner(), result -> {
             if (result instanceof Result.Success) {
                 com.finanzapp.app.data.model.Family family = ((Result.Success<com.finanzapp.app.data.model.Family>) result).getData();
+                
+                String oldCurrency = currentCurrencyCode;
                 currentCurrencyCode = family.getCurrencyCode();
+
+                // Refresh UI components if currency changed
+                if (oldCurrency != null && !oldCurrency.equals(currentCurrencyCode)) {
+                    // Update totals cards
+                    Double income = viewModel.getCurrentMonthIncome().getValue();
+                    if (income != null) binding.tvTotalIncome.setText(formatCurrency(income, currentCurrencyCode, 0));
+                    
+                    Double expense = viewModel.getCurrentMonthExpense().getValue();
+                    if (expense != null) binding.tvTotalExpense.setText(formatCurrency(expense, currentCurrencyCode, 0));
+                    
+                    // Update Savings Rate Card
+                    updateSavingsRate(viewModel.getSavingsRate().getValue());
+                    
+                    // Update Charts
+                    if (viewModel.getPeriodEvolution().getValue() != null) {
+                        updatePeriodChart(viewModel.getPeriodEvolution().getValue());
+                    }
+                    if (viewModel.getCategoryDistribution().getValue() != null) {
+                        updatePieChart(viewModel.getCategoryDistribution().getValue());
+                    }
+                    if (viewModel.getPaymentMethodDistribution().getValue() != null) {
+                        updatePaymentMethodChart(viewModel.getPaymentMethodDistribution().getValue());
+                    }
+                    if (viewModel.getMemberExpenseDistribution().getValue() != null) {
+                        updateMemberExpenseChart(viewModel.getMemberExpenseDistribution().getValue());
+                    }
+                    if (viewModel.getMemberIncomeDistribution().getValue() != null) {
+                        updateMemberIncomeChart(viewModel.getMemberIncomeDistribution().getValue());
+                    }
+                }
             }
         });
 

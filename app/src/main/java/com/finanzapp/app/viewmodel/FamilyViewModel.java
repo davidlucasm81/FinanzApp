@@ -116,6 +116,11 @@ public class FamilyViewModel extends ViewModel {
         familyRepository.updateFamily(familyId, name, currencyCode, updateResult::postValue);
     }
 
+    public void updateFamilyMode(String familyId, String mode) {
+        updateResult.setValue(new Result.Loading<>());
+        familyRepository.updateFamilyMode(familyId, mode, updateResult::postValue);
+    }
+
     public void fetchFamily(String familyId) {
         familyData.setValue(new Result.Loading<>());
         familyRepository.getFamily(familyId, familyData::postValue);

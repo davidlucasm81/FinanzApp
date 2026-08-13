@@ -10,6 +10,7 @@ public class FirestorePaths {
     public static final String TRANSACTIONS = "transactions";
     public static final String MEMBERSHIPS = "memberships";
     public static final String NOTIFICATIONS = "notifications";
+    public static final String SETTLEMENTS = "settlements";
 
     public static String getUserPath(String uid) {
         return USERS + "/" + uid;
@@ -49,6 +50,10 @@ public class FirestorePaths {
 
     public static String getNotificationsPath(String familyId) {
         return getFamilyPath(familyId) + "/" + NOTIFICATIONS;
+    }
+
+    public static String getSettlementsPath(String familyId) {
+        return getFamilyPath(familyId) + "/" + SETTLEMENTS;
     }
 
 }

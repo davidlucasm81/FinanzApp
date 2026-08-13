@@ -123,4 +123,27 @@
         android:name="com.finanzapp.app.ui.categories.ManageCategoriesFragment"
         android:label="@string/nav_manage_categories"
         tools:layout="@layout/fragment_manage_categories" />
+
+    <fragment
+        android:id="@+id/balancesFragment"
+        android:name="com.finanzapp.app.ui.sharedexpenses.BalancesFragment"
+        android:label="@string/nav_balances"
+        tools:layout="@layout/fragment_balances">
+        <argument
+            android:name="familyId"
+            app:argType="string" />
+        <action
+            android:id="@+id/action_balancesFragment_to_settlementHistoryFragment"
+            app:destination="@id/settlementHistoryFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/settlementHistoryFragment"
+        android:name="com.finanzapp.app.ui.sharedexpenses.SettlementHistoryFragment"
+        android:label="@string/label_settlement_history"
+        tools:layout="@layout/fragment_settlement_history">
+        <argument
+            android:name="familyId"
+            app:argType="string" />
+    </fragment>
 </navigation>

@@ -40,6 +40,7 @@ public class FamilySettingsFragment extends Fragment {
     private FamilyViewModel viewModel;
     private String familyId;
     private AutoCompleteTextView autoCurrency;
+    private TextView tvFamilyType;
     private Button btnSave;
     private Button btnManageCategories;
     private TextView tvInviteCode;
@@ -93,6 +94,7 @@ public class FamilySettingsFragment extends Fragment {
         viewModel = new ViewModelProvider(this, factory).get(FamilyViewModel.class);
 
         autoCurrency = requireView().findViewById(com.finanzapp.app.R.id.auto_currency);
+        tvFamilyType = requireView().findViewById(com.finanzapp.app.R.id.tv_family_type_value);
         btnSave = requireView().findViewById(com.finanzapp.app.R.id.btn_save);
         Button btnLeave = requireView().findViewById(R.id.btn_leave);
         btnManageCategories = requireView().findViewById(com.finanzapp.app.R.id.btn_manage_categories);
@@ -158,6 +160,13 @@ public class FamilySettingsFragment extends Fragment {
                 if (currency != null) {
                     autoCurrency.setText(currency, false);
                 }
+
+                // Set family type selection (read-only)
+                String mode = family.getMode();
+                String typeLabel = "shared_expenses".equals(mode) ? 
+                        getString(R.string.mode_shared_expenses) : 
+                        getString(R.string.mode_normal);
+                tvFamilyType.setText(typeLabel);
             }
         });
 

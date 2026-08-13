@@ -66,7 +66,17 @@ service cloud.firestore {
 
       // Memberships: A user's personal list of families they belong to
       match /memberships/{familyId} {
-        allow read, write: if request.auth != null && request.auth.uid == uid;
+        allow read: if request.auth != null && request.auth.uid == uid;
+        // User can fully manage their own memberships
+        allow write: if request.auth != null && request.auth.uid == uid;
+
+        // Allow an admin of a family to create a membership for a user they are approving
+        // OR update the familyName for an existing membership (propagation)
+        allow create, update: if request.auth != null && isAdmin(familyId)
+          && (
+            !request.resource.data.diff(resource.data).changedKeys().contains('role')
+            || request.resource.data.role == resource.data.role // Role cannot be changed by others here
+          );
       }
     }
 
@@ -107,21 +117,20 @@ service cloud.firestore {
                       (request.auth != null && request.auth.token.email == resource.data.targetEmail);
 
         // Updating status: only an admin/owner may approve/reject a join request.
+        allow update: if isAdmin(familyId);
+
         // A requester may only withdraw (reject) their own code_request, never approve it.
         // The target of an email invite may only accept or reject their own invitation.
-        allow update: if isAdmin(familyId) ||
-                      (
-                        request.auth != null
-                        && request.auth.uid == resource.data.requestedByUid
-                        && request.resource.data.status == 'rejected'
-                        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'resolvedAt', 'resolvedByUid'])
-                      ) ||
-                      (
-                        request.auth != null
-                        && request.auth.token.email == resource.data.targetEmail
-                        && request.resource.data.status in ['accepted', 'rejected']
-                        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'resolvedAt', 'resolvedByUid'])
-                      );
+        allow update: if request.auth != null && (
+                        (
+                          request.auth.uid == resource.data.requestedByUid
+                          && request.resource.data.status == 'rejected'
+                        ) ||
+                        (
+                          request.auth.token.email == resource.data.targetEmail
+                          && request.resource.data.status in ['accepted', 'rejected']
+                        )
+                      ) && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'resolvedAt', 'resolvedByUid']);
       }
 
       // Accounts: allow members to read and create accounts; only admins may perform
@@ -158,6 +167,20 @@ service cloud.firestore {
 
       match /notifications/{notificationId} {
         allow read, write: if isMember(familyId);
+      }
+
+      match /settlements/{settlementId} {
+        allow read: if isMember(familyId);
+        // Create/Delete by involved users or admin/owner. No edits.
+        allow create: if isMember(familyId) &&
+                      (request.auth.uid == request.resource.data.fromUid ||
+                       request.auth.uid == request.resource.data.toUid ||
+                       isAdmin(familyId));
+        allow delete: if isMember(familyId) &&
+                      (request.auth.uid == resource.data.fromUid ||
+                       request.auth.uid == resource.data.toUid ||
+                       isAdmin(familyId));
+        allow update: if false;
       }
     }
 

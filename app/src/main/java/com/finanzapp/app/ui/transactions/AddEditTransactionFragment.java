@@ -3,15 +3,19 @@ package com.finanzapp.app.ui.transactions;
 import android.app.DatePickerDialog;
 import android.os.Bundle;
 import androidx.core.os.BundleCompat;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.finanzapp.app.R;
@@ -36,8 +40,10 @@ import com.google.firebase.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class AddEditTransactionFragment extends Fragment {
     private TransactionViewModel viewModel;
@@ -50,6 +56,21 @@ public class AddEditTransactionFragment extends Fragment {
     private Spinner spinnerAccount, spinnerMethod, spinnerCreatedBy;
     private AutoCompleteTextView autoCategory;
     private Category selectedCategory;
+    
+    // Shared Expenses UI
+    private View layoutSharedExpenses, layoutAccountSelector;
+    private Spinner spinnerPaidBy;
+    private ViewGroup layoutSplitMembers;
+    private RadioGroup rgSplitMode;
+    private View layoutCustomAmounts;
+    private View layoutSplitSummary;
+    private TextView tvCurrentSum, tvRemainingAmount;
+    private Button btnDistributeRemaining;
+
+    private final List<com.google.android.material.checkbox.MaterialCheckBox> splitCheckboxes = new ArrayList<>();
+    private final Map<String, TextInputLayout> customAmountInputs = new HashMap<>();
+    private final Map<String, Double> preservedCustomAmounts = new HashMap<>();
+    private boolean isSharedExpensesMode = false;
     
     private final Calendar selectedDate = Calendar.getInstance();
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
@@ -109,6 +130,17 @@ public class AddEditTransactionFragment extends Fragment {
         spinnerAccount = view.findViewById(R.id.spinner_account);
         spinnerMethod = view.findViewById(R.id.spinner_method);
         spinnerCreatedBy = view.findViewById(R.id.spinner_created_by);
+        
+        layoutAccountSelector = view.findViewById(R.id.layout_account_selector);
+        layoutSharedExpenses = view.findViewById(R.id.layout_shared_expenses);
+        spinnerPaidBy = view.findViewById(R.id.spinner_paid_by);
+        layoutSplitMembers = view.findViewById(R.id.layout_split_members);
+        rgSplitMode = view.findViewById(R.id.rg_split_mode);
+        layoutCustomAmounts = view.findViewById(R.id.layout_custom_amounts);
+        layoutSplitSummary = view.findViewById(R.id.layout_split_summary);
+        tvCurrentSum = view.findViewById(R.id.tv_current_sum);
+        tvRemainingAmount = view.findViewById(R.id.tv_remaining_amount);
+        btnDistributeRemaining = view.findViewById(R.id.btn_distribute_remaining);
 
         com.google.android.material.appbar.MaterialToolbar toolbar = view.findViewById(R.id.toolbar);
         if (existingTransaction != null) {
@@ -125,6 +157,22 @@ public class AddEditTransactionFragment extends Fragment {
         setupObservers();
         
         btnSave.setOnClickListener(v -> saveTransaction());
+        btnDistributeRemaining.setOnClickListener(v -> distributeRemaining());
+
+        if (tilAmount.getEditText() != null) {
+            tilAmount.getEditText().addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                @Override
+                public void afterTextChanged(Editable s) {
+                    if (isSharedExpensesMode && rbExpense.isChecked() && rgSplitMode.getCheckedRadioButtonId() == R.id.rb_split_custom) {
+                        updateSplitSummary();
+                    }
+                }
+            });
+        }
         
         if (existingTransaction != null) {
             populateFields();
@@ -213,21 +261,7 @@ public class AddEditTransactionFragment extends Fragment {
         viewModel.getMembers(familyId).observe(getViewLifecycleOwner(), members -> {
             if (members != null) {
                 allMembers = members;
-                List<String> names = new ArrayList<>();
-                int selectedIndex = -1;
-                String targetUid = existingTransaction != null ? existingTransaction.getCreatedBy() : viewModel.getCurrentUserId();
-                
-                for (int i = 0; i < members.size(); i++) {
-                    com.finanzapp.app.data.model.Member m = members.get(i);
-                    names.add(m.getDisplayName());
-                    if (targetUid != null && targetUid.equals(m.getUid())) {
-                        selectedIndex = i;
-                    }
-                }
-                ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, names);
-                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-                spinnerCreatedBy.setAdapter(adapter);
-                if (selectedIndex != -1) spinnerCreatedBy.setSelection(selectedIndex);
+                setupMembersUI(members);
             }
         });
 
@@ -240,6 +274,244 @@ public class AddEditTransactionFragment extends Fragment {
                 Toast.makeText(requireContext(), R.string.error_save_transaction, Toast.LENGTH_LONG).show();
             }
         });
+
+        // Fetch family to check mode
+        viewModel.getFamilyData(familyId).observe(getViewLifecycleOwner(), result -> {
+            if (result instanceof Result.Success) {
+                com.finanzapp.app.data.model.Family family = ((Result.Success<com.finanzapp.app.data.model.Family>) result).getData();
+                isSharedExpensesMode = "shared_expenses".equals(family.getMode());
+                updateSharedExpensesVisibility();
+            }
+        });
+
+        rbExpense.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            updateSharedExpensesVisibility();
+            if (isChecked && isSharedExpensesMode && rgSplitMode.getCheckedRadioButtonId() == R.id.rb_split_custom) {
+                updateSplitSummary();
+            }
+        });
+        rbIncome.setOnCheckedChangeListener((buttonView, isChecked) -> updateSharedExpensesVisibility());
+
+        rgSplitMode.setOnCheckedChangeListener((group, checkedId) -> {
+            boolean isCustom = checkedId == R.id.rb_split_custom;
+            layoutCustomAmounts.setVisibility(isCustom ? View.VISIBLE : View.GONE);
+            layoutSplitSummary.setVisibility(isCustom ? View.VISIBLE : View.GONE);
+            if (isCustom) {
+                updateCustomAmountInputs();
+                updateSplitSummary();
+            }
+        });
+    }
+
+    private void setupMembersUI(List<com.finanzapp.app.data.model.Member> members) {
+        List<String> names = new ArrayList<>();
+        int selectedIndexCreatedBy = -1;
+        int selectedIndexPaidBy = -1;
+        String currentUserId = viewModel.getCurrentUserId();
+        String targetUidCreatedBy = existingTransaction != null ? existingTransaction.getCreatedBy() : currentUserId;
+        String targetUidPaidBy = existingTransaction != null ? existingTransaction.getPaidByUid() : currentUserId;
+
+        layoutSplitMembers.removeAllViews();
+        splitCheckboxes.clear();
+
+        for (int i = 0; i < members.size(); i++) {
+            com.finanzapp.app.data.model.Member m = members.get(i);
+            String displayName = m.getDisplayName();
+            if (m.getUid() != null && m.getUid().equals(currentUserId)) {
+                displayName += " (" + getString(R.string.label_me) + ")";
+            }
+            names.add(displayName);
+            if (targetUidCreatedBy != null && targetUidCreatedBy.equals(m.getUid())) {
+                selectedIndexCreatedBy = i;
+            }
+            if (targetUidPaidBy != null && targetUidPaidBy.equals(m.getUid())) {
+                selectedIndexPaidBy = i;
+            }
+
+            // Setup checkboxes for split
+            com.google.android.material.checkbox.MaterialCheckBox cb = new com.google.android.material.checkbox.MaterialCheckBox(requireContext());
+            cb.setText(displayName);
+            cb.setTag(m.getUid());
+            
+            // Default check all if new transaction, or check those in splitAmongUids
+            if (existingTransaction == null) {
+                cb.setChecked(true);
+            } else if (existingTransaction.getSplitAmongUids() != null) {
+                cb.setChecked(existingTransaction.getSplitAmongUids().contains(m.getUid()));
+            }
+
+            cb.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                if (rgSplitMode.getCheckedRadioButtonId() == R.id.rb_split_custom) {
+                    updateCustomAmountInputs();
+                }
+            });
+
+            layoutSplitMembers.addView(cb);
+            splitCheckboxes.add(cb);
+        }
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, names);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        
+        spinnerCreatedBy.setAdapter(adapter);
+        if (selectedIndexCreatedBy != -1) spinnerCreatedBy.setSelection(selectedIndexCreatedBy);
+
+        spinnerPaidBy.setAdapter(adapter);
+        if (selectedIndexPaidBy != -1) spinnerPaidBy.setSelection(selectedIndexPaidBy);
+        
+        if (existingTransaction != null) {
+            if ("custom".equals(existingTransaction.getSplitMode())) {
+                rgSplitMode.check(R.id.rb_split_custom);
+                layoutCustomAmounts.setVisibility(View.VISIBLE);
+                updateCustomAmountInputs();
+            } else {
+                rgSplitMode.check(R.id.rb_split_equal);
+            }
+        }
+    }
+
+    private void updateCustomAmountInputs() {
+        if (layoutCustomAmounts == null) return;
+        
+        // Preserve current values before clearing
+        for (Map.Entry<String, TextInputLayout> entry : customAmountInputs.entrySet()) {
+            if (entry.getValue().getEditText() != null) {
+                String s = entry.getValue().getEditText().getText().toString().trim();
+                if (!s.isEmpty()) {
+                    try {
+                        double val = Double.parseDouble(s.replace(',', '.'));
+                        preservedCustomAmounts.put(entry.getKey(), val);
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+        }
+
+        ((ViewGroup) layoutCustomAmounts).removeAllViews();
+        customAmountInputs.clear();
+
+        TextWatcher splitWatcher = new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(Editable s) {
+                updateSplitSummary();
+            }
+        };
+
+        for (com.google.android.material.checkbox.MaterialCheckBox cb : splitCheckboxes) {
+            if (cb.isChecked()) {
+                String uid = (String) cb.getTag();
+                String name = cb.getText().toString();
+
+                TextInputLayout til = new TextInputLayout(requireContext(), null, com.google.android.material.R.style.Widget_MaterialComponents_TextInputLayout_OutlinedBox);
+                til.setHint(name);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                lp.setMargins(0, 8, 0, 8);
+                til.setLayoutParams(lp);
+
+                com.google.android.material.textfield.TextInputEditText et = new com.google.android.material.textfield.TextInputEditText(til.getContext());
+                et.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+                et.addTextChangedListener(splitWatcher);
+                til.addView(et);
+
+                ((ViewGroup) layoutCustomAmounts).addView(til);
+                customAmountInputs.put(uid, til);
+                
+                if (preservedCustomAmounts.containsKey(uid)) {
+                    et.setText(String.valueOf(preservedCustomAmounts.get(uid)));
+                } else if (existingTransaction != null && existingTransaction.getSplitAmounts() != null && existingTransaction.getSplitAmounts().containsKey(uid)) {
+                    et.setText(String.valueOf(existingTransaction.getSplitAmounts().get(uid)));
+                }
+            }
+        }
+    }
+
+    private void updateSplitSummary() {
+        if (layoutSplitSummary == null) return;
+
+        double totalAmount = getEnteredAmount();
+        double currentSum = 0;
+        for (TextInputLayout til : customAmountInputs.values()) {
+            if (til.getEditText() != null) {
+                String s = til.getEditText().getText().toString().trim();
+                if (!s.isEmpty()) {
+                    try {
+                        currentSum += Double.parseDouble(s.replace(',', '.'));
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+        }
+
+        double remaining = totalAmount - currentSum;
+        
+        tvCurrentSum.setText(getString(R.string.label_current_sum, String.format(Locale.getDefault(), "%.2f", currentSum)));
+        
+        if (Math.abs(remaining) < 0.01) {
+            tvRemainingAmount.setText(R.string.label_total_match);
+            tvRemainingAmount.setTextColor(getResources().getColor(R.color.success, null));
+            btnDistributeRemaining.setVisibility(View.GONE);
+        } else {
+            tvRemainingAmount.setText(getString(R.string.label_remaining_amount, String.format(Locale.getDefault(), "%.2f", remaining)));
+            tvRemainingAmount.setTextColor(getResources().getColor(R.color.error, null));
+            btnDistributeRemaining.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private double getEnteredAmount() {
+        String amountStr = tilAmount.getEditText() != null ? tilAmount.getEditText().getText().toString().trim() : "";
+        if (amountStr.isEmpty()) return 0;
+        try {
+            return Math.abs(Double.parseDouble(amountStr.replace(',', '.')));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private void distributeRemaining() {
+        double totalAmount = getEnteredAmount();
+        int count = customAmountInputs.size();
+        if (count == 0) return;
+
+        double currentSum = 0;
+        // Map to store current values associated with their TextInputLayout
+        Map<TextInputLayout, Double> currentValues = new HashMap<>();
+
+        // 1. Read current values (treat empty as 0)
+        for (TextInputLayout til : customAmountInputs.values()) {
+            double val = 0;
+            if (til.getEditText() != null) {
+                String s = til.getEditText().getText().toString().trim();
+                if (!s.isEmpty()) {
+                    try {
+                        val = Double.parseDouble(s.replace(',', '.'));
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+            currentValues.put(til, val);
+            currentSum += val;
+        }
+
+        double amountToDistribute = totalAmount - currentSum;
+
+        // 2. Distribute the REMAINING amount equitably among ALL selected members
+        double perPerson = Math.floor((amountToDistribute / count) * 100) / 100;
+        double remainder = amountToDistribute - (perPerson * count);
+
+        // 3. ADD the share to each member's current value
+        int i = 0;
+        for (TextInputLayout til : customAmountInputs.values()) {
+            if (til.getEditText() != null) {
+                double add = perPerson + (i == 0 ? remainder : 0);
+                Double oldValueObj = currentValues.get(til);
+                double oldValue = oldValueObj != null ? oldValueObj : 0.0;
+                double newValue = oldValue + add;
+                // Ensure we don't go below 0 (though normally amountToDistribute would be positive)
+                til.getEditText().setText(String.format(Locale.US, "%.2f", Math.max(0, newValue)));
+            }
+            i++;
+        }
     }
 
     private void filterCategories() {
@@ -308,6 +580,15 @@ public class AddEditTransactionFragment extends Fragment {
         btnDate.setText(dateFormat.format(selectedDate.getTime()));
     }
 
+    private void updateSharedExpensesVisibility() {
+        if (layoutSharedExpenses != null) {
+            layoutSharedExpenses.setVisibility(isSharedExpensesMode && rbExpense.isChecked() ? View.VISIBLE : View.GONE);
+        }
+        if (layoutAccountSelector != null) {
+            layoutAccountSelector.setVisibility(isSharedExpensesMode ? View.GONE : View.VISIBLE);
+        }
+    }
+
     private void saveTransaction() {
         tilAmount.setError(null);
         String amountStr = tilAmount.getEditText() != null ? tilAmount.getEditText().getText().toString().trim() : "";
@@ -327,18 +608,33 @@ public class AddEditTransactionFragment extends Fragment {
 
         String description = tilDescription.getEditText() != null ? tilDescription.getEditText().getText().toString().trim() : "";
         
-        if (spinnerAccount.getSelectedItem() == null) {
+        if (!isSharedExpensesMode && spinnerAccount.getSelectedItem() == null) {
             Toast.makeText(requireContext(), getString(R.string.error_account), Toast.LENGTH_SHORT).show();
             return;
         }
         
         String accountId = null;
-        String selectedAccountName = spinnerAccount.getSelectedItem().toString();
-        for (Account a : allAccounts) {
-            if (a.getName().equals(selectedAccountName)) {
-                accountId = a.getId();
-                break;
+        if (isSharedExpensesMode) {
+            // In shared expenses mode, we use the first active account (Joint Account)
+            for (Account a : allAccounts) {
+                if (a.isActive()) {
+                    accountId = a.getId();
+                    break;
+                }
             }
+        } else {
+            String selectedAccountName = spinnerAccount.getSelectedItem().toString();
+            for (Account a : allAccounts) {
+                if (a.getName().equals(selectedAccountName)) {
+                    accountId = a.getId();
+                    break;
+                }
+            }
+        }
+
+        if (accountId == null) {
+            Toast.makeText(requireContext(), getString(R.string.error_account), Toast.LENGTH_SHORT).show();
+            return;
         }
 
         if (selectedCategory == null) {
@@ -368,17 +664,75 @@ public class AddEditTransactionFragment extends Fragment {
             createdBy = allMembers.get(spinnerCreatedBy.getSelectedItemPosition()).getUid();
         }
 
+        // Shared Expenses data
+        String paidByUid = null;
+        List<String> splitAmongUids = null;
+        String splitMode = null;
+        Map<String, Double> splitAmounts = null;
+
+        if (isSharedExpensesMode && "expense".equals(type)) {
+            paidByUid = allMembers.get(spinnerPaidBy.getSelectedItemPosition()).getUid();
+            splitAmongUids = new ArrayList<>();
+            for (com.google.android.material.checkbox.MaterialCheckBox cb : splitCheckboxes) {
+                if (cb.isChecked()) {
+                    splitAmongUids.add((String) cb.getTag());
+                }
+            }
+
+            if (!splitAmongUids.isEmpty()) {
+                splitMode = rgSplitMode.getCheckedRadioButtonId() == R.id.rb_split_custom ? "custom" : "equal";
+                if ("custom".equals(splitMode)) {
+                    splitAmounts = new HashMap<>();
+                    double totalSplit = 0;
+                    for (String uid : splitAmongUids) {
+                        TextInputLayout til = customAmountInputs.get(uid);
+                        if (til != null && til.getEditText() != null) {
+                            String s = til.getEditText().getText().toString().trim();
+                            double val = 0;
+                            if (!s.isEmpty()) {
+                                try {
+                                    val = Double.parseDouble(s.replace(',', '.'));
+                                } catch (NumberFormatException ignored) {}
+                            }
+                            splitAmounts.put(uid, val);
+                            totalSplit += val;
+                        }
+                    }
+
+                    // Validate sum with a very small margin for floating point precision
+                    if (Math.abs(totalSplit - amount) > 0.001) {
+                        Toast.makeText(requireContext(), R.string.error_split_total, Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                }
+            } else {
+                // If nobody selected for split, it's a normal expense (null fields)
+                paidByUid = null;
+                splitAmongUids = null;
+            }
+        }
+
+        Transaction t;
         if (existingTransaction != null) {
-            Transaction updated = new Transaction(
+            t = new Transaction(
                     existingTransaction.getId(), accountId, new Timestamp(selectedDate.getTime()),
                     description, amount, type, categoryId, method, createdBy, existingTransaction.getCreatedAt()
             );
-            viewModel.updateTransaction(familyId, existingTransaction, updated);
         } else {
-            Transaction t = new Transaction(
+            t = new Transaction(
                     null, accountId, new Timestamp(selectedDate.getTime()), 
                     description, amount, type, categoryId, method, createdBy, null
             );
+        }
+        
+        t.setPaidByUid(paidByUid);
+        t.setSplitAmongUids(splitAmongUids);
+        t.setSplitMode(splitMode);
+        t.setSplitAmounts(splitAmounts);
+
+        if (existingTransaction != null) {
+            viewModel.updateTransaction(familyId, existingTransaction, t);
+        } else {
             viewModel.addTransaction(familyId, t);
         }
     }

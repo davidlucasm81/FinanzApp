@@ -149,28 +149,35 @@
                 app:iconTint="?attr/colorPrimary"
                 app:strokeColor="?attr/android:textColorSecondary" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:text="@string/label_account_field"
-                android:textSize="12sp"
-                android:textColor="?attr/android:textColorSecondary"/>
-
-            <com.google.android.material.card.MaterialCardView
+            <LinearLayout
+                android:id="@+id/layout_account_selector"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                app:cardCornerRadius="8dp"
-                app:cardElevation="0dp"
-                app:cardBackgroundColor="?attr/colorSurface"
-                app:strokeWidth="1dp"
-                app:strokeColor="?attr/android:textColorSecondary">
-                <Spinner
-                    android:id="@+id/spinner_account"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/label_account_field"
+                    android:textSize="12sp"
+                    android:textColor="?attr/android:textColorSecondary"/>
+
+                <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
-                    android:layout_height="48dp" />
-            </com.google.android.material.card.MaterialCardView>
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    app:cardCornerRadius="8dp"
+                    app:cardElevation="0dp"
+                    app:cardBackgroundColor="?attr/colorSurface"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="?attr/android:textColorSecondary">
+                    <Spinner
+                        android:id="@+id/spinner_account"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp" />
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
 
             <TextView
                 android:layout_width="wrap_content"
@@ -247,6 +254,151 @@
                     android:layout_width="match_parent"
                     android:layout_height="48dp" />
             </com.google.android.material.card.MaterialCardView>
+
+            <!-- Shared Expenses Section -->
+            <LinearLayout
+                android:id="@+id/layout_shared_expenses"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:layout_marginBottom="8dp"
+                    android:text="@string/label_family_mode"
+                    android:textColor="?attr/android:textColorSecondary"
+                    android:textSize="12sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/label_paid_by"
+                    android:textSize="12sp"
+                    android:textColor="?attr/android:textColorSecondary"/>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    app:cardCornerRadius="8dp"
+                    app:cardElevation="0dp"
+                    app:cardBackgroundColor="?attr/colorSurface"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="?attr/android:textColorSecondary">
+                    <Spinner
+                        android:id="@+id/spinner_paid_by"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/label_split_among"
+                    android:textSize="12sp"
+                    android:textColor="?attr/android:textColorSecondary"/>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    app:cardCornerRadius="8dp"
+                    app:cardElevation="0dp"
+                    app:cardBackgroundColor="?attr/colorSurface"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="?attr/android:textColorSecondary">
+
+                    <LinearLayout
+                        android:id="@+id/layout_split_members"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="8dp" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <RadioGroup
+                    android:id="@+id/rg_split_mode"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:orientation="horizontal"
+                    android:weightSum="2">
+
+                    <RadioButton
+                        android:id="@+id/rb_split_equal"
+                        style="@style/Widget.MaterialComponents.CompoundButton.RadioButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:checked="true"
+                        android:text="@string/label_split_equal" />
+
+                    <RadioButton
+                        android:id="@+id/rb_split_custom"
+                        style="@style/Widget.MaterialComponents.CompoundButton.RadioButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/label_split_custom" />
+                </RadioGroup>
+
+                <LinearLayout
+                    android:id="@+id/layout_custom_amounts"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="vertical"
+                    android:visibility="gone" />
+
+                <!-- Split Summary UI -->
+                <LinearLayout
+                    android:id="@+id/layout_split_summary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:orientation="vertical"
+                    android:padding="12dp"
+                    android:background="?attr/colorSurface"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <TextView
+                        android:id="@+id/tv_current_sum"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/label_current_sum"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tv_remaining_amount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/label_remaining_amount"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_distribute_remaining"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/btn_distribute_remaining"
+                        android:textAllCaps="false"
+                        app:icon="@android:drawable/ic_menu_add" />
+                </LinearLayout>
+
+            </LinearLayout>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_save"

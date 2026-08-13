@@ -116,6 +116,7 @@
                     android:padding="20dp">
 
                     <TextView
+                        android:id="@+id/tv_net_balance_label"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/net_position"
@@ -137,21 +138,55 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="@string/dashboard_my_accounts"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:textColor="?attr/colorOnSurface"/>
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rv_accounts"
+            <LinearLayout
+                android:id="@+id/layout_accounts_section"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:nestedScrollingEnabled="false"/>
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:text="@string/dashboard_my_accounts"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorOnSurface"/>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rv_accounts"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:nestedScrollingEnabled="false"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/layout_member_balances_section"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:text="@string/label_net_balance"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorOnSurface"/>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rv_member_balances"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:nestedScrollingEnabled="false"/>
+            </LinearLayout>
+
+
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 

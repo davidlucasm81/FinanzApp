@@ -44,19 +44,21 @@ public class CreateFamilyFragment extends Fragment {
         viewModel = new ViewModelProvider(this, factory).get(OnboardingViewModel.class);
 
         setupCurrencyDropdown();
+        setupModeDropdown();
         setupObservers();
 
         binding.btnConfirm.setOnClickListener(v -> {
             if (binding.tilFamilyName.getEditText() == null) return;
             String name = binding.tilFamilyName.getEditText().getText().toString().trim();
             String currency = binding.actCurrency.getText().toString();
+            String mode = binding.actMode.getText().toString().equals(getString(R.string.mode_shared_expenses)) ? "shared_expenses" : "normal";
 
             if (name.isEmpty()) {
                 binding.tilFamilyName.setError("El nombre es obligatorio");
                 return;
             }
 
-            viewModel.createFamily(name, currency);
+            viewModel.createFamily(name, currency, mode);
         });
     }
 
@@ -65,6 +67,13 @@ public class CreateFamilyFragment extends Fragment {
         ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, currencies);
         binding.actCurrency.setAdapter(adapter);
         binding.actCurrency.setText(currencies[0], false);
+    }
+
+    private void setupModeDropdown() {
+        String[] modes = {getString(R.string.mode_normal), getString(R.string.mode_shared_expenses)};
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, modes);
+        binding.actMode.setAdapter(adapter);
+        binding.actMode.setText(modes[0], false);
     }
 
     private void setupObservers() {
@@ -76,11 +85,17 @@ public class CreateFamilyFragment extends Fragment {
                 // Navigate to onboarding step to add initial accounts, passing the new familyId
                 com.finanzapp.app.data.model.Family family = ((Result.Success<com.finanzapp.app.data.model.Family>) result).getData();
                 if (family != null) {
-                    Bundle args = new Bundle();
-                    args.putString("familyId", family.getId());
-                    args.putString("currencyCode", family.getCurrencyCode());
-                    Navigation.findNavController(requireView()).navigate(
-                            com.finanzapp.app.R.id.action_createFamilyFragment_to_addInitialAccountsFragment, args);
+                    if ("shared_expenses".equals(family.getMode())) {
+                        // In shared expenses mode, we already created the joint account.
+                        // Skip initial accounts and go to main.
+                        navigateToMain();
+                    } else {
+                        Bundle args = new Bundle();
+                        args.putString("familyId", family.getId());
+                        args.putString("currencyCode", family.getCurrencyCode());
+                        Navigation.findNavController(requireView()).navigate(
+                                com.finanzapp.app.R.id.action_createFamilyFragment_to_addInitialAccountsFragment, args);
+                    }
                     return;
                 }
                 navigateToMain();

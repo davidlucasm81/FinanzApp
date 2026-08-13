@@ -16,6 +16,7 @@ public class Invitation {
     private Timestamp createdAt;
     private Timestamp resolvedAt;
     private String resolvedByUid;
+    private String familyMode; // \"normal\" | \"shared_expenses\"
 
     public Invitation() {
         // Required for Firestore serialization
@@ -64,4 +65,7 @@ public class Invitation {
 
     public String getResolvedByUid() { return resolvedByUid; }
     public void setResolvedByUid(String resolvedByUid) { this.resolvedByUid = resolvedByUid; }
+
+    public String getFamilyMode() { return familyMode; }
+    public void setFamilyMode(String familyMode) { this.familyMode = familyMode; }
 }

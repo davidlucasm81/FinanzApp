@@ -14,8 +14,11 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.bumptech.glide.Glide;
 import com.finanzapp.app.FinanzAppApplication;
+import com.finanzapp.app.R;
 import com.finanzapp.app.data.model.Family;
 import com.finanzapp.app.data.model.User;
+import com.finanzapp.app.data.model.Account;
+import com.finanzapp.app.data.model.Member;
 import com.finanzapp.app.databinding.FragmentDashboardBinding;
 import com.finanzapp.app.ui.family.FamilySwitcherFragment;
 import com.finanzapp.app.util.Result;
@@ -24,7 +27,9 @@ import com.finanzapp.app.viewmodel.ViewModelFactory;
 
 import java.text.NumberFormat;
 import java.util.Currency;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class DashboardFragment extends Fragment {
     private FragmentDashboardBinding binding;
@@ -32,7 +37,9 @@ public class DashboardFragment extends Fragment {
 
     private String currentCurrencyCode = "EUR";
     private DashboardAccountAdapter accountAdapter;
+    private DashboardMemberBalanceAdapter memberBalanceAdapter;
     private String currentFamilyId;
+    private boolean isSharedExpenses = false;
 
     @Nullable
     @Override
@@ -61,6 +68,10 @@ public class DashboardFragment extends Fragment {
         accountAdapter = new DashboardAccountAdapter();
         binding.rvAccounts.setLayoutManager(new LinearLayoutManager(requireContext()));
         binding.rvAccounts.setAdapter(accountAdapter);
+
+        memberBalanceAdapter = new DashboardMemberBalanceAdapter();
+        binding.rvMemberBalances.setLayoutManager(new LinearLayoutManager(requireContext()));
+        binding.rvMemberBalances.setAdapter(memberBalanceAdapter);
     }
 
     private void setupClickListeners() {
@@ -116,8 +127,39 @@ public class DashboardFragment extends Fragment {
             if (result instanceof Result.Success) {
                 Family family = ((Result.Success<Family>) result).getData();
                 binding.tvFamilyName.setText(family.getName());
+                
+                String oldCurrency = currentCurrencyCode;
                 currentCurrencyCode = family.getCurrencyCode();
                 currentFamilyId = family.getId();
+                
+                isSharedExpenses = "shared_expenses".equals(family.getMode());
+                binding.btnTransfer.setVisibility(isSharedExpenses ? View.GONE : View.VISIBLE);
+                binding.btnTransactions.setVisibility(View.VISIBLE); // Re-added: always show button
+                binding.layoutAccountsSection.setVisibility(isSharedExpenses ? View.GONE : View.VISIBLE);
+                binding.layoutMemberBalancesSection.setVisibility(isSharedExpenses ? View.VISIBLE : View.GONE);
+                
+                binding.tvNetBalanceLabel.setText(isSharedExpenses ? 
+                        getString(R.string.label_balances_title) : getString(R.string.net_position));
+
+                // Refresh dependent UI if currency changed
+                if (oldCurrency != null && !oldCurrency.equals(currentCurrencyCode)) {
+                    Double total = viewModel.getNetBalance().getValue();
+                    if (total != null) {
+                        Boolean privacyEnabled = viewModel.isPrivacyModeEnabled().getValue();
+                        updateNetBalanceText(total, privacyEnabled != null && privacyEnabled);
+                    }
+                    
+                    List<Account> accounts = viewModel.getAccountsList().getValue();
+                    if (accounts != null) {
+                        accountAdapter.setItems(accounts, currentCurrencyCode);
+                    }
+                    
+                    List<Member> members = viewModel.getMembers().getValue();
+                    Map<String, Double> balances = viewModel.getMemberBalances().getValue();
+                    if (members != null) {
+                        memberBalanceAdapter.setItems(members, balances, currentCurrencyCode, viewModel.getCurrentUserId());
+                    }
+                }
             } else if (result instanceof Result.Error) {
                 binding.tvFamilyName.setText(com.finanzapp.app.R.string.family_label);
             }
@@ -126,6 +168,7 @@ public class DashboardFragment extends Fragment {
         viewModel.isPrivacyModeEnabled().observe(getViewLifecycleOwner(), enabled -> {
             binding.ivPrivacyToggle.setImageResource(enabled ? com.finanzapp.app.R.drawable.ic_visibility_off : com.finanzapp.app.R.drawable.ic_visibility);
             accountAdapter.setPrivacyModeEnabled(enabled);
+            memberBalanceAdapter.setPrivacyModeEnabled(enabled);
             Double total = viewModel.getNetBalance().getValue();
             if (total != null) {
                 updateNetBalanceText(total, enabled);
@@ -137,7 +180,24 @@ public class DashboardFragment extends Fragment {
             updateNetBalanceText(total, privacyEnabled != null && privacyEnabled);
         });
 
-        viewModel.getAccountsList().observe(getViewLifecycleOwner(), accounts -> accountAdapter.setItems(accounts, currentCurrencyCode));
+        viewModel.getAccountsList().observe(getViewLifecycleOwner(), accounts -> {
+            accountAdapter.setItems(accounts, currentCurrencyCode);
+        });
+
+        viewModel.getMembers().observe(getViewLifecycleOwner(), members -> {
+            if (members != null) {
+                // Update member balances if available
+                Map<String, Double> balances = viewModel.getMemberBalances().getValue();
+                memberBalanceAdapter.setItems(members, balances, currentCurrencyCode, viewModel.getCurrentUserId());
+            }
+        });
+
+        viewModel.getMemberBalances().observe(getViewLifecycleOwner(), balances -> {
+            List<com.finanzapp.app.data.model.Member> members = viewModel.getMembers().getValue();
+            if (members != null) {
+                memberBalanceAdapter.setItems(members, balances, currentCurrencyCode, viewModel.getCurrentUserId());
+            }
+        });
     }
 
     private void updateNetBalanceText(double total, boolean isPrivacyEnabled) {

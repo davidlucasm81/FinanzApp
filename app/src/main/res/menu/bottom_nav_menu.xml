@@ -17,6 +17,11 @@
         android:title="@string/nav_statistics" />
 
     <item
+        android:id="@+id/balancesFragment"
+        android:icon="@drawable/ic_check"
+        android:title="@string/nav_balances" />
+
+    <item
         android:id="@+id/memberListFragment"
         android:icon="@drawable/ic_members"
         android:title="@string/nav_members" />

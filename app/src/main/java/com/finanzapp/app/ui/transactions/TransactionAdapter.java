@@ -99,6 +99,15 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
         }
     }
 
+    public void updateMaps(Map<String, String> categoryNames, Map<String, String> categoryColors,
+                          Map<String, String> accountNames, Map<String, String> memberNames) {
+        if (categoryNames != null) this.categoryNames.putAll(categoryNames);
+        if (categoryColors != null) this.categoryColors.putAll(categoryColors);
+        if (accountNames != null) this.accountNames.putAll(accountNames);
+        if (memberNames != null) this.memberNames.putAll(memberNames);
+        notifyDataSetChanged();
+    }
+
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {

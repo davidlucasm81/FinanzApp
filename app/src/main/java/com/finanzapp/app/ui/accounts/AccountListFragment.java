@@ -105,10 +105,15 @@ public class AccountListFragment extends Fragment {
                 currencyCode = family.getCurrencyCode();
                 viewModel.checkAdminRole(familyId);
 
+                // Phase 18: Hide FAB for shared expenses mode (only one joint account allowed)
+                boolean isSharedExpenses = "shared_expenses".equals(family.getMode());
+                binding.fabAdd.setVisibility(isSharedExpenses ? View.GONE : View.VISIBLE);
+
                 viewModel.getAccounts(familyId).observe(getViewLifecycleOwner(), accounts -> {
                     binding.pbLoading.setVisibility(View.GONE);
                     if (accounts != null) {
                         adapter.setItems(accounts, currencyCode);
+                        adapter.setIsSharedExpenses(isSharedExpenses);
                         binding.tvEmpty.setVisibility(accounts.isEmpty() ? View.VISIBLE : View.GONE);
                     }
                 });
@@ -188,6 +193,7 @@ public class AccountListFragment extends Fragment {
         private String currency = "€";
         private boolean isAdmin = false;
         private boolean isPrivacyModeEnabled = false;
+        private boolean isSharedExpenses = false;
 
         AccountsAdapter(List<Account> items, OnAccountActionListener onEdit, OnAccountActionListener onArchive, OnAccountActionListener onDelete) {
             this.items.addAll(items);
@@ -215,6 +221,13 @@ public class AccountListFragment extends Fragment {
             }
         }
 
+        void setIsSharedExpenses(boolean sharedExpenses) {
+            if (this.isSharedExpenses != sharedExpenses) {
+                this.isSharedExpenses = sharedExpenses;
+                notifyDataSetChanged();
+            }
+        }
+
         @NonNull
         @Override
         public AccountsViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -224,7 +237,7 @@ public class AccountListFragment extends Fragment {
 
         @Override
         public void onBindViewHolder(@NonNull AccountsViewHolder holder, int position) {
-            holder.bind(items.get(position), currency, isAdmin, isPrivacyModeEnabled, onEdit, onArchive, onDelete);
+            holder.bind(items.get(position), currency, isAdmin, isPrivacyModeEnabled, isSharedExpenses, onEdit, onArchive, onDelete);
         }
 
         @Override
@@ -239,7 +252,7 @@ public class AccountListFragment extends Fragment {
             this.binding = binding;
         }
 
-        void bind(Account a, String currency, boolean isAdmin, boolean isPrivacyModeEnabled, OnAccountActionListener onEdit, OnAccountActionListener onArchive, OnAccountActionListener onDelete) {
+        void bind(Account a, String currency, boolean isAdmin, boolean isPrivacyModeEnabled, boolean isSharedExpenses, OnAccountActionListener onEdit, OnAccountActionListener onArchive, OnAccountActionListener onDelete) {
             binding.tvItemName.setText(a.getName());
             if (isPrivacyModeEnabled) {
                 binding.tvItemBalance.setText("****");
@@ -251,15 +264,18 @@ public class AccountListFragment extends Fragment {
             // Icon for archive/unarchive (using standard android icons)
             binding.btnItemArchive.setImageResource(a.isActive() ? android.R.drawable.ic_menu_save : android.R.drawable.ic_menu_view);
 
-            // Editar, Archivar y Eliminar están restringidos a admin/owner (ver AGENTS.md
-            // sección 5 y las reglas de Firestore para accounts). Un member normal no puede
-            // modificar la cuenta de ningún modo: solo la ve en modo lectura.
-            // Archivar y Eliminar son además mutuamente excluyentes entre sí, según si la
-            // cuenta tiene movimientos asociados.
-            boolean hasMovements = a.isHasTransactions();
-            binding.btnItemEdit.setVisibility(isAdmin ? View.VISIBLE : View.GONE);
-            binding.btnItemArchive.setVisibility(isAdmin && hasMovements ? View.VISIBLE : View.GONE);
-            binding.btnItemDelete.setVisibility(isAdmin && !hasMovements ? View.VISIBLE : View.GONE);
+            // Phase 18: In shared expenses mode, hide all management buttons (only one immutable joint account)
+            if (isSharedExpenses) {
+                binding.btnItemEdit.setVisibility(View.GONE);
+                binding.btnItemArchive.setVisibility(View.GONE);
+                binding.btnItemDelete.setVisibility(View.GONE);
+            } else {
+                // Normal mode rules
+                boolean hasMovements = a.isHasTransactions();
+                binding.btnItemEdit.setVisibility(isAdmin ? View.VISIBLE : View.GONE);
+                binding.btnItemArchive.setVisibility(isAdmin && hasMovements ? View.VISIBLE : View.GONE);
+                binding.btnItemDelete.setVisibility(isAdmin && !hasMovements ? View.VISIBLE : View.GONE);
+            }
 
             binding.btnItemEdit.setOnClickListener(v -> onEdit.onAction(a));
             binding.btnItemArchive.setOnClickListener(v -> onArchive.onAction(a));

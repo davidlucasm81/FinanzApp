@@ -58,6 +58,10 @@ public class AuthRepository {
         return firebaseUserLiveData;
     }
 
+    public String getUid() {
+        return auth.getUid();
+    }
+
     public boolean isLoggedIn() {
         return auth.getCurrentUser() != null;
     }

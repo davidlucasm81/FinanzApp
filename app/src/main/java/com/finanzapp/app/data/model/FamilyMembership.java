@@ -8,6 +8,7 @@ public class FamilyMembership {
     private String familyId;
     private String familyName;
     private String role;
+    private String mode; // "normal" | "shared_expenses"
     private Timestamp joinedAt;
 
     public FamilyMembership() {
@@ -15,9 +16,14 @@ public class FamilyMembership {
     }
 
     public FamilyMembership(String familyId, String familyName, String role, Timestamp joinedAt) {
+        this(familyId, familyName, role, "normal", joinedAt);
+    }
+
+    public FamilyMembership(String familyId, String familyName, String role, String mode, Timestamp joinedAt) {
         this.familyId = familyId;
         this.familyName = familyName;
         this.role = role;
+        this.mode = mode;
         this.joinedAt = joinedAt;
     }
 
@@ -30,6 +36,12 @@ public class FamilyMembership {
 
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+
+    public String getMode() {
+        if ("tricount".equals(mode)) return "shared_expenses";
+        return mode != null ? mode : "normal";
+    }
+    public void setMode(String mode) { this.mode = mode; }
 
     public Timestamp getJoinedAt() { return joinedAt; }
     public void setJoinedAt(Timestamp joinedAt) { this.joinedAt = joinedAt; }

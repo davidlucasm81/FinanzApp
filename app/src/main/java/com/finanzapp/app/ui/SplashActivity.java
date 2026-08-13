@@ -107,14 +107,56 @@ public class SplashActivity extends AppCompatActivity {
                         // Check if user has a familyId but no memberships
                         performSelfHeal(firebaseUser);
                     } else {
-                        // User already has memberships, proceed normally
-                        proceedWithRouting(firebaseUser);
+                        // Phase 18: Check if memberships are missing the 'mode' field
+                        boolean needsRepair = false;
+                        for (com.google.firebase.firestore.DocumentSnapshot doc : memberships.getDocuments()) {
+                            if (doc.get("mode") == null) {
+                                needsRepair = true;
+                                break;
+                            }
+                        }
+
+                        if (needsRepair) {
+                            repairMemberships(firebaseUser.getUid(), memberships.getDocuments(), 0);
+                        } else {
+                            // User already has memberships, proceed normally
+                            proceedWithRouting(firebaseUser);
+                        }
                     }
                 })
                 .addOnFailureListener(e -> {
                     FirebaseLogger.logException(e);
                     navigateToLogin();
                 });
+    }
+
+    private void repairMemberships(String uid, java.util.List<com.google.firebase.firestore.DocumentSnapshot> docs, int index) {
+        if (index >= docs.size()) {
+            proceedWithRouting(com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser());
+            return;
+        }
+
+        com.google.firebase.firestore.DocumentSnapshot doc = docs.get(index);
+        if (doc.get("mode") != null) {
+            repairMemberships(uid, docs, index + 1);
+            return;
+        }
+
+        String familyId = doc.getId();
+        FirebaseFirestore.getInstance().collection(FirestorePaths.FAMILIES).document(familyId).get()
+                .addOnSuccessListener(familyDoc -> {
+                    if (familyDoc.exists()) {
+                        String mode = familyDoc.getString("mode");
+                        if (mode == null) mode = "normal";
+                        
+                        FirebaseFirestore.getInstance().collection(FirestorePaths.getMembershipsPath(uid)).document(familyId)
+                                .update("mode", mode)
+                                .addOnCompleteListener(task -> repairMemberships(uid, docs, index + 1));
+                    } else {
+                        repairMemberships(uid, docs, index + 1);
+                    }
+                })
+                .addOnFailureListener(e -> repairMemberships(uid, docs, index + 1));
     }
 
     private void performSelfHeal(FirebaseUser firebaseUser) {
@@ -148,6 +190,7 @@ public class SplashActivity extends AppCompatActivity {
         db.collection(FirestorePaths.FAMILIES).document(familyId).get().addOnSuccessListener(familyDoc -> {
             if (familyDoc.exists()) {
                 String familyName = familyDoc.getString("name");
+                String mode = familyDoc.getString("mode");
                 db.collection(FirestorePaths.getMembersPath(familyId)).document(uid).get().addOnSuccessListener(memberDoc -> {
                     if (memberDoc.exists()) {
                         Member member = memberDoc.toObject(Member.class);
@@ -156,6 +199,7 @@ public class SplashActivity extends AppCompatActivity {
                                     familyId,
                                     familyName,
                                     member.getRole(),
+                                    mode,
                                     member.getJoinedAt() != null ? member.getJoinedAt() : Timestamp.now()
                             );
                             

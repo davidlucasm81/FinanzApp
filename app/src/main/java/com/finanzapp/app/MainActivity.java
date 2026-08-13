@@ -21,9 +21,14 @@ import androidx.navigation.ui.NavigationUI;
 
 import com.finanzapp.app.data.model.Notification;
 import com.finanzapp.app.databinding.ActivityMainBinding;
+import com.finanzapp.app.viewmodel.DashboardViewModel;
 import com.finanzapp.app.viewmodel.NotificationViewModel;
 import com.finanzapp.app.viewmodel.ViewModelFactory;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
+import com.finanzapp.app.util.Result;
+import com.finanzapp.app.data.model.Family;
+import android.view.Menu;
+import android.view.MenuItem;
 
 import java.util.LinkedList;
 import java.util.Queue;
@@ -47,6 +52,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(binding.getRoot());
 
         setupNotificationViewModel();
+        setupFamilyModeObserver(binding);
         applyWindowInsets(binding);
 
         NavHostFragment navHostFragment =
@@ -68,6 +74,19 @@ public class MainActivity extends AppCompatActivity {
                     // If we are already on the dashboard or any of its children (like transaction list),
                     // popping back stack to dashboard ensures we return there.
                     navController.popBackStack(R.id.dashboardFragment, false);
+                } else if (item.getItemId() == R.id.balancesFragment) {
+                    // Pass current familyId if available
+                    FinanzAppApplication.AppContainer container = ((FinanzAppApplication) getApplication()).getAppContainer();
+                    ViewModelFactory factory = new ViewModelFactory(container);
+                    DashboardViewModel dashboardViewModel = new ViewModelProvider(this, factory).get(DashboardViewModel.class);
+                    Result<Family> familyResult = dashboardViewModel.getFamilyData().getValue();
+                    if (familyResult instanceof Result.Success) {
+                        String fId = ((Result.Success<Family>) familyResult).getData().getId();
+                        Bundle args = new Bundle();
+                        args.putString("familyId", fId);
+                        navController.navigate(R.id.balancesFragment, args);
+                        return true;
+                    }
                 }
                 return NavigationUI.onNavDestinationSelected(item, navController);
             });
@@ -78,6 +97,33 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
         }
+    }
+
+    private void setupFamilyModeObserver(ActivityMainBinding binding) {
+        FinanzAppApplication.AppContainer container = ((FinanzAppApplication) getApplication()).getAppContainer();
+        ViewModelFactory factory = new ViewModelFactory(container);
+        DashboardViewModel dashboardViewModel = new ViewModelProvider(this, factory).get(DashboardViewModel.class);
+
+        dashboardViewModel.getFamilyData().observe(this, result -> {
+            if (result instanceof Result.Success) {
+                Family family = ((Result.Success<Family>) result).getData();
+                boolean isSharedExpenses = "shared_expenses".equals(family.getMode());
+                
+                Menu menu = binding.bottomNavigation.getMenu();
+                MenuItem balancesItem = menu.findItem(R.id.balancesFragment);
+                if (balancesItem != null) {
+                    balancesItem.setVisible(isSharedExpenses);
+                }
+
+                MenuItem accountsItem = menu.findItem(R.id.accountListFragment);
+                if (accountsItem != null) {
+                    accountsItem.setVisible(!isSharedExpenses);
+                }
+            }
+        });
+        
+        // Trigger fetch if not already done by DashboardFragment
+        dashboardViewModel.fetchDashboardData();
     }
 
     private void setupNotificationViewModel() {

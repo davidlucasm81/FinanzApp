@@ -7,6 +7,7 @@ import com.finanzapp.app.data.repository.CategoryRepository;
 import com.finanzapp.app.data.repository.AccountRepository;
 import com.finanzapp.app.data.repository.NotificationRepository;
 import com.finanzapp.app.data.repository.TransactionRepository;
+import com.finanzapp.app.data.repository.SettlementRepository;
 
 public class FinanzAppApplication extends Application {
     private AppContainer appContainer;
@@ -42,6 +43,7 @@ public class FinanzAppApplication extends Application {
         private final AccountRepository accountRepository;
         private final TransactionRepository transactionRepository;
         private final NotificationRepository notificationRepository;
+        private final SettlementRepository settlementRepository;
 
         public AppContainer(android.content.Context context) {
             authRepository = new AuthRepository();
@@ -50,6 +52,7 @@ public class FinanzAppApplication extends Application {
             accountRepository = new AccountRepository(authRepository);
             notificationRepository = new NotificationRepository();
             transactionRepository = new TransactionRepository(context, authRepository);
+            settlementRepository = new SettlementRepository(authRepository);
         }
 
         public AuthRepository getAuthRepository() {
@@ -69,5 +72,7 @@ public class FinanzAppApplication extends Application {
         public TransactionRepository getTransactionRepository() { return transactionRepository; }
 
         public NotificationRepository getNotificationRepository() { return notificationRepository; }
+
+        public SettlementRepository getSettlementRepository() { return settlementRepository; }
     }
 }

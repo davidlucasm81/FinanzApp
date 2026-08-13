@@ -143,9 +143,9 @@ public class OnboardingViewModel extends ViewModel {
         familyRepository.deleteInvitation(familyId, invitationId, invitationAction::postValue);
     }
 
-    public void createFamily(String name, String currencyCode) {
+    public void createFamily(String name, String currencyCode, String mode) {
         createFamilyResult.setValue(new Result.Loading<>());
-        familyRepository.createFamily(name, currencyCode, createFamilyResult::postValue);
+        familyRepository.createFamily(name, currencyCode, mode, result -> createFamilyResult.postValue(result));
     }
 
     public void joinByCode(String code) {

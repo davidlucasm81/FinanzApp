@@ -171,18 +171,26 @@ public class FamilySwitcherFragment extends BottomSheetDialogFragment {
 
         static class ViewHolder extends RecyclerView.ViewHolder {
             private final TextView tvName;
+            private final TextView tvMode;
             private final TextView tvRole;
             private final View ivActive;
 
             public ViewHolder(@NonNull View itemView) {
                 super(itemView);
                 tvName = itemView.findViewById(R.id.tv_family_name);
+                tvMode = itemView.findViewById(R.id.tv_mode);
                 tvRole = itemView.findViewById(R.id.tv_role);
                 ivActive = itemView.findViewById(R.id.iv_active);
             }
 
             public void bind(FamilyMembership item, String currentFamilyId, OnFamilyClickListener listener) {
                 tvName.setText(item.getFamilyName());
+                
+                int modeRes = "shared_expenses".equals(item.getMode()) ? 
+                        R.string.mode_shared_expenses : 
+                        R.string.mode_normal;
+                tvMode.setText(modeRes);
+
                 tvRole.setText(item.getRole());
                 ivActive.setVisibility(item.getFamilyId().equals(currentFamilyId) ? View.VISIBLE : View.GONE);
                 itemView.setOnClickListener(v -> listener.onFamilySelected(item));

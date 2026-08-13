@@ -1,6 +1,7 @@
 package com.finanzapp.app.viewmodel;
 
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
@@ -8,10 +9,17 @@ import androidx.lifecycle.ViewModel;
 import com.finanzapp.app.data.firebase.FirestorePaths;
 import com.finanzapp.app.data.model.Account;
 import com.finanzapp.app.data.model.Family;
+import com.finanzapp.app.data.model.Member;
 import com.finanzapp.app.data.model.User;
 import com.finanzapp.app.data.repository.AccountRepository;
 import com.finanzapp.app.data.repository.AuthRepository;
+import com.finanzapp.app.data.repository.CategoryRepository;
 import com.finanzapp.app.data.repository.FamilyRepository;
+import com.finanzapp.app.data.repository.SettlementRepository;
+import com.finanzapp.app.data.repository.TransactionRepository;
+import com.finanzapp.app.data.model.Transaction;
+import com.finanzapp.app.data.model.Settlement;
+import com.finanzapp.app.data.sharedexpenses.BalanceCalculator;
 import com.finanzapp.app.util.FirebaseLogger;
 import com.finanzapp.app.util.Result;
 import com.finanzapp.app.util.SingleLiveEvent;
@@ -22,6 +30,7 @@ import com.google.firebase.perf.metrics.Trace;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -41,7 +50,16 @@ public class DashboardViewModel extends ViewModel {
 
     private final Set<String> migratingAccounts = new HashSet<>();
     private final AccountRepository accountRepository;
+    private final TransactionRepository transactionRepository;
+    private final CategoryRepository categoryRepository;
+    private final SettlementRepository settlementRepository;
     private ListenerRegistration userListener;
+
+    private LiveData<Boolean> accountsLoaded;
+    private LiveData<List<Transaction>> recentTransactions;
+    private LiveData<List<Member>> members;
+    private LiveData<Result<List<Settlement>>> settlements;
+    private final MediatorLiveData<Map<String, Double>> memberBalances = new MediatorLiveData<>();
 
     // Referencia estable para poder registrar/desregistrar el mismo Runnable
     private final Runnable signOutCleanup = this::stopListening;
@@ -49,13 +67,15 @@ public class DashboardViewModel extends ViewModel {
     private void setupObservers() {
         // We use Transformations.map to link the data update to the accountsSource lifecycle
     }
-
-    private final LiveData<Boolean> accountsLoaded;
-
-    public DashboardViewModel(AuthRepository authRepository, FamilyRepository familyRepository, AccountRepository accountRepository) {
+    public DashboardViewModel(AuthRepository authRepository, FamilyRepository familyRepository, 
+                            AccountRepository accountRepository, TransactionRepository transactionRepository,
+                            CategoryRepository categoryRepository, SettlementRepository settlementRepository) {
         this.authRepository = authRepository;
         this.familyRepository = familyRepository;
         this.accountRepository = accountRepository;
+        this.transactionRepository = transactionRepository;
+        this.categoryRepository = categoryRepository;
+        this.settlementRepository = settlementRepository;
         authRepository.registerPreSignOutCleanup(signOutCleanup);
 
         // Load persisted privacy mode state
@@ -73,7 +93,7 @@ public class DashboardViewModel extends ViewModel {
         // Optimized account fetch for the dashboard (real value, no monthly filtering)
         LiveData<List<Account>> accountsSource = Transformations.switchMap(familyIdSource, accountRepository::getAccounts);
 
-        accountsLoaded = Transformations.map(accountsSource, accounts -> {
+        this.accountsLoaded = Transformations.map(accountsSource, accounts -> {
             if (accounts != null) {
                 accountsList.postValue(accounts);
                 double totalBalance = 0;
@@ -95,10 +115,52 @@ public class DashboardViewModel extends ViewModel {
             return false;
         });
 
+        // Fetch recent transactions (e.g., last 20)
+        this.recentTransactions = Transformations.switchMap(familyIdSource, id -> {
+            if (id == null) return new MutableLiveData<>(new java.util.ArrayList<>());
+            // Passing null filters to get all transactions, limit is handled by repo if supported or just get all
+            return transactionRepository.getTransactions(id, null, null, null, null, null, null);
+        });
+
+        this.members = Transformations.switchMap(familyIdSource, id -> {
+            if (id == null) return new MutableLiveData<>(new java.util.ArrayList<>());
+            MutableLiveData<List<Member>> live = new MutableLiveData<>();
+            familyRepository.getMembers(id, res -> {
+                if (res instanceof Result.Success) {
+                    live.postValue(((Result.Success<List<Member>>) res).getData());
+                }
+            });
+            return live;
+        });
+
+        this.settlements = Transformations.switchMap(familyIdSource, id -> {
+            if (id == null) return new MutableLiveData<>(new Result.Success<>(new java.util.ArrayList<>()));
+            MutableLiveData<Result<List<Settlement>>> live = new MutableLiveData<>();
+            settlementRepository.getSettlements(id, live::postValue);
+            return live;
+        });
+
+        memberBalances.addSource(recentTransactions, t -> updateMemberBalances());
+        memberBalances.addSource(settlements, s -> updateMemberBalances());
+
         setupObservers();
     }
 
+    private void updateMemberBalances() {
+        List<Transaction> tList = recentTransactions.getValue();
+        Result<List<Settlement>> sResult = settlements.getValue();
+        
+        if (tList != null && sResult instanceof Result.Success) {
+            List<Settlement> sList = ((Result.Success<List<Settlement>>) sResult).getData();
+            Map<String, Double> balances = BalanceCalculator.calculateNetBalances(tList, sList);
+            memberBalances.setValue(balances);
+        }
+    }
+
     public LiveData<Boolean> getAccountsLoaded() { return accountsLoaded; }
+    public LiveData<List<Transaction>> getRecentTransactions() { return recentTransactions; }
+    public LiveData<List<Member>> getMembers() { return members; }
+    public LiveData<Map<String, Double>> getMemberBalances() { return memberBalances; }
     public LiveData<Result<Family>> getFamilyData() { return familyData; }
     public LiveData<Result<Boolean>> getDataLoaded() { return dataLoaded; }
     public LiveData<Result<User>> getUserData() { return userData; }
@@ -127,6 +189,10 @@ public class DashboardViewModel extends ViewModel {
         accountRepository.transferFunds(familyId, fromAccountId, toAccountId, amount, result -> {
             transferResult.postValue(result);
         });
+    }
+
+    public String getCurrentUserId() {
+        return authRepository.getUid();
     }
 
     public void fetchDashboardData() {

@@ -323,4 +323,37 @@
     <string name="label_invitation_section">Invitación</string>
     <string name="label_management_section">Gestión</string>
     <string name="msg_invite_code_desc">Comparte este código con los miembros que quieras unir a tu familia.</string>
+
+    <!-- Shared Expenses Phase 18 -->
+    <string name="label_family_mode">Modo de la familia</string>
+    <string name="mode_normal">Normal (Posición neta conjunta)</string>
+    <string name="mode_shared_expenses">Gastos compartidos</string>
+    <string name="dialog_change_mode_title">Cambiar modo de familia</string>
+    <string name="dialog_change_mode_msg">¿Deseas cambiar al modo %s? Esto activará/desactivará las opciones de reparto de gastos compartidos.</string>
+    <string name="nav_balances">Saldos</string>
+    <string name="label_balances_title">Saldos de la familia</string>
+    <string name="label_net_balance">Saldo neto</string>
+    <string name="label_suggested_payments">Pagos sugeridos</string>
+    <string name="label_owes_to">%1$s debe %2$s a %3$s</string>
+    <string name="btn_settle">Marcar como saldado</string>
+    <string name="dialog_settle_title">Saldar deuda</string>
+    <string name="dialog_settle_msg">Se registrará un pago de %1$s de %2$s a %3$s. Esto no moverá dinero entre cuentas bancarias.</string>
+    <string name="label_paid_by">¿Quién pagó?</string>
+    <string name="label_split_among">¿Entre quién se reparte?</string>
+    <string name="label_split_equal">Partes iguales</string>
+    <string name="label_split_custom">Importes personalizados</string>
+    <string name="label_total_amount">Importe total</string>
+    <string name="error_split_total">La suma del reparto debe ser igual al importe total</string>
+    <string name="label_current_sum">Suma actual: %1$s</string>
+    <string name="label_remaining_amount">Pendiente: %1$s</string>
+    <string name="label_total_match">✓ La suma coincide</string>
+    <string name="btn_distribute_remaining">Repartir lo que queda</string>
+    <string name="label_settlement_history">Historial de liquidaciones</string>
+    <string name="empty_balances_title">Todo al día</string>
+    <string name="empty_balances_desc">No hay deudas pendientes en la familia.</string>
+    <string name="label_joint_account">Cuenta conjunta</string>
+    <string name="label_multiple_accounts">Múltiples cuentas</string>
+    <string name="label_none">Ninguno</string>
+    <string name="label_family_type">Tipo de familia</string>
+    <string name="label_me">Yo</string>
 </resources>
