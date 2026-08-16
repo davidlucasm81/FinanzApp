@@ -239,6 +239,27 @@ public class SplashActivity extends AppCompatActivity {
                         User user = documentSnapshot.toObject(User.class);
                         if (user != null) {
                             String activeFamilyId = user.getFamilyId();
+                            
+                            // Photo Migration (Self-Heal): 
+                            // If user has a photo but we don't know if the Member doc has it, 
+                            // we update it in the active family.
+                            if (user.getPhotoUrl() != null && activeFamilyId != null) {
+                                String uid = firebaseUser.getUid();
+                                String photoUrl = user.getPhotoUrl();
+                                FirebaseFirestore.getInstance()
+                                        .collection(FirestorePaths.getMembersPath(activeFamilyId))
+                                        .document(uid)
+                                        .get()
+                                        .addOnSuccessListener(memberDoc -> {
+                                            if (memberDoc.exists()) {
+                                                String currentMemberPhoto = memberDoc.getString("photoUrl");
+                                                if (currentMemberPhoto == null || !currentMemberPhoto.equals(photoUrl)) {
+                                                    memberDoc.getReference().update("photoUrl", photoUrl);
+                                                }
+                                            }
+                                        });
+                            }
+
                             if (activeFamilyId != null) {
                                 // Check if the active familyId is still valid (exists in memberships)
                                 validateActiveFamily(firebaseUser.getUid(), activeFamilyId);

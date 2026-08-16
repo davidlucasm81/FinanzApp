@@ -17,6 +17,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.Navigation;
 
+import com.bumptech.glide.Glide;
 import com.finanzapp.app.FinanzAppApplication;
 import com.finanzapp.app.R;
 import com.finanzapp.app.data.model.Member;
@@ -190,10 +191,32 @@ public class BalancesFragment extends Fragment {
                 
                 // Set avatars
                 tvInitialsFrom.setText(getInitials(fromName));
-                ivAvatarFrom.setColorFilter(getAvatarColor(p.fromUid));
+                if (fromMember != null && fromMember.getPhotoUrl() != null) {
+                    tvInitialsFrom.setVisibility(View.GONE);
+                    ivAvatarFrom.setColorFilter(null);
+                    Glide.with(this)
+                            .load(fromMember.getPhotoUrl())
+                            .circleCrop()
+                            .into(ivAvatarFrom);
+                } else {
+                    tvInitialsFrom.setVisibility(View.VISIBLE);
+                    ivAvatarFrom.setImageResource(R.drawable.shape_circle);
+                    ivAvatarFrom.setColorFilter(getAvatarColor(p.fromUid));
+                }
                 
                 tvInitialsTo.setText(getInitials(toName));
-                ivAvatarTo.setColorFilter(getAvatarColor(p.toUid));
+                if (toMember != null && toMember.getPhotoUrl() != null) {
+                    tvInitialsTo.setVisibility(View.GONE);
+                    ivAvatarTo.setColorFilter(null);
+                    Glide.with(this)
+                            .load(toMember.getPhotoUrl())
+                            .circleCrop()
+                            .into(ivAvatarTo);
+                } else {
+                    tvInitialsTo.setVisibility(View.VISIBLE);
+                    ivAvatarTo.setImageResource(R.drawable.shape_circle);
+                    ivAvatarTo.setColorFilter(getAvatarColor(p.toUid));
+                }
 
                 final String finalFromName = fromMember != null ? fromMember.getDisplayName() : p.fromUid;
                 final String finalToName = toMember != null ? toMember.getDisplayName() : p.toUid;
@@ -223,7 +246,28 @@ public class BalancesFragment extends Fragment {
         tvBalance.setTextColor(getResources().getColor(bal >= 0 ? R.color.success : R.color.error, null));
 
         tvInitials.setText(getInitials(name));
-        ivAvatar.setColorFilter(getAvatarColor(uid));
+
+        if (uid != null) {
+            BalancesViewModel.BalancesData data = viewModel.getBalancesData().getValue();
+            Member member = data != null ? getMember(uid, data.members) : null;
+            
+            if (member != null && member.getPhotoUrl() != null) {
+                tvInitials.setVisibility(View.GONE);
+                ivAvatar.setColorFilter(null);
+                Glide.with(this)
+                        .load(member.getPhotoUrl())
+                        .circleCrop()
+                        .into(ivAvatar);
+            } else {
+                tvInitials.setVisibility(View.VISIBLE);
+                ivAvatar.setImageResource(R.drawable.shape_circle);
+                ivAvatar.setColorFilter(getAvatarColor(uid));
+            }
+        } else {
+            tvInitials.setVisibility(View.VISIBLE);
+            ivAvatar.setImageResource(R.drawable.shape_circle);
+            ivAvatar.setColorFilter(getAvatarColor(null));
+        }
 
         layoutNetBalances.addView(itemView);
     }

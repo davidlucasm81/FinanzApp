@@ -11,6 +11,7 @@ public class Invitation {
     private String requestedByUid;
     private String requesterName;
     private String requesterEmail;
+    private String requesterPhotoUrl;
     private String invitedByUid;
     private String status; // "pending" | "accepted" | "approved" | "rejected"
     private Timestamp createdAt;
@@ -22,14 +23,18 @@ public class Invitation {
         // Required for Firestore serialization
     }
 
-    public Invitation(String id, String type, String targetEmail, String requestedByUid, String invitedByUid, String status, Timestamp createdAt) {
+    public Invitation(String id, String type, String targetEmail, String requestedByUid, String requesterName, String requesterEmail, String requesterPhotoUrl, String invitedByUid, String status, Timestamp createdAt, String familyMode) {
         this.id = id;
         this.type = type;
         this.targetEmail = targetEmail;
         this.requestedByUid = requestedByUid;
+        this.requesterName = requesterName;
+        this.requesterEmail = requesterEmail;
+        this.requesterPhotoUrl = requesterPhotoUrl;
         this.invitedByUid = invitedByUid;
         this.status = status;
         this.createdAt = createdAt;
+        this.familyMode = familyMode;
     }
 
     // Getters and Setters
@@ -50,6 +55,9 @@ public class Invitation {
 
     public String getRequesterEmail() { return requesterEmail; }
     public void setRequesterEmail(String requesterEmail) { this.requesterEmail = requesterEmail; }
+
+    public String getRequesterPhotoUrl() { return requesterPhotoUrl; }
+    public void setRequesterPhotoUrl(String requesterPhotoUrl) { this.requesterPhotoUrl = requesterPhotoUrl; }
 
     public String getInvitedByUid() { return invitedByUid; }
     public void setInvitedByUid(String invitedByUid) { this.invitedByUid = invitedByUid; }

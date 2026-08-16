@@ -7,6 +7,7 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.finanzapp.app.R;
 import com.finanzapp.app.data.model.Member;
 import com.finanzapp.app.databinding.ItemMemberBalanceBinding;
@@ -56,7 +57,19 @@ public class DashboardMemberBalanceAdapter extends RecyclerView.Adapter<Dashboar
 
         // Set avatar
         holder.binding.tvInitials.setText(getInitials(m.getDisplayName()));
-        holder.binding.ivAvatar.setColorFilter(getAvatarColor(m.getUid()));
+        
+        if (m.getPhotoUrl() != null) {
+            holder.binding.tvInitials.setVisibility(android.view.View.GONE);
+            holder.binding.ivAvatar.setColorFilter(null);
+            Glide.with(holder.itemView.getContext())
+                    .load(m.getPhotoUrl())
+                    .circleCrop()
+                    .into(holder.binding.ivAvatar);
+        } else {
+            holder.binding.tvInitials.setVisibility(android.view.View.VISIBLE);
+            holder.binding.ivAvatar.setImageResource(R.drawable.shape_circle);
+            holder.binding.ivAvatar.setColorFilter(getAvatarColor(m.getUid()));
+        }
         
         Double balObj = (balances != null && m.getUid() != null) ? balances.get(m.getUid()) : null;
         double bal = (balObj != null) ? balObj : 0.0;

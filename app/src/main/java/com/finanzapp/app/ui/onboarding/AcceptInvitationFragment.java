@@ -141,6 +141,7 @@ public class AcceptInvitationFragment extends Fragment {
                 firebaseUser.getUid(),
                 firebaseUser.getDisplayName(),
                 firebaseUser.getEmail(),
+                firebaseUser.getPhotoUrl() != null ? firebaseUser.getPhotoUrl().toString() : null,
                 "member",
                 "approved",
                 Timestamp.now()

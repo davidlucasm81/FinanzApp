@@ -30,8 +30,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:src="@drawable/shape_circle"
-                android:contentDescription="@null"
-                app:tint="@color/gray_600" />
+                android:contentDescription="@null" />
 
             <TextView
                 android:id="@+id/tv_initials_from"
@@ -87,8 +86,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:src="@drawable/shape_circle"
-                android:contentDescription="@null"
-                app:tint="@color/gray_600" />
+                android:contentDescription="@null" />
 
             <TextView
                 android:id="@+id/tv_initials_to"

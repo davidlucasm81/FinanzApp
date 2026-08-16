@@ -8,6 +8,7 @@ public class Member {
     private String uid;
     private String displayName;
     private String email;
+    private String photoUrl;
     private String role; // "owner" | "admin" | "member"
     private String status; // "approved"
     private Timestamp joinedAt;
@@ -16,10 +17,11 @@ public class Member {
         // Required for Firestore serialization
     }
 
-    public Member(String uid, String displayName, String email, String role, String status, Timestamp joinedAt) {
+    public Member(String uid, String displayName, String email, String photoUrl, String role, String status, Timestamp joinedAt) {
         this.uid = uid;
         this.displayName = displayName;
         this.email = email;
+        this.photoUrl = photoUrl;
         this.role = role;
         this.status = status;
         this.joinedAt = joinedAt;
@@ -34,6 +36,9 @@ public class Member {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public String getPhotoUrl() { return photoUrl; }
+    public void setPhotoUrl(String photoUrl) { this.photoUrl = photoUrl; }
 
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }

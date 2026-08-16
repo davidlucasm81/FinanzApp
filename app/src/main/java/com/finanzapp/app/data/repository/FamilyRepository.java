@@ -68,10 +68,12 @@ public class FamilyRepository {
         );
 
         String displayName = currentUser.getDisplayName() != null ? currentUser.getDisplayName() : "User";
+        String photoUrl = currentUser.getPhotoUrl() != null ? currentUser.getPhotoUrl().toString() : null;
         Member adminMember = new Member(
                 uid,
                 displayName,
                 currentUser.getEmail(),
+                photoUrl,
                 "owner",
                 "approved",
                 Timestamp.now()
@@ -131,6 +133,7 @@ public class FamilyRepository {
                         FirebaseUser currentUser = auth.getCurrentUser();
                         String displayName = currentUser != null && currentUser.getDisplayName() != null ? currentUser.getDisplayName() : "Usuario";
                         String email = currentUser != null ? currentUser.getEmail() : "";
+                        String photoUrl = currentUser != null && currentUser.getPhotoUrl() != null ? currentUser.getPhotoUrl().toString() : null;
 
                         // Create code_request invitation
                         DocumentReference inviteRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.INVITATIONS).document();
@@ -139,13 +142,14 @@ public class FamilyRepository {
                                 "code_request",
                                 null,
                                 uid,
+                                displayName,
+                                email,
+                                photoUrl,
                                 null,
                                 "pending",
-                                Timestamp.now()
+                                Timestamp.now(),
+                                familyDoc.getString("mode")
                         );
-                        invitation.setRequesterName(displayName);
-                        invitation.setRequesterEmail(email);
-                        invitation.setFamilyMode(familyDoc.getString("mode"));
 
                         inviteRef.set(invitation)
                                 .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(true)))
@@ -174,6 +178,7 @@ public class FamilyRepository {
                         FirebaseUser currentUser = auth.getCurrentUser();
                         String displayName = currentUser != null && currentUser.getDisplayName() != null ? currentUser.getDisplayName() : "Usuario";
                         String email = currentUser != null ? currentUser.getEmail() : "";
+                        String photoUrl = currentUser != null && currentUser.getPhotoUrl() != null ? currentUser.getPhotoUrl().toString() : null;
 
                         // Create code_request invitation
                         DocumentReference inviteRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.INVITATIONS).document();
@@ -182,13 +187,14 @@ public class FamilyRepository {
                                 "code_request",
                                 null,
                                 uid,
+                                displayName,
+                                email,
+                                photoUrl,
                                 null,
                                 "pending",
-                                Timestamp.now()
+                                Timestamp.now(),
+                                familyDoc.getString("mode")
                         );
-                        invitation.setRequesterName(displayName);
-                        invitation.setRequesterEmail(email);
-                        invitation.setFamilyMode(familyDoc.getString("mode"));
 
                         inviteRef.set(invitation)
                                 .addOnSuccessListener(aVoid -> {
@@ -305,11 +311,13 @@ public class FamilyRepository {
         String userUid = invitation.getRequestedByUid();
         String displayName = invitation.getRequesterName() != null && !invitation.getRequesterName().isEmpty() ? invitation.getRequesterName() : "Usuario";
         String email = invitation.getRequesterEmail() != null ? invitation.getRequesterEmail() : "";
+        String photoUrl = invitation.getRequesterPhotoUrl();
 
         Member member = new Member(
                 userUid,
                 displayName,
                 email,
+                photoUrl,
                 "member",
                 "approved",
                 Timestamp.now()
@@ -386,9 +394,13 @@ public class FamilyRepository {
                     "email_invite",
                     normalizedEmail,
                     null,
+                    null,
+                    null,
+                    null,
                     adminUid,
                     "pending",
-                    Timestamp.now()
+                    Timestamp.now(),
+                    mode
             );
             invitation.setFamilyMode(mode);
 
@@ -434,6 +446,7 @@ public class FamilyRepository {
                                 uid,
                                 user.getDisplayName(),
                                 user.getEmail(),
+                                user.getPhotoUrl(),
                                 "member",
                                 "approved",
                                 Timestamp.now()
