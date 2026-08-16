@@ -35,6 +35,8 @@ public class SettlementHistoryFragment extends Fragment {
     private String familyId;
     private SettlementAdapter adapter;
     private TextView tvEmpty;
+    private boolean isPrivacyModeEnabled = false;
+    private String currencyCode = "EUR";
 
     @Nullable
     @Override
@@ -68,6 +70,7 @@ public class SettlementHistoryFragment extends Fragment {
         rv.setLayoutManager(new LinearLayoutManager(requireContext()));
         rv.setAdapter(adapter);
 
+        viewModel.initPrivacyMode(requireContext());
         setupObservers();
     }
 
@@ -97,6 +100,20 @@ public class SettlementHistoryFragment extends Fragment {
                 Toast.makeText(requireContext(), R.string.error_generic, Toast.LENGTH_LONG).show();
             }
         });
+
+        viewModel.isPrivacyModeEnabled().observe(getViewLifecycleOwner(), enabled -> {
+            this.isPrivacyModeEnabled = enabled;
+            if (adapter != null) {
+                adapter.notifyDataSetChanged();
+            }
+        });
+
+        viewModel.getCurrencyCode().observe(getViewLifecycleOwner(), code -> {
+            this.currencyCode = code;
+            if (adapter != null) {
+                adapter.notifyDataSetChanged();
+            }
+        });
     }
 
     private class SettlementAdapter extends RecyclerView.Adapter<SettlementAdapter.ViewHolder> {
@@ -120,7 +137,11 @@ public class SettlementHistoryFragment extends Fragment {
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             Settlement s = items.get(position);
-            holder.tvAmount.setText(CurrencyFormatter.format(s.getAmount(), "EUR"));
+            if (isPrivacyModeEnabled) {
+                holder.tvAmount.setText(R.string.privacy_mode_masked_value);
+            } else {
+                holder.tvAmount.setText(CurrencyFormatter.format(s.getAmount(), currencyCode));
+            }
             holder.tvDate.setText(s.getCreatedAt() != null ? dateFormat.format(s.getCreatedAt().toDate()) : "");
             
             String fromName = getName(s.getFromUid(), members);

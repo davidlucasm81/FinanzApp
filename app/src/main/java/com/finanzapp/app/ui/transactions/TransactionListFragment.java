@@ -538,8 +538,15 @@ public class TransactionListFragment extends Fragment {
 
         viewModel.getMembers(familyId).observe(getViewLifecycleOwner(), members -> {
             if (members != null) {
+                String currentUid = com.google.firebase.auth.FirebaseAuth.getInstance().getUid();
                 memberNames.clear();
-                for (Member m : members) memberNames.put(m.getUid(), m.getDisplayName());
+                for (Member m : members) {
+                    String name = m.getDisplayName();
+                    if (m.getUid() != null && m.getUid().equals(currentUid)) {
+                        name += " (" + getString(R.string.label_me) + ")";
+                    }
+                    memberNames.put(m.getUid(), name);
+                }
                 adapter.notifyDataSetChanged();
             }
         });

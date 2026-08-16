@@ -30,6 +30,7 @@ public class BalancesViewModel extends ViewModel {
 
     private final MutableLiveData<List<Member>> members = new MutableLiveData<>();
     private final MutableLiveData<String> currencyCode = new MutableLiveData<>("EUR");
+    private final MutableLiveData<Boolean> isPrivacyModeEnabled = new MutableLiveData<>(false);
     private final LiveData<List<Transaction>> transactions;
     private final LiveData<Result<List<Settlement>>> settlements;
     
@@ -145,6 +146,21 @@ public class BalancesViewModel extends ViewModel {
 
     public LiveData<Result<List<Settlement>>> getSettlements() {
         return settlements;
+    }
+
+    public LiveData<Boolean> isPrivacyModeEnabled() {
+        return isPrivacyModeEnabled;
+    }
+
+    public void togglePrivacyMode(android.content.Context context) {
+        boolean newValue = !Boolean.TRUE.equals(isPrivacyModeEnabled.getValue());
+        isPrivacyModeEnabled.setValue(newValue);
+        com.finanzapp.app.util.PreferenceUtils.setPrivacyModeEnabled(context, newValue);
+    }
+
+    public void initPrivacyMode(android.content.Context context) {
+        boolean enabled = com.finanzapp.app.util.PreferenceUtils.isPrivacyModeEnabled(context);
+        isPrivacyModeEnabled.setValue(enabled);
     }
 
     public void addSettlement(String familyId, String fromUid, String toUid, double amount, String note) {

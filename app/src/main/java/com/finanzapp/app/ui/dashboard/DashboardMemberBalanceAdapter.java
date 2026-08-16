@@ -62,7 +62,7 @@ public class DashboardMemberBalanceAdapter extends RecyclerView.Adapter<Dashboar
         double bal = (balObj != null) ? balObj : 0.0;
 
         if (isPrivacyModeEnabled) {
-            holder.binding.tvBalance.setText("****");
+            holder.binding.tvBalance.setText(R.string.privacy_mode_masked_value);
         } else {
             holder.binding.tvBalance.setText(CurrencyFormatter.format(bal, currencyCode));
         }

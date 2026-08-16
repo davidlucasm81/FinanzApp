@@ -38,6 +38,8 @@ public class BalancesFragment extends Fragment {
 
     private LinearLayout layoutNetBalances, layoutSuggestedPayments, layoutEmpty;
     private View progressBar;
+    private ImageView ivPrivacyToggle;
+    private boolean isPrivacyModeEnabled = false;
 
     @Nullable
     @Override
@@ -65,6 +67,10 @@ public class BalancesFragment extends Fragment {
         layoutSuggestedPayments = view.findViewById(R.id.layout_suggested_payments);
         layoutEmpty = view.findViewById(R.id.layout_empty);
         progressBar = view.findViewById(R.id.progress_bar);
+        ivPrivacyToggle = view.findViewById(R.id.iv_privacy_toggle);
+
+        viewModel.initPrivacyMode(requireContext());
+        ivPrivacyToggle.setOnClickListener(v -> viewModel.togglePrivacyMode(requireContext()));
         
         MaterialButton btnHistory = view.findViewById(R.id.btn_settlement_history);
         btnHistory.setOnClickListener(v -> {
@@ -99,6 +105,14 @@ public class BalancesFragment extends Fragment {
                 Toast.makeText(requireContext(), R.string.operation_success, Toast.LENGTH_SHORT).show();
             } else if (result instanceof Result.Error) {
                 Toast.makeText(requireContext(), R.string.error_generic, Toast.LENGTH_LONG).show();
+            }
+        });
+
+        viewModel.isPrivacyModeEnabled().observe(getViewLifecycleOwner(), enabled -> {
+            this.isPrivacyModeEnabled = enabled;
+            ivPrivacyToggle.setImageResource(enabled ? R.drawable.ic_visibility_off : R.drawable.ic_visibility);
+            if (viewModel.getBalancesData().getValue() != null) {
+                updateUI(viewModel.getBalancesData().getValue());
             }
         });
     }
@@ -151,7 +165,12 @@ public class BalancesFragment extends Fragment {
                 String fromName = fromMember != null ? fromMember.getDisplayName() : p.fromUid;
                 String toName = toMember != null ? toMember.getDisplayName() : p.toUid;
 
-                String amountStr = CurrencyFormatter.format(p.amount, currencyCode);
+                String amountStr;
+                if (isPrivacyModeEnabled) {
+                    amountStr = getString(R.string.privacy_mode_masked_value);
+                } else {
+                    amountStr = CurrencyFormatter.format(p.amount, currencyCode);
+                }
                 
                 tvAmount.setText(amountStr);
                 
@@ -196,7 +215,11 @@ public class BalancesFragment extends Fragment {
         ImageView ivAvatar = itemView.findViewById(R.id.iv_avatar);
 
         tvName.setText(name);
-        tvBalance.setText(CurrencyFormatter.format(bal, currencyCode));
+        if (isPrivacyModeEnabled) {
+            tvBalance.setText(R.string.privacy_mode_masked_value);
+        } else {
+            tvBalance.setText(CurrencyFormatter.format(bal, currencyCode));
+        }
         tvBalance.setTextColor(getResources().getColor(bal >= 0 ? R.color.success : R.color.error, null));
 
         tvInitials.setText(getInitials(name));

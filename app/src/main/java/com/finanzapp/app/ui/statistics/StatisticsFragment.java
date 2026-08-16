@@ -115,10 +115,13 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         binding.rvPaymentMethodLegend.setAdapter(methodLegendAdapter);
 
         memberExpenseLegendAdapter = new MemberSummaryAdapter("expense");
+        String currentUid = com.google.firebase.auth.FirebaseAuth.getInstance().getUid();
+        memberExpenseLegendAdapter.setCurrentUserId(currentUid);
         binding.rvMemberExpenses.setLayoutManager(new LinearLayoutManager(requireContext()));
         binding.rvMemberExpenses.setAdapter(memberExpenseLegendAdapter);
 
         memberIncomeLegendAdapter = new MemberSummaryAdapter("income");
+        memberIncomeLegendAdapter.setCurrentUserId(currentUid);
         binding.rvMemberIncome.setLayoutManager(new LinearLayoutManager(requireContext()));
         binding.rvMemberIncome.setAdapter(memberIncomeLegendAdapter);
 
@@ -394,8 +397,13 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
                 binding.tvEmptyMemberExpenses.setVisibility(View.GONE);
                 binding.rvMemberExpenses.setVisibility(View.VISIBLE);
                 memberNames.clear();
+                String currentUid2 = com.google.firebase.auth.FirebaseAuth.getInstance().getUid();
                 for (MemberSummary s : distribution) {
-                    memberNames.put(s.getUid(), s.getDisplayName());
+                    String name = s.getDisplayName();
+                    if (s.getUid() != null && s.getUid().equals(currentUid2)) {
+                        name += " (" + getString(R.string.label_me) + ")";
+                    }
+                    memberNames.put(s.getUid(), name);
                 }
                 updateMemberExpenseChart(distribution);
                 
@@ -415,8 +423,13 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
             } else {
                 binding.tvEmptyMemberIncome.setVisibility(View.GONE);
                 binding.rvMemberIncome.setVisibility(View.VISIBLE);
+                String currentUid3 = com.google.firebase.auth.FirebaseAuth.getInstance().getUid();
                 for (MemberSummary s : distribution) {
-                    memberNames.put(s.getUid(), s.getDisplayName());
+                    String name = s.getDisplayName();
+                    if (s.getUid() != null && s.getUid().equals(currentUid3)) {
+                        name += " (" + getString(R.string.label_me) + ")";
+                    }
+                    memberNames.put(s.getUid(), name);
                 }
                 updateMemberIncomeChart(distribution);
             }
@@ -941,9 +954,14 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         private List<MemberSummary> items = new ArrayList<>();
         private final String transactionType;
         private boolean isPrivacyModeEnabled = false;
+        private String currentUserId;
 
         public MemberSummaryAdapter(String transactionType) {
             this.transactionType = transactionType;
+        }
+
+        public void setCurrentUserId(String currentUserId) {
+            this.currentUserId = currentUserId;
         }
 
         public void updateData(List<MemberSummary> newItems) {
@@ -968,7 +986,11 @@ public class StatisticsFragment extends Fragment implements OnChartValueSelected
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             MemberSummary item = items.get(position);
-            holder.tvName.setText(item.getDisplayName());
+            String name = item.getDisplayName();
+            if (item.getUid() != null && item.getUid().equals(currentUserId)) {
+                name += " (" + holder.itemView.getContext().getString(R.string.label_me) + ")";
+            }
+            holder.tvName.setText(name);
             if (isPrivacyModeEnabled) {
                 holder.tvAmount.setText(holder.itemView.getContext().getString(R.string.privacy_mode_masked_value));
             } else {

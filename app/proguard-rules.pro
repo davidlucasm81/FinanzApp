@@ -25,3 +25,17 @@
 -dontwarn net.sf.saxon.**
 -dontwarn org.apache.batik.**
 -dontwarn org.osgi.framework.**
+
+# Apache POI and OOXML
+-keep class org.apache.poi.** { *; }
+-keep class org.apache.xmlbeans.** { *; }
+-keep class schemaorg_apache_xmlbeans.** { *; }
+-keep class com.microsoft.schemas.** { *; }
+-keep class org.openxmlformats.schemas.** { *; }
+
+# Prevent shrinking of resources used by POI reflection
+-keepclassmembers class * extends org.apache.poi.POIXMLDocumentPart {
+    public <init>(org.apache.poi.openxml4j.opc.PackagePart);
+    public <init>(org.apache.poi.POIXMLDocumentPart, org.apache.poi.openxml4j.opc.PackagePart);
+}
+
