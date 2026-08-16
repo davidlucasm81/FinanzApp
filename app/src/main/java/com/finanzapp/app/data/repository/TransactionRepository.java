@@ -126,8 +126,12 @@ public class TransactionRepository {
     }
 
     public void updateTransaction(String familyId, Transaction oldTransaction, Transaction newTransaction, Callback callback) {
+        Trace trace = FirebaseLogger.startTrace("repo_update_transaction");
         String uid = auth.getUid();
-        if (uid == null) return;
+        if (uid == null) {
+            FirebaseLogger.stopTrace(trace);
+            return;
+        }
 
         DocumentReference transactionRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.TRANSACTIONS).document(oldTransaction.getId());
         DocumentReference oldAccountRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS).document(oldTransaction.getAccountId());
@@ -171,11 +175,18 @@ public class TransactionRepository {
                     // including the possibly updated 'createdBy' field.
                     firestoreTransaction.set(transactionRef, newTransaction);
                     return null;
-                }).addOnSuccessListener(result -> callback.onResult(new Result.Success<>(true)))
-                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+                }).addOnSuccessListener(result -> {
+                    callback.onResult(new Result.Success<>(true));
+                    FirebaseLogger.stopTrace(trace);
+                })
+                .addOnFailureListener(e -> {
+                    callback.onResult(new Result.Error<>(e));
+                    FirebaseLogger.stopTrace(trace);
+                });
     }
 
     public void deleteTransaction(String familyId, Transaction transaction, Callback callback) {
+        Trace trace = FirebaseLogger.startTrace("repo_delete_transaction");
         DocumentReference transactionRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.TRANSACTIONS).document(transaction.getId());
         DocumentReference accountRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS).document(transaction.getAccountId());
 
@@ -194,8 +205,14 @@ public class TransactionRepository {
                             "transactionCount", FieldValue.increment(-1));
 
                     return null;
-                }).addOnSuccessListener(result -> callback.onResult(new Result.Success<>(true)))
-                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+                }).addOnSuccessListener(result -> {
+                    callback.onResult(new Result.Success<>(true));
+                    FirebaseLogger.stopTrace(trace);
+                })
+                .addOnFailureListener(e -> {
+                    callback.onResult(new Result.Error<>(e));
+                    FirebaseLogger.stopTrace(trace);
+                });
     }
 
     public LiveData getTransactions(String familyId, String accountId, List<String> categoryIds, String type, String paymentMethod, Timestamp startDate, Timestamp endDate) {

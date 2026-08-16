@@ -2,6 +2,7 @@ package com.finanzapp.app.data.repository;
 
 import com.finanzapp.app.data.firebase.FirestorePaths;
 import com.finanzapp.app.data.model.Settlement;
+import com.finanzapp.app.util.FirebaseLogger;
 import com.finanzapp.app.util.Result;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
@@ -10,6 +11,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.perf.metrics.Trace;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,8 +35,12 @@ public class SettlementRepository {
     }
 
     public void addSettlement(String familyId, String fromUid, String toUid, double amount, String note, SettlementCallback callback) {
+        Trace trace = FirebaseLogger.startTrace("repo_add_settlement");
         String uid = auth.getUid();
-        if (uid == null) return;
+        if (uid == null) {
+            FirebaseLogger.stopTrace(trace);
+            return;
+        }
 
         DocumentReference docRef = db.collection(FirestorePaths.getSettlementsPath(familyId)).document();
         Settlement settlement = new Settlement(
@@ -54,6 +60,7 @@ public class SettlementRepository {
                     } else {
                         callback.onResult(new Result.Error<>(task.getException()));
                     }
+                    FirebaseLogger.stopTrace(trace);
                 });
     }
 
@@ -76,6 +83,7 @@ public class SettlementRepository {
     }
 
     public void deleteSettlement(String familyId, String settlementId, ApproveCallback callback) {
+        Trace trace = FirebaseLogger.startTrace("repo_delete_settlement");
         db.collection(FirestorePaths.getSettlementsPath(familyId)).document(settlementId)
                 .delete()
                 .addOnCompleteListener(task -> {
@@ -84,6 +92,7 @@ public class SettlementRepository {
                     } else {
                         callback.onResult(new Result.Error<>(task.getException()));
                     }
+                    FirebaseLogger.stopTrace(trace);
                 });
     }
 

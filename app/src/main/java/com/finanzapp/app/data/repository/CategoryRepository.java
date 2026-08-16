@@ -4,11 +4,13 @@ import androidx.lifecycle.LiveData;
 
 import com.finanzapp.app.data.firebase.FirestorePaths;
 import com.finanzapp.app.data.model.Category;
+import com.finanzapp.app.util.FirebaseLogger;
 import com.finanzapp.app.util.FirestoreLiveData;
 import com.finanzapp.app.util.Result;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
+import com.google.firebase.perf.metrics.Trace;
 
 import java.util.List;
 import java.util.Map;
@@ -52,25 +54,43 @@ public class CategoryRepository {
     }
 
     public void addCategory(String familyId, Category category, Callback callback) {
+        Trace trace = FirebaseLogger.startTrace("repo_add_category");
         String path = FirestorePaths.getCategoriesPath(familyId);
         db.collection(path).add(category)
                 .addOnSuccessListener(documentReference -> {
                     category.setId(documentReference.getId());
                     documentReference.update("id", category.getId())
-                            .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(true)))
-                            .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+                            .addOnSuccessListener(aVoid -> {
+                                callback.onResult(new Result.Success<>(true));
+                                FirebaseLogger.stopTrace(trace);
+                            })
+                            .addOnFailureListener(e -> {
+                                callback.onResult(new Result.Error<>(e));
+                                FirebaseLogger.stopTrace(trace);
+                            });
                 })
-                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+                .addOnFailureListener(e -> {
+                    callback.onResult(new Result.Error<>(e));
+                    FirebaseLogger.stopTrace(trace);
+                });
     }
 
     public void updateCategory(String familyId, Category category, Callback callback) {
+        Trace trace = FirebaseLogger.startTrace("repo_update_category");
         db.collection(FirestorePaths.getCategoriesPath(familyId)).document(category.getId())
                 .set(category)
-                .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(true)))
-                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+                .addOnSuccessListener(aVoid -> {
+                    callback.onResult(new Result.Success<>(true));
+                    FirebaseLogger.stopTrace(trace);
+                })
+                .addOnFailureListener(e -> {
+                    callback.onResult(new Result.Error<>(e));
+                    FirebaseLogger.stopTrace(trace);
+                });
     }
 
     public void deleteCategory(String familyId, String categoryId, Callback callback) {
+        Trace trace = FirebaseLogger.startTrace("repo_delete_category");
         db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.TRANSACTIONS)
                 .whereEqualTo("categoryId", categoryId)
                 .limit(1)
@@ -78,14 +98,24 @@ public class CategoryRepository {
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     if (!queryDocumentSnapshots.isEmpty()) {
                         callback.onResult(new Result.Error<>(new Exception("CATEGORY_IN_USE")));
+                        FirebaseLogger.stopTrace(trace);
                     } else {
                         db.collection(FirestorePaths.getCategoriesPath(familyId)).document(categoryId)
                                 .delete()
-                                .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(true)))
-                                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+                                .addOnSuccessListener(aVoid -> {
+                                    callback.onResult(new Result.Success<>(true));
+                                    FirebaseLogger.stopTrace(trace);
+                                })
+                                .addOnFailureListener(e -> {
+                                    callback.onResult(new Result.Error<>(e));
+                                    FirebaseLogger.stopTrace(trace);
+                                });
                     }
                 })
-                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+                .addOnFailureListener(e -> {
+                    callback.onResult(new Result.Error<>(e));
+                    FirebaseLogger.stopTrace(trace);
+                });
     }
 
     public interface Callback {

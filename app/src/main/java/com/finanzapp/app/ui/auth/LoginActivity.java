@@ -110,6 +110,7 @@ public class LoginActivity extends AppCompatActivity {
                         GoogleIdTokenCredential googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.getData());
                         idToken = googleIdTokenCredential.getIdToken();
                     } catch (Exception e) {
+                        com.finanzapp.app.util.FirebaseLogger.logException(e);
                         Log.e(TAG, "Error parsing Google ID Token from CustomCredential", e);
                     }
                 }
@@ -125,6 +126,9 @@ public class LoginActivity extends AppCompatActivity {
 
             @Override
             public void onError(@NonNull GetCredentialException e) {
+                if (!(e instanceof GetCredentialCancellationException)) {
+                    com.finanzapp.app.util.FirebaseLogger.logException(e);
+                }
                 Log.e(TAG, "Credential Manager error", e);
                 if (e instanceof GetCredentialCancellationException) {
                     Log.d(TAG, "Google Login cancelled by user");

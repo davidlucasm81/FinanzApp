@@ -35,6 +35,7 @@ public class SplashActivity extends AppCompatActivity {
         if (currentUser == null) {
             navigateToLogin();
         } else {
+            FirebaseLogger.setUserId(currentUser.getUid());
             checkPrivacyPolicy(currentUser);
         }
     }

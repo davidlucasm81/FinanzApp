@@ -8,6 +8,7 @@ import com.finanzapp.app.data.model.Invitation;
 import com.finanzapp.app.data.model.Member;
 import com.finanzapp.app.data.model.User;
 import com.finanzapp.app.util.CategoryColorPalette;
+import com.finanzapp.app.util.FirebaseLogger;
 import com.finanzapp.app.util.Result;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
@@ -19,6 +20,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.WriteBatch;
+import com.google.firebase.perf.metrics.Trace;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,9 +48,11 @@ public class FamilyRepository {
     }
 
     public void createFamily(String name, String currencyCode, String mode, FamilyCallback callback) {
+        Trace trace = FirebaseLogger.startTrace("repo_create_family");
         FirebaseUser currentUser = auth.getCurrentUser();
         if (currentUser == null) {
             callback.onResult(new Result.Error<>(new Exception("User not authenticated")));
+            FirebaseLogger.stopTrace(trace);
             return;
         }
 
@@ -112,13 +116,16 @@ public class FamilyRepository {
             } else {
                 callback.onResult(new Result.Error<>(task.getException()));
             }
+            FirebaseLogger.stopTrace(trace);
         });
     }
 
     public void joinByCode(String code, JoinCallback callback) {
+        Trace trace = FirebaseLogger.startTrace("repo_join_by_code");
         String uid = auth.getUid();
         if (uid == null) {
             callback.onResult(new Result.Error<>(new Exception("User not authenticated")));
+            FirebaseLogger.stopTrace(trace);
             return;
         }
 
@@ -152,18 +159,27 @@ public class FamilyRepository {
                         );
 
                         inviteRef.set(invitation)
-                                .addOnSuccessListener(aVoid -> callback.onResult(new Result.Success<>(true)))
-                                .addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+                                .addOnSuccessListener(aVoid -> {
+                                    callback.onResult(new Result.Success<>(true));
+                                    FirebaseLogger.stopTrace(trace);
+                                })
+                                .addOnFailureListener(e -> {
+                                    callback.onResult(new Result.Error<>(e));
+                                    FirebaseLogger.stopTrace(trace);
+                                });
                     } else {
                         callback.onResult(new Result.Error<>(new Exception("Invalid invite code")));
+                        FirebaseLogger.stopTrace(trace);
                     }
                 });
     }
 
     public void joinByCodeWithInvitation(String code, JoinWithInvitationCallback callback) {
+        Trace trace = FirebaseLogger.startTrace("repo_join_by_code_inv");
         String uid = auth.getUid();
         if (uid == null) {
             callback.onResult(new Result.Error<>(new Exception("User not authenticated")), null, null);
+            FirebaseLogger.stopTrace(trace);
             return;
         }
 
@@ -200,13 +216,16 @@ public class FamilyRepository {
                                 .addOnSuccessListener(aVoid -> {
                                     android.util.Log.d("FamilyRepository", "Code request invitation created successfully. InvId: " + invitation.getId() + ", FamilyId: " + familyId);
                                     callback.onResult(new Result.Success<>(true), invitation, familyId);
+                                    FirebaseLogger.stopTrace(trace);
                                 })
                                 .addOnFailureListener(e -> {
                                     android.util.Log.e("FamilyRepository", "Error creating code request invitation", e);
                                     callback.onResult(new Result.Error<>(e), null, null);
+                                    FirebaseLogger.stopTrace(trace);
                                 });
                     } else {
                         callback.onResult(new Result.Error<>(new Exception("Invalid invite code")), null, null);
+                        FirebaseLogger.stopTrace(trace);
                     }
                 });
     }
@@ -288,8 +307,12 @@ public class FamilyRepository {
     }
 
     public void approveJoinRequest(String familyId, Invitation invitation, ApproveCallback callback) {
+        Trace trace = FirebaseLogger.startTrace("repo_approve_join_request");
         String adminUid = auth.getUid();
-        if (adminUid == null) return;
+        if (adminUid == null) {
+            FirebaseLogger.stopTrace(trace);
+            return;
+        }
 
         // NOTE: Security rules in this project restrict direct read/write of other users' documents
         // (each user may only read/write their own user doc). To avoid permission errors when an admin
@@ -357,16 +380,22 @@ public class FamilyRepository {
                     } else {
                         callback.onResult(new Result.Error<>(commitTask.getException()));
                     }
+                    FirebaseLogger.stopTrace(trace);
                 });
             } else {
                 callback.onResult(new Result.Error<>(new Exception("Could not fetch family name for membership")));
+                FirebaseLogger.stopTrace(trace);
             }
         });
     }
 
     public void rejectJoinRequest(String familyId, String invitationId, ApproveCallback callback) {
+        Trace trace = FirebaseLogger.startTrace("repo_reject_join_request");
         String adminUid = auth.getUid();
-        if (adminUid == null) return;
+        if (adminUid == null) {
+            FirebaseLogger.stopTrace(trace);
+            return;
+        }
 
         db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.INVITATIONS).document(invitationId)
                 .update("status", "rejected",
@@ -378,12 +407,17 @@ public class FamilyRepository {
                     } else {
                         callback.onResult(new Result.Error<>(task.getException()));
                     }
+                    FirebaseLogger.stopTrace(trace);
                 });
     }
 
     public void inviteByEmail(String familyId, String email, ApproveCallback callback) {
+        Trace trace = FirebaseLogger.startTrace("repo_invite_by_email");
         String adminUid = auth.getUid();
-        if (adminUid == null) return;
+        if (adminUid == null) {
+            FirebaseLogger.stopTrace(trace);
+            return;
+        }
 
         String normalizedEmail = email.toLowerCase().trim();
         db.collection(FirestorePaths.FAMILIES).document(familyId).get().addOnSuccessListener(familyDoc -> {
@@ -411,14 +445,20 @@ public class FamilyRepository {
                         } else {
                             callback.onResult(new Result.Error<>(task.getException()));
                         }
+                        FirebaseLogger.stopTrace(trace);
                     });
-        }).addOnFailureListener(e -> callback.onResult(new Result.Error<>(e)));
+        }).addOnFailureListener(e -> {
+            callback.onResult(new Result.Error<>(e));
+            FirebaseLogger.stopTrace(trace);
+        });
     }
 
     public void acceptInvitation(Invitation invitation, String familyId, ApproveCallback callback) {
+        Trace trace = FirebaseLogger.startTrace("repo_accept_invitation");
         String uid = auth.getUid();
         if (uid == null) {
             callback.onResult(new Result.Error<>(new Exception("User not authenticated")));
+            FirebaseLogger.stopTrace(trace);
             return;
         }
 
@@ -426,7 +466,10 @@ public class FamilyRepository {
         db.collection(FirestorePaths.USERS).document(uid).get().addOnCompleteListener(userTask -> {
             if (userTask.isSuccessful() && userTask.getResult().exists()) {
                 User user = userTask.getResult().toObject(User.class);
-                if (user == null) return;
+                if (user == null) {
+                    FirebaseLogger.stopTrace(trace);
+                    return;
+                }
 
                 db.collection(FirestorePaths.FAMILIES).document(familyId).get().addOnCompleteListener(familyTask -> {
                     if (familyTask.isSuccessful() && familyTask.getResult().exists()) {
@@ -466,13 +509,16 @@ public class FamilyRepository {
                             } else {
                                 callback.onResult(new Result.Error<>(batchTask.getException()));
                             }
+                            FirebaseLogger.stopTrace(trace);
                         });
                     } else {
                         callback.onResult(new Result.Error<>(new Exception("Could not fetch family name")));
+                        FirebaseLogger.stopTrace(trace);
                     }
                 });
             } else {
                 callback.onResult(new Result.Error<>(userTask.getException() != null ? userTask.getException() : new Exception("User doc not found")));
+                FirebaseLogger.stopTrace(trace);
             }
         });
     }
@@ -573,6 +619,7 @@ public class FamilyRepository {
     }
 
     public void updateFamily(String familyId, String name, String currencyCode, ApproveCallback callback) {
+        Trace trace = FirebaseLogger.startTrace("repo_update_family");
         // Fetch current family data to see if name changed
         getFamily(familyId, result -> {
             if (result instanceof Result.Success) {
@@ -592,9 +639,11 @@ public class FamilyRepository {
                             } else {
                                 callback.onResult(new Result.Error<>(task.getException()));
                             }
+                            FirebaseLogger.stopTrace(trace);
                         });
             } else {
                 callback.onResult(new Result.Error<>(((Result.Error<?>) result).getException()));
+                FirebaseLogger.stopTrace(trace);
             }
         });
     }
@@ -646,9 +695,11 @@ public class FamilyRepository {
     }
 
     public void leaveFamily(String familyId, ApproveCallback callback) {
+        Trace trace = FirebaseLogger.startTrace("repo_leave_family");
         String uid = auth.getUid();
         if (uid == null) {
             callback.onResult(new Result.Error<>(new Exception("User not authenticated")));
+            FirebaseLogger.stopTrace(trace);
             return;
         }
 
@@ -658,18 +709,19 @@ public class FamilyRepository {
                         List<DocumentSnapshot> memberDocs = task.getResult().getDocuments();
                         if (memberDocs.size() <= 1) {
                             // Last member, delete family
-                            deleteFamily(familyId, callback);
+                            deleteFamily(familyId, callback, trace);
                         } else {
                             // More members exist
-                            checkAndLeave(familyId, uid, memberDocs, callback);
+                            checkAndLeave(familyId, uid, memberDocs, callback, trace);
                         }
                     } else {
                         callback.onResult(new Result.Error<>(task.getException()));
+                        FirebaseLogger.stopTrace(trace);
                     }
                 });
     }
 
-    private void checkAndLeave(String familyId, String uid, List<DocumentSnapshot> memberDocs, ApproveCallback callback) {
+    private void checkAndLeave(String familyId, String uid, List<DocumentSnapshot> memberDocs, ApproveCallback callback, Trace trace) {
         DocumentSnapshot myDoc = null;
         List<Member> others = new ArrayList<>();
 
@@ -687,6 +739,7 @@ public class FamilyRepository {
 
         if (myDoc == null) {
             callback.onResult(new Result.Error<>(new Exception("Member document not found")));
+            FirebaseLogger.stopTrace(trace);
             return;
         }
 
@@ -743,6 +796,7 @@ public class FamilyRepository {
                     } else {
                         callback.onResult(new Result.Error<>(commitTask.getException()));
                     }
+                    FirebaseLogger.stopTrace(trace);
                 });
             } else {
                 // Fallback to null if error reading memberships
@@ -753,6 +807,7 @@ public class FamilyRepository {
                     } else {
                         callback.onResult(new Result.Error<>(commitTask.getException()));
                     }
+                    FirebaseLogger.stopTrace(trace);
                 });
             }
         });
@@ -834,10 +889,11 @@ public class FamilyRepository {
         });
     }
 
-    private void deleteFamily(String familyId, ApproveCallback callback) {
+    private void deleteFamily(String familyId, ApproveCallback callback, Trace trace) {
         String uid = auth.getUid();
         if (uid == null) {
             callback.onResult(new Result.Error<>(new Exception("User not authenticated")));
+            if (trace != null) FirebaseLogger.stopTrace(trace);
             return;
         }
 
@@ -919,10 +975,12 @@ public class FamilyRepository {
                                     } else {
                                         callback.onResult(new Result.Error<>(commitTask.getException()));
                                     }
+                                    if (trace != null) FirebaseLogger.stopTrace(trace);
                                 });
                             });
                 } else {
                     callback.onResult(new Result.Error<>(mTask.getException()));
+                    if (trace != null) FirebaseLogger.stopTrace(trace);
                 }
             });
         });

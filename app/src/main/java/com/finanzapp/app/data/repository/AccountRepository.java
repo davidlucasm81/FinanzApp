@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData;
 
 import com.finanzapp.app.data.firebase.FirestorePaths;
 import com.finanzapp.app.data.model.Account;
+import com.finanzapp.app.util.FirebaseLogger;
 import com.finanzapp.app.util.FirestoreLiveData;
 import com.finanzapp.app.util.Result;
 import com.google.firebase.Timestamp;
@@ -11,6 +12,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.perf.metrics.Trace;
 
 import java.util.List;
 import java.util.Map;
@@ -54,9 +56,11 @@ public class AccountRepository {
     }
 
     public void createAccount(String familyId, Account account, AccountCallback callback) {
+        Trace trace = FirebaseLogger.startTrace("repo_create_account");
         String uid = FirebaseAuth.getInstance().getUid();
         if (uid == null) {
             callback.onResult(new Result.Error<>(new Exception("User not authenticated")));
+            FirebaseLogger.stopTrace(trace);
             return;
         }
 
@@ -75,6 +79,7 @@ public class AccountRepository {
             } else {
                 callback.onResult(new Result.Error<>(task.getException()));
             }
+            FirebaseLogger.stopTrace(trace);
         });
     }
 
@@ -110,6 +115,7 @@ public class AccountRepository {
             return;
         }
 
+        Trace trace = FirebaseLogger.startTrace("repo_update_account");
         DocumentReference accountRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS)
                 .document(updatedAccount.getId());
 
@@ -141,6 +147,7 @@ public class AccountRepository {
             } else {
                 callback.onResult(new Result.Error<>(task.getException()));
             }
+            FirebaseLogger.stopTrace(trace);
         });
     }
 
@@ -165,6 +172,7 @@ public class AccountRepository {
     }
 
     public void archiveAccount(String familyId, String accountId, boolean active, SimpleCallback callback) {
+        Trace trace = FirebaseLogger.startTrace("repo_archive_account");
         db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS)
                 .document(accountId)
                 .update("active", active)
@@ -174,10 +182,12 @@ public class AccountRepository {
                     } else {
                         callback.onResult(new Result.Error<>(task.getException()));
                     }
+                    FirebaseLogger.stopTrace(trace);
                 });
     }
 
     public void deleteAccount(String familyId, String accountId, SimpleCallback callback) {
+        Trace trace = FirebaseLogger.startTrace("repo_delete_account");
         // Verificamos si hay transacciones antes de borrar físicamente usando el campo denormalizado
         db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS)
                 .document(accountId)
@@ -187,6 +197,7 @@ public class AccountRepository {
                         Account account = task.getResult().toObject(Account.class);
                         if (account != null && account.getTransactionCount() != null && account.getTransactionCount() > 0) {
                             callback.onResult(new Result.Error<>(new Exception("No se puede eliminar una cuenta con movimientos. Archívala en su lugar.")));
+                            FirebaseLogger.stopTrace(trace);
                         } else {
                             db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS)
                                     .document(accountId)
@@ -197,10 +208,12 @@ public class AccountRepository {
                                         } else {
                                             callback.onResult(new Result.Error<>(deleteTask.getException()));
                                         }
+                                        FirebaseLogger.stopTrace(trace);
                                     });
                         }
                     } else {
                         callback.onResult(new Result.Error<>(task.getException()));
+                        FirebaseLogger.stopTrace(trace);
                     }
                 });
     }
@@ -211,6 +224,7 @@ public class AccountRepository {
             return;
         }
 
+        Trace trace = FirebaseLogger.startTrace("repo_transfer_funds");
         DocumentReference fromRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS).document(fromAccountId);
         DocumentReference toRef = db.collection(FirestorePaths.getFamilyPath(familyId) + "/" + FirestorePaths.ACCOUNTS).document(toAccountId);
 
@@ -234,6 +248,7 @@ public class AccountRepository {
             } else {
                 callback.onResult(new Result.Error<>(task.getException()));
             }
+            FirebaseLogger.stopTrace(trace);
         });
     }
 }

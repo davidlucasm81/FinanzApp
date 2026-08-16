@@ -6,6 +6,7 @@ import com.finanzapp.app.data.model.ImportResult;
 import com.finanzapp.app.data.model.ImportedRow;
 import com.finanzapp.app.util.FirebaseLogger;
 import com.google.firebase.Timestamp;
+import com.google.firebase.perf.metrics.Trace;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -24,17 +25,20 @@ public class CsvTransactionParser {
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
 
     public List<ImportedRow> parse(InputStream inputStream, ImportResult result) throws IOException {
+        Trace trace = FirebaseLogger.startTrace("csv_parse");
         List<ImportedRow> rows = new ArrayList<>();
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
         String headerLine = reader.readLine();
         if (headerLine == null) {
             result.addError("El fichero está vacío.");
+            FirebaseLogger.stopTrace(trace);
             return rows;
         }
 
         String delimiter = detectDelimiter(headerLine);
         if (delimiter == null) {
             result.addError("No se ha podido detectar el delimitador (esperado: tabulador, coma o punto y coma).");
+            FirebaseLogger.stopTrace(trace);
             return rows;
         }
 
@@ -55,6 +59,7 @@ public class CsvTransactionParser {
             }
             lineNumber++;
         }
+        FirebaseLogger.stopTrace(trace);
         return rows;
     }
 

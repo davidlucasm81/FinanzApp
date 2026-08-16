@@ -8,6 +8,7 @@ import com.finanzapp.app.data.model.User;
 import com.finanzapp.app.util.FirebaseLogger;
 import com.finanzapp.app.util.Result;
 import com.google.firebase.Timestamp;
+import com.google.firebase.perf.metrics.Trace;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -67,6 +68,7 @@ public class AuthRepository {
     }
 
     public void signInWithCredential(AuthCredential credential, AuthCallback callback) {
+        Trace trace = FirebaseLogger.startTrace("auth_sign_in");
         auth.signInWithCredential(credential)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
@@ -74,6 +76,7 @@ public class AuthRepository {
                     } else {
                         callback.onResult(new Result.Error<>(task.getException()));
                     }
+                    FirebaseLogger.stopTrace(trace);
                 });
     }
 
@@ -82,6 +85,9 @@ public class AuthRepository {
             callback.onResult(new Result.Error<>(new Exception("FirebaseUser is null after successful sign in")));
             return;
         }
+
+        Trace trace = FirebaseLogger.startTrace("auth_sync_user");
+        FirebaseLogger.setUserId(firebaseUser.getUid());
 
         db.collection(FirestorePaths.USERS).document(firebaseUser.getUid()).get()
                 .addOnCompleteListener(task -> {
@@ -107,6 +113,7 @@ public class AuthRepository {
                     } else {
                         callback.onResult(new Result.Error<>(task.getException()));
                     }
+                    FirebaseLogger.stopTrace(trace);
                 });
     }
 
@@ -123,6 +130,7 @@ public class AuthRepository {
             return;
         }
 
+        Trace trace = FirebaseLogger.startTrace("auth_delete_account");
         String uid = firebaseUser.getUid();
 
         // Desconectamos todos los listeners activos antes de empezar a borrar/abandonar
@@ -136,31 +144,31 @@ public class AuthRepository {
                     if (task.isSuccessful()) {
                         List<DocumentSnapshot> memberships = task.getResult().getDocuments();
                         if (memberships.isEmpty()) {
-                            proceedWithDeletion(firebaseUser, callback);
+                            proceedWithDeletion(firebaseUser, callback, trace);
                         } else {
-                            leaveFamiliesSequentially(memberships, 0, familyRepository, firebaseUser, callback);
+                            leaveFamiliesSequentially(memberships, 0, familyRepository, firebaseUser, callback, trace);
                         }
                     } else {
                         // User doc or memberships might not exist, proceed with deletion
-                        proceedWithDeletion(firebaseUser, callback);
+                        proceedWithDeletion(firebaseUser, callback, trace);
                     }
                 });
     }
 
-    private void leaveFamiliesSequentially(List<DocumentSnapshot> memberships, int index, FamilyRepository familyRepository, FirebaseUser firebaseUser, AuthCallback callback) {
+    private void leaveFamiliesSequentially(List<DocumentSnapshot> memberships, int index, FamilyRepository familyRepository, FirebaseUser firebaseUser, AuthCallback callback, Trace trace) {
         if (index >= memberships.size()) {
-            proceedWithDeletion(firebaseUser, callback);
+            proceedWithDeletion(firebaseUser, callback, trace);
             return;
         }
 
         String familyId = memberships.get(index).getId();
         familyRepository.leaveFamily(familyId, result -> {
             // We continue even if one fails to ensure maximum cleanup
-            leaveFamiliesSequentially(memberships, index + 1, familyRepository, firebaseUser, callback);
+            leaveFamiliesSequentially(memberships, index + 1, familyRepository, firebaseUser, callback, trace);
         });
     }
 
-    private void proceedWithDeletion(FirebaseUser firebaseUser, AuthCallback callback) {
+    private void proceedWithDeletion(FirebaseUser firebaseUser, AuthCallback callback, Trace trace) {
         String uid = firebaseUser.getUid();
 
         // 3. Delete from Firestore
@@ -174,6 +182,7 @@ public class AuthRepository {
                                 } else {
                                     callback.onResult(new Result.Error<>(authTask.getException()));
                                 }
+                                FirebaseLogger.stopTrace(trace);
                             });
                 });
     }
@@ -193,6 +202,7 @@ public class AuthRepository {
             return;
         }
 
+        Trace trace = FirebaseLogger.startTrace("auth_export_data");
         String uid = firebaseUser.getUid();
 
         db.runTransaction(transaction -> {
@@ -203,14 +213,15 @@ public class AuthRepository {
             return userDoc.toObject(User.class);
         }).addOnSuccessListener(user -> {
             android.util.Log.d("AuthRepository", "User profile fetched, now fetching memberships...");
-            fetchMembershipsAndTransactions(user, callback);
+            fetchMembershipsAndTransactions(user, callback, trace);
         }).addOnFailureListener(e -> {
             android.util.Log.e("AuthRepository", "Error in export transaction", e);
             callback.onResult(new Result.Error<>(e));
+            FirebaseLogger.stopTrace(trace);
         });
     }
 
-    private void fetchMembershipsAndTransactions(User user, ExportCallback callback) {
+    private void fetchMembershipsAndTransactions(User user, ExportCallback callback, Trace trace) {
         String uid = user.getUid();
         db.collection(FirestorePaths.getMembershipsPath(uid)).get().addOnSuccessListener(membershipsSnapshot -> {
             List<DocumentSnapshot> memberships = membershipsSnapshot.getDocuments();
@@ -218,20 +229,21 @@ public class AuthRepository {
 
             List<DocumentSnapshot> allUserTransactions = new ArrayList<>();
             if (memberships.isEmpty()) {
-                generateAndPostJson(user, memberships, allUserTransactions, callback);
+                generateAndPostJson(user, memberships, allUserTransactions, callback, trace);
                 return;
             }
 
-            fetchTransactionsIteratively(user, memberships, 0, allUserTransactions, callback);
+            fetchTransactionsIteratively(user, memberships, 0, allUserTransactions, callback, trace);
         }).addOnFailureListener(e -> {
             android.util.Log.e("AuthRepository", "Error fetching memberships", e);
             callback.onResult(new Result.Error<>(e));
+            FirebaseLogger.stopTrace(trace);
         });
     }
 
-    private void fetchTransactionsIteratively(User user, List<DocumentSnapshot> memberships, int index, List<DocumentSnapshot> collectedTransactions, ExportCallback callback) {
+    private void fetchTransactionsIteratively(User user, List<DocumentSnapshot> memberships, int index, List<DocumentSnapshot> collectedTransactions, ExportCallback callback, Trace trace) {
         if (index >= memberships.size()) {
-            generateAndPostJson(user, memberships, collectedTransactions, callback);
+            generateAndPostJson(user, memberships, collectedTransactions, callback, trace);
             return;
         }
 
@@ -243,16 +255,16 @@ public class AuthRepository {
                 .get()
                 .addOnSuccessListener(snapshot -> {
                     collectedTransactions.addAll(snapshot.getDocuments());
-                    fetchTransactionsIteratively(user, memberships, index + 1, collectedTransactions, callback);
+                    fetchTransactionsIteratively(user, memberships, index + 1, collectedTransactions, callback, trace);
                 })
                 .addOnFailureListener(e -> {
                     // Si falla una familia (ej. ya no tenemos acceso), continuamos con las demás
                     android.util.Log.w("AuthRepository", "Failed to fetch transactions for family: " + familyId, e);
-                    fetchTransactionsIteratively(user, memberships, index + 1, collectedTransactions, callback);
+                    fetchTransactionsIteratively(user, memberships, index + 1, collectedTransactions, callback, trace);
                 });
     }
 
-    private void generateAndPostJson(User user, List<DocumentSnapshot> memberships, List<DocumentSnapshot> transactions, ExportCallback callback) {
+    private void generateAndPostJson(User user, List<DocumentSnapshot> memberships, List<DocumentSnapshot> transactions, ExportCallback callback, Trace trace) {
         android.util.Log.d("AuthRepository", "All data collected (Trans: " + transactions.size() + "), generating JSON...");
         try {
             String json = generateExportJson(user, memberships, transactions);
@@ -260,6 +272,8 @@ public class AuthRepository {
         } catch (Exception e) {
             android.util.Log.e("AuthRepository", "Error generating JSON", e);
             callback.onResult(new Result.Error<>(e));
+        } finally {
+            FirebaseLogger.stopTrace(trace);
         }
     }
 

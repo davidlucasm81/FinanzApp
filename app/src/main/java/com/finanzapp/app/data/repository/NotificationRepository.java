@@ -2,12 +2,14 @@ package com.finanzapp.app.data.repository;
 
 import com.finanzapp.app.data.firebase.FirestorePaths;
 import com.finanzapp.app.data.model.Notification;
+import com.finanzapp.app.util.FirebaseLogger;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.perf.metrics.Trace;
 
 public class NotificationRepository {
     private final FirebaseFirestore db;
@@ -48,8 +50,9 @@ public class NotificationRepository {
     }
 
     public void addNotification(String familyId, Notification notification) {
+        Trace trace = FirebaseLogger.startTrace("repo_add_notification");
         DocumentReference ref = db.collection(FirestorePaths.getNotificationsPath(familyId)).document();
         notification.setId(ref.getId());
-        ref.set(notification);
+        ref.set(notification).addOnCompleteListener(task -> FirebaseLogger.stopTrace(trace));
     }
 }

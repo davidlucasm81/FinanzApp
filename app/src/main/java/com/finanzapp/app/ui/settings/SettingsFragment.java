@@ -162,6 +162,7 @@ public class SettingsFragment extends Fragment {
                 startActivity(android.content.Intent.createChooser(shareIntent, "Descargar mis datos"));
             }
         } catch (java.io.IOException e) {
+            com.finanzapp.app.util.FirebaseLogger.logException(e);
             android.util.Log.e("SettingsFragment", "Error sharing file", e);
             Toast.makeText(requireContext(), R.string.error_export_file, Toast.LENGTH_LONG).show();
         }
