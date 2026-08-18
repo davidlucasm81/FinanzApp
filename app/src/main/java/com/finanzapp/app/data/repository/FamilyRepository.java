@@ -1014,6 +1014,64 @@ public class FamilyRepository {
                 });
     }
 
+    public void setMembershipArchived(String uid, String familyId, boolean archived, ApproveCallback callback) {
+        if (archived) {
+            // Check if it's the active family before archiving
+            db.collection(FirestorePaths.USERS).document(uid).get().addOnCompleteListener(task -> {
+                if (task.isSuccessful() && task.getResult() != null) {
+                    String activeFamilyId = task.getResult().getString("familyId");
+                    WriteBatch batch = db.batch();
+                    batch.update(db.collection(FirestorePaths.getMembershipsPath(uid)).document(familyId), "archived", true);
+
+                    if (familyId.equals(activeFamilyId)) {
+                        // Recalculate active family: find another non-archived membership
+                        db.collection(FirestorePaths.getMembershipsPath(uid)).get().addOnCompleteListener(mTask -> {
+                            String nextFamilyId = null;
+                            if (mTask.isSuccessful()) {
+                                for (DocumentSnapshot doc : mTask.getResult().getDocuments()) {
+                                    FamilyMembership m = doc.toObject(FamilyMembership.class);
+                                    if (m != null && !doc.getId().equals(familyId) && !m.isArchived()) {
+                                        nextFamilyId = doc.getId();
+                                        break;
+                                    }
+                                }
+                            }
+                            batch.update(db.collection(FirestorePaths.USERS).document(uid), "familyId", nextFamilyId);
+                            batch.commit().addOnCompleteListener(cTask -> {
+                                if (cTask.isSuccessful()) {
+                                    callback.onResult(new Result.Success<>(true));
+                                } else {
+                                    callback.onResult(new Result.Error<>(cTask.getException()));
+                                }
+                            });
+                        });
+                    } else {
+                        batch.commit().addOnCompleteListener(cTask -> {
+                            if (cTask.isSuccessful()) {
+                                callback.onResult(new Result.Success<>(true));
+                            } else {
+                                callback.onResult(new Result.Error<>(cTask.getException()));
+                            }
+                        });
+                    }
+                } else {
+                    callback.onResult(new Result.Error<>(task.getException()));
+                }
+            });
+        } else {
+            // Unarchiving is simpler
+            db.collection(FirestorePaths.getMembershipsPath(uid)).document(familyId)
+                    .update("archived", false)
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            callback.onResult(new Result.Success<>(true));
+                        } else {
+                            callback.onResult(new Result.Error<>(task.getException()));
+                        }
+                    });
+        }
+    }
+
     public interface MembershipsCallback {
         void onResult(Result<List<FamilyMembership>> result);
     }

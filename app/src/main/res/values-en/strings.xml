@@ -22,6 +22,7 @@
     <string name="amount_placeholder">0.00</string>
     <string name="desc_edit_account">Edit account</string>
     <string name="desc_delete_account">Delete account</string>
+    <string name="desc_back">Back</string>
     <string name="desc_import_csv">Import CSV</string>
     <string name="desc_export">Export transactions</string>
     <string name="privacy_mode_toggle_desc">Toggle privacy mode</string>
@@ -223,6 +224,12 @@
     <string name="label_manage_categories_btn">Manage categories</string>
     <string name="label_leave_family_btn">Leave family</string>
     <string name="label_archived">Archived</string>
+    <string name="menu_archive_family">Archive family</string>
+    <string name="menu_unarchive_family">Unarchive family</string>
+    <string name="label_archived_families">Archived families</string>
+    <string name="btn_show_archived">Show archived families</string>
+    <string name="btn_hide_archived">Hide archived families</string>
+    <string name="error_archive_active_family">Cannot archive the active family. Switch to another family first.</string>
     <string name="label_join_family_title">Join Family</string>
     <string name="label_request_join">Request join</string>
     <string name="label_add_category_title">Add Category</string>

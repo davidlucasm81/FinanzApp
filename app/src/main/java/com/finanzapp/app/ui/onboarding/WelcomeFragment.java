@@ -55,6 +55,9 @@ public class WelcomeFragment extends Fragment {
         binding.btnJoinFamily.setOnClickListener(v -> 
                 Navigation.findNavController(v).navigate(R.id.action_welcomeFragment_to_joinByCodeFragment));
 
+        binding.btnViewFamilies.setOnClickListener(v ->
+                Navigation.findNavController(v).navigate(R.id.action_welcomeFragment_to_familySwitcherFragment));
+
         binding.ivUserPhoto.setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.settingsFragment));
 
@@ -81,6 +84,7 @@ public class WelcomeFragment extends Fragment {
         setupObservers();
         loadUserData();
         checkPendingInvitations();
+        viewModel.fetchMemberships();
     }
 
     private void loadUserData() {
@@ -97,6 +101,17 @@ public class WelcomeFragment extends Fragment {
                             .placeholder(R.drawable.ic_user_placeholder)
                             .circleCrop()
                             .into(binding.ivUserPhoto);
+                }
+            }
+        });
+
+        viewModel.getMemberships().observe(getViewLifecycleOwner(), result -> {
+            if (result instanceof Result.Success) {
+                java.util.List<com.finanzapp.app.data.model.FamilyMembership> memberships = ((Result.Success<java.util.List<com.finanzapp.app.data.model.FamilyMembership>>) result).getData();
+                if (memberships != null && !memberships.isEmpty()) {
+                    binding.btnViewFamilies.setVisibility(View.VISIBLE);
+                } else {
+                    binding.btnViewFamilies.setVisibility(View.GONE);
                 }
             }
         });

@@ -32,6 +32,7 @@ public class OnboardingViewModel extends ViewModel {
     private final SingleLiveEvent<Result<Boolean>> invitationAction = new SingleLiveEvent<>();
     private final MutableLiveData<Result<Invitation>> pendingCodeRequest = new MutableLiveData<>();
     private final MutableLiveData<Result<User>> userData = new MutableLiveData<>();
+    private final MutableLiveData<Result<java.util.List<com.finanzapp.app.data.model.FamilyMembership>>> memberships = new MutableLiveData<>();
     private final SingleLiveEvent<Result<Boolean>> privacyResult = new SingleLiveEvent<>();
     private String lastAction; // "accepted" | "rejected"
 
@@ -68,6 +69,10 @@ public class OnboardingViewModel extends ViewModel {
         return userData;
     }
 
+    public LiveData<Result<java.util.List<com.finanzapp.app.data.model.FamilyMembership>>> getMemberships() {
+        return memberships;
+    }
+
     public LiveData<Result<Boolean>> getPrivacyResult() {
         return privacyResult;
     }
@@ -101,6 +106,12 @@ public class OnboardingViewModel extends ViewModel {
                         userData.postValue(new Result.Error<>(new Exception("User not found")));
                     }
                 });
+    }
+
+    public void fetchMemberships() {
+        String uid = FirebaseAuth.getInstance().getUid();
+        if (uid == null) return;
+        familyRepository.getUserFamilies(uid, memberships::postValue);
     }
 
     public void fetchPendingInvitation(String email) {

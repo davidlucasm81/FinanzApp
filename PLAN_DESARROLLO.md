@@ -478,3 +478,35 @@
 - [x] Implementar la eliminación de liquidaciones (settlements) asegurando la recuperación del saldo neto y la actualización de pagos sugeridos.
 - [x] Permitir editar el importe y añadir notas al crear una liquidación.
 - [x] **Mejora de UX en Pagos Sugeridos**: Rediseño de la tarjeta a un formato horizontal más compacto, sombreado contextual (verde/rojo) y ordenación prioritaria para el usuario actual.
+
+## Fase 19 — Archivar familias (por usuario, no global)
+> Requisito nuevo (2026-08-18): un usuario puede archivar una de sus familias para dejar de verla en el selector de cambio de familia sin abandonarla ni afectar a los demás miembros. Es una preferencia puramente personal: la familia sigue existiendo con normalidad, sus datos, miembros y movimientos no cambian, y el resto de miembros no ve ni se entera de que alguien la ha archivado. El usuario puede desarchivarla en cualquier momento. **No se toca ningún dato de `families/{familyId}` ni de `members/*`**; el archivado vive exclusivamente en el `membership` del propio usuario (Fase 7 bis), igual que ya se hizo para no modificar el modelo existente.
+>
+> **Punto de entrada**: hasta ahora el botón desplegable de la cabecera del Dashboard abría directamente el `FamilySwitcherFragment` (bottom sheet). Pasa a abrir una **pantalla propia** (no un bottom sheet) dedicada a cambiar de familia, que incluye el listado de familias activas de siempre más el acceso a las archivadas y la acción de archivar/desarchivar. Se mantiene la regla ya existente de que este es el único punto de entrada para cambiar de familia activa o crear/unirse a una nueva.
+
+### Modelo de datos (solo aditivo)
+- [x] Añadir el campo `archived` (`boolean`, por defecto `false`) a `FamilyMembership` y al documento `users/{uid}/memberships/{familyId}`. Memberships ya existentes sin este campo deben tratarse como `archived == false` en todo el código (self-heal, sin migración necesaria, mismo criterio ya usado para `mode` en la Fase 18).
+- [x] Nuevo método en `MembershipRepository`/`FamilyRepository`: `setMembershipArchived(uid, familyId, archived: Boolean)`, que escribe únicamente ese campo en `users/{uid}/memberships/{familyId}`. No toca `families/{familyId}` ni `members/*`.
+
+### Reglas de negocio
+- [x] Una familia archivada por el usuario **no puede ser su familia activa**: si el usuario archiva la que tiene activa (`familyId` actual), tras archivarla se recalcula automáticamente la nueva familia activa igual que al abandonar una familia (Fase 7 bis) — se elige otra de sus `memberships` no archivadas; si no le queda ninguna no archivada, se comporta igual que si no tuviera familias (ver siguiente punto).
+- [x] Si el usuario archiva su única familia no archivada, navegar a la pantalla de onboarding de "crear o unirse a una familia", igual que si no perteneciera a ninguna, pero sin perder la pertenencia archivada (puede desarchivarla luego y volver a tenerla disponible).
+- [x] Desarchivar una familia no la activa automáticamente; solo vuelve a mostrarla como opción disponible en el selector, igual que cualquier otra familia no activa.
+- [x] El archivado es estrictamente personal: dos miembros de la misma familia pueden tener estados de archivado independientes (uno la archiva, el otro sigue viéndola con normalidad) sin ningún efecto cruzado.
+
+### Nueva pantalla de cambio de familia (sustituye al bottom sheet)
+- [x] Convertir el punto de entrada del botón desplegable de la cabecera del Dashboard para que navegue a una pantalla propia (`FamilySwitcherFragment` pasa de bottom sheet a `Fragment` de pantalla completa, o se crea uno nuevo si conviene más mantener el bottom sheet reducido como acceso rápido — decidir en implementación, pero el resultado debe ser una vista a parte navegable, no un diálogo).
+- [x] Listado principal: familias no archivadas del usuario (nombre, rol, indicador de cuál es la activa), igual que el comportamiento actual.
+- [x] Sección o pestaña separada para "Familias archivadas": listado de solo las `memberships` con `archived == true`, con acción "Desarchivar" en cada una. Al desarchivar, la familia vuelve a aparecer en el listado principal.
+- [x] En el listado principal, cada familia (salvo la activa) ofrece la acción "Archivar" (por ejemplo en un menú contextual), que llama a `setMembershipArchived(uid, familyId, true)` y aplica las reglas de negocio de arriba. No se puede archivar la familia activa directamente: si el usuario quiere archivarla, primero se le pide cambiar a otra o se aplica el recálculo automático descrito arriba.
+- [x] Mantener intactos los accesos ya existentes de "Crear otra familia" y "Unirme a otra familia por código" dentro de esta misma pantalla.
+
+### Reglas de seguridad de Firestore
+- [x] `users/{uid}/memberships/{familyId}.archived`: cubierto por la regla ya existente de la Fase 7 bis (`allow read, write: if request.auth.uid == uid`), no requiere ninguna regla nueva al ser un campo más de un documento ya protegido. Verificar explícitamente con el Firebase Emulator Suite que un usuario no puede escribir el campo `archived` en el `membership` de otro usuario.
+
+### Pruebas manuales de la fase
+- [x] Archivar una familia que no es la activa: desaparece del listado principal, aparece en "Archivadas", el resto de miembros de esa familia no ve ningún cambio.
+- [x] Archivar la familia activa teniendo otras disponibles: se cambia automáticamente a otra no archivada y se permanece en Dashboard.
+- [x] Archivar la única familia no archivada: navega a onboarding sin perder la pertenencia (verificar que sigue apareciendo como archivada y se puede desarchivar después).
+- [x] Desarchivar una familia: vuelve a aparecer en el listado principal, no se activa sola.
+- [x] Dos usuarios de la misma familia: uno la archiva y el otro no ve ningún efecto en su propia lista.

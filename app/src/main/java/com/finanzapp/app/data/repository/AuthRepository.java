@@ -123,6 +123,23 @@ public class AuthRepository {
         auth.signOut();
     }
 
+    public void getUser(String uid, AuthCallback callback) {
+        db.collection(FirestorePaths.USERS).document(uid).get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        DocumentSnapshot document = task.getResult();
+                        if (document != null && document.exists()) {
+                            User user = document.toObject(User.class);
+                            callback.onResult(new Result.Success<>(user));
+                        } else {
+                            callback.onResult(new Result.Error<>(new Exception("User not found")));
+                        }
+                    } else {
+                        callback.onResult(new Result.Error<>(task.getException()));
+                    }
+                });
+    }
+
     public void deleteAccount(FamilyRepository familyRepository, AuthCallback callback) {
         FirebaseUser firebaseUser = auth.getCurrentUser();
         if (firebaseUser == null) {

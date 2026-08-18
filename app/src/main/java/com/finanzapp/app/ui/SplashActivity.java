@@ -108,10 +108,10 @@ public class SplashActivity extends AppCompatActivity {
                         // Check if user has a familyId but no memberships
                         performSelfHeal(firebaseUser);
                     } else {
-                        // Phase 18: Check if memberships are missing the 'mode' field
+                        // Phase 18/19: Check if memberships are missing the 'mode' or 'archived' field
                         boolean needsRepair = false;
                         for (com.google.firebase.firestore.DocumentSnapshot doc : memberships.getDocuments()) {
-                            if (doc.get("mode") == null) {
+                            if (doc.get("mode") == null || doc.get("archived") == null) {
                                 needsRepair = true;
                                 break;
                             }
@@ -138,26 +138,40 @@ public class SplashActivity extends AppCompatActivity {
         }
 
         com.google.firebase.firestore.DocumentSnapshot doc = docs.get(index);
-        if (doc.get("mode") != null) {
+        boolean modeMissing = doc.get("mode") == null;
+        boolean archivedMissing = doc.get("archived") == null;
+
+        if (!modeMissing && !archivedMissing) {
             repairMemberships(uid, docs, index + 1);
             return;
         }
 
         String familyId = doc.getId();
-        FirebaseFirestore.getInstance().collection(FirestorePaths.FAMILIES).document(familyId).get()
-                .addOnSuccessListener(familyDoc -> {
-                    if (familyDoc.exists()) {
-                        String mode = familyDoc.getString("mode");
-                        if (mode == null) mode = "normal";
-                        
-                        FirebaseFirestore.getInstance().collection(FirestorePaths.getMembershipsPath(uid)).document(familyId)
-                                .update("mode", mode)
-                                .addOnCompleteListener(task -> repairMemberships(uid, docs, index + 1));
-                    } else {
-                        repairMemberships(uid, docs, index + 1);
-                    }
-                })
-                .addOnFailureListener(e -> repairMemberships(uid, docs, index + 1));
+        com.google.android.gms.tasks.Task<com.google.firebase.firestore.DocumentSnapshot> task;
+        if (modeMissing) {
+            task = FirebaseFirestore.getInstance().collection(FirestorePaths.FAMILIES).document(familyId).get();
+        } else {
+            task = com.google.android.gms.tasks.Tasks.forResult(null);
+        }
+
+        task.addOnSuccessListener(familyDoc -> {
+            java.util.Map<String, Object> updates = new java.util.HashMap<>();
+            if (modeMissing) {
+                String mode = "normal";
+                if (familyDoc != null && familyDoc.exists()) {
+                    String fetchedMode = familyDoc.getString("mode");
+                    if (fetchedMode != null) mode = fetchedMode;
+                }
+                updates.put("mode", mode);
+            }
+            if (archivedMissing) {
+                updates.put("archived", false);
+            }
+
+            FirebaseFirestore.getInstance().collection(FirestorePaths.getMembershipsPath(uid)).document(familyId)
+                    .update(updates)
+                    .addOnCompleteListener(t -> repairMemberships(uid, docs, index + 1));
+        }).addOnFailureListener(e -> repairMemberships(uid, docs, index + 1));
     }
 
     private void performSelfHeal(FirebaseUser firebaseUser) {
@@ -286,7 +300,13 @@ public class SplashActivity extends AppCompatActivity {
                 .get()
                 .addOnSuccessListener(doc -> {
                     if (doc.exists()) {
-                        navigateToMain();
+                        Boolean archived = doc.getBoolean("archived");
+                        if (archived != null && !archived) {
+                            navigateToMain();
+                        } else {
+                            // Active family is archived, find another one
+                            setFirstFamilyActive(uid);
+                        }
                     } else {
                         // User was expelled or the family was deleted, set another one active
                         setFirstFamilyActive(uid);
@@ -300,21 +320,37 @@ public class SplashActivity extends AppCompatActivity {
 
     private void setFirstFamilyActive(String uid) {
         FirebaseFirestore.getInstance().collection(FirestorePaths.getMembershipsPath(uid))
-                .limit(1)
                 .get()
                 .addOnSuccessListener(querySnapshot -> {
+                    String firstNonArchivedId = null;
                     if (!querySnapshot.isEmpty()) {
-                        String firstFamilyId = querySnapshot.getDocuments().get(0).getId();
+                        for (com.google.firebase.firestore.DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                            Boolean archived = doc.getBoolean("archived");
+                            if (archived != null && !archived) {
+                                firstNonArchivedId = doc.getId();
+                                break;
+                            }
+                        }
+                    }
+
+                    if (firstNonArchivedId != null) {
                         FirebaseFirestore.getInstance().collection(FirestorePaths.USERS).document(uid)
-                                .update("familyId", firstFamilyId)
+                                .update("familyId", firstNonArchivedId)
                                 .addOnSuccessListener(v -> navigateToMain())
                                 .addOnFailureListener(e -> {
                                     FirebaseLogger.logException(e);
                                     navigateToMain();
                                 });
                     } else {
-                        // No memberships after all? (should not happen here), go to onboarding
-                        navigateToOnboarding();
+                        // If no memberships OR all are archived, we go to onboarding
+                        // as a fallback (user can still unarchive from switcher if we let them, 
+                        // but if we navigate to onboarding, WelcomeFragment will see they have 
+                        // memberships and maybe we should handle it there too).
+                        
+                        // Let's also clear familyId in Firestore to be consistent
+                        FirebaseFirestore.getInstance().collection(FirestorePaths.USERS).document(uid)
+                                .update("familyId", null)
+                                .addOnCompleteListener(t -> navigateToOnboarding());
                     }
                 })
                 .addOnFailureListener(e -> {

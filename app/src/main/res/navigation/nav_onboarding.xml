@@ -24,7 +24,16 @@
         <action
             android:id="@+id/action_welcomeFragment_to_privacyConsentFragment"
             app:destination="@id/privacyConsentFragment" />
+        <action
+            android:id="@+id/action_welcomeFragment_to_familySwitcherFragment"
+            app:destination="@id/familySwitcherFragment" />
     </fragment>
+
+    <fragment
+        android:id="@+id/familySwitcherFragment"
+        android:name="com.finanzapp.app.ui.family.FamilySwitcherFragment"
+        android:label="@string/label_my_families"
+        tools:layout="@layout/fragment_family_switcher" />
 
     <fragment
         android:id="@+id/acceptInvitationFragment"

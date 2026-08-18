@@ -22,6 +22,7 @@
     <string name="amount_placeholder">0,00</string>
     <string name="desc_edit_account">Editar cuenta</string>
     <string name="desc_delete_account">Eliminar cuenta</string>
+    <string name="desc_back">Volver</string>
     <string name="desc_import_csv">Importar CSV</string>
     <string name="desc_export">Exportar movimientos</string>
     <string name="privacy_mode_toggle_desc">Alternar modo privacidad</string>
@@ -223,6 +224,12 @@
     <string name="label_manage_categories_btn">Gestionar categorías</string>
     <string name="label_leave_family_btn">Abandonar familia</string>
     <string name="label_archived">Archivada</string>
+    <string name="menu_archive_family">Archivar familia</string>
+    <string name="menu_unarchive_family">Desarchivar familia</string>
+    <string name="label_archived_families">Familias archivadas</string>
+    <string name="btn_show_archived">Mostrar familias archivadas</string>
+    <string name="btn_hide_archived">Ocultar familias archivadas</string>
+    <string name="error_archive_active_family">No se puede archivar la familia activa. Cambia a otra familia primero.</string>
     <string name="label_join_family_title">Unirse a Familia</string>
     <string name="label_request_join">Solicitar unión</string>
     <string name="label_add_category_title">Añadir Categoría</string>

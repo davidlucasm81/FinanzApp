@@ -10,21 +10,27 @@ public class FamilyMembership {
     private String role;
     private String mode; // "normal" | "shared_expenses"
     private Timestamp joinedAt;
+    private boolean archived;
 
     public FamilyMembership() {
         // Required for Firestore serialization
     }
 
     public FamilyMembership(String familyId, String familyName, String role, Timestamp joinedAt) {
-        this(familyId, familyName, role, "normal", joinedAt);
+        this(familyId, familyName, role, "normal", joinedAt, false);
     }
 
     public FamilyMembership(String familyId, String familyName, String role, String mode, Timestamp joinedAt) {
+        this(familyId, familyName, role, mode, joinedAt, false);
+    }
+
+    public FamilyMembership(String familyId, String familyName, String role, String mode, Timestamp joinedAt, boolean archived) {
         this.familyId = familyId;
         this.familyName = familyName;
         this.role = role;
         this.mode = mode;
         this.joinedAt = joinedAt;
+        this.archived = archived;
     }
 
     // Getters and Setters
@@ -45,4 +51,7 @@ public class FamilyMembership {
 
     public Timestamp getJoinedAt() { return joinedAt; }
     public void setJoinedAt(Timestamp joinedAt) { this.joinedAt = joinedAt; }
+
+    public boolean isArchived() { return archived; }
+    public void setArchived(boolean archived) { this.archived = archived; }
 }

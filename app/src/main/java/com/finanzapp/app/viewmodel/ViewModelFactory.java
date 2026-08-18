@@ -105,6 +105,8 @@ public class ViewModelFactory implements ViewModelProvider.Factory {
             return (T) new NotificationViewModel(authRepository, notificationRepository);
         } else if (modelClass.isAssignableFrom(BalancesViewModel.class)) {
             return (T) new BalancesViewModel(authRepository, familyRepository, transactionRepository, settlementRepository, familyId);
+        } else if (modelClass.isAssignableFrom(FamilySwitcherViewModel.class)) {
+            return (T) new FamilySwitcherViewModel(authRepository, familyRepository);
         }
         throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());
     }

@@ -86,8 +86,8 @@ public class DashboardFragment extends Fragment {
 
         binding.llFamilySelector.setOnClickListener(v -> {
             if (currentFamilyId != null) {
-                FamilySwitcherFragment.newInstance(currentFamilyId)
-                        .show(getChildFragmentManager(), "FamilySwitcher");
+                NavHostFragment.findNavController(this)
+                        .navigate(R.id.action_dashboardFragment_to_familySwitcherFragment);
             }
         });
 
